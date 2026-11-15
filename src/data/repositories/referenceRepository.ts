@@ -1,10 +1,12 @@
-import type { Alias, Interpretation, Reference } from '../../domain/types';
+import type { Alias, Interpretation, Reference, Source } from '../../domain/types';
 import type { PopCultureDb } from '../db';
 
 export interface SearchIndex {
   references: Reference[];
   aliases: Alias[];
   interpretations: Interpretation[];
+  /** Full rows so cached online results can show their excerpt as a teaser. */
+  sources: Source[];
   validSourceIds: Set<string>;
 }
 
@@ -32,13 +34,19 @@ export function createReferenceRepository(db: PopCultureDb): ReferenceRepository
     getAllAliases: () => db.aliases.toArray(),
     // shortcut: loads the whole library into memory, fine for hundreds of records; query indexes once it grows past a few thousand.
     async getSearchIndex() {
-      const [references, aliases, interpretations, sourceIds] = await Promise.all([
+      const [references, aliases, interpretations, sources] = await Promise.all([
         db.references.toArray(),
         db.aliases.toArray(),
         db.interpretations.toArray(),
-        db.sources.toCollection().primaryKeys(),
+        db.sources.toArray(),
       ]);
-      return { references, aliases, interpretations, validSourceIds: new Set(sourceIds) };
+      return {
+        references,
+        aliases,
+        interpretations,
+        sources,
+        validSourceIds: new Set(sources.map((s) => s.id)),
+      };
     },
   };
 }

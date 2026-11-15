@@ -33,7 +33,7 @@ export function SearchBar({ value, onChange, onSubmit, autoFocus = false }: Sear
           type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="A quote, meme, show or saying…"
+          placeholder="Quote, meme or show…"
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}

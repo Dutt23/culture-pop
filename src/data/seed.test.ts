@@ -35,6 +35,13 @@ describe('seed content', () => {
     }
   });
 
+  it('gives every reference a kind and no citations it does not have', () => {
+    for (const reference of seed.references) {
+      expect(reference.kind).toBeTruthy();
+      expect(reference.sourceIds).toEqual([]);
+    }
+  });
+
   it('stores no unsourced years', () => {
     expect(seed.references.every((r) => r.year === undefined)).toBe(true);
   });

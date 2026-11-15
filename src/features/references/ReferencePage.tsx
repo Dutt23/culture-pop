@@ -3,8 +3,10 @@ import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { InterpretationCard } from '../../components/interpretation-card/InterpretationCard';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
+import { SourceList } from '../../components/source-list/SourceList';
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
@@ -36,10 +38,14 @@ export function ReferencePage() {
     );
   }
 
-  const { reference, interpretations, otherMeanings, sameEra } = detail;
-  const eyebrow = [CATEGORY_LABEL[reference.category], reference.decade && ERA_LABEL[reference.decade]]
-    .filter(Boolean)
-    .join(' · ');
+  const { reference, interpretations, sources, otherMeanings, sameEra } = detail;
+  const yearSource = sources.find((s) => s.id === reference.yearSourceId);
+  const when =
+    reference.year !== undefined && yearSource
+      ? `${reference.year} (per ${yearSource.publisher})`
+      : reference.decade && ERA_LABEL[reference.decade];
+  const eyebrow = [CATEGORY_LABEL[reference.category], when].filter(Boolean).join(' · ');
+  const isRetrieved = reference.editorialState === 'retrieved';
 
   return (
     <Page
@@ -59,6 +65,16 @@ export function ReferencePage() {
         )}
       </div>
 
+      {isRetrieved && interpretations.length === 0 && (
+        <Section
+          title="Not explained yet"
+          description="This was found online and hasn't been explained in plain language yet. Here's exactly what the sources say: unverified, quoted with credit."
+        >
+          <SourceList sources={sources} />
+        </Section>
+      )}
+
+      {interpretations.length > 0 && (
       <Section
         title={interpretations.length === 1 ? 'What it means' : `${interpretations.length} meanings`}
         description={
@@ -77,6 +93,7 @@ export function ReferencePage() {
           ))}
         </ol>
       </Section>
+      )}
 
       {otherMeanings.length > 0 && (
         <Section title="Same phrase, different meaning">
@@ -102,12 +119,35 @@ export function ReferencePage() {
         </Section>
       )}
 
-      <Section
-        title="Sources"
-        description="This is a demo entry written for the app. It has no external citations yet."
-      >
-        <ExternalSearchLinks query={reference.title} isOnline={isOnline} />
-      </Section>
+      {isRetrieved ? (
+        <>
+          {reference.externalLinks && reference.externalLinks.length > 0 && (
+            <Section
+              title="Its page on other sites"
+              description="Exact pages listed by Wikidata. They open outside the app, and nothing from them is copied here."
+            >
+              <ExternalLinks
+                links={reference.externalLinks.map((link) => ({ label: link.label, href: link.url }))}
+              />
+            </Section>
+          )}
+          <Section title="Look further">
+            <ExternalSearchLinks query={reference.title} isOnline={isOnline} />
+          </Section>
+        </>
+      ) : (
+        <Section
+          title="Sources"
+          description={
+            sources.length > 0
+              ? undefined
+              : 'This is a demo entry written for the app. It has no external citations yet.'
+          }
+        >
+          {sources.length > 0 && <SourceList sources={sources} />}
+          <ExternalSearchLinks query={reference.title} isOnline={isOnline} />
+        </Section>
+      )}
     </Page>
   );
 }

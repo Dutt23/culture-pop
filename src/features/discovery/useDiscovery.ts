@@ -8,7 +8,10 @@ export interface DiscoveryData {
   summaries: Map<string, CardSummary>;
 }
 
-/** Discovery reads only the local library. No browsing activity is recorded. */
+/**
+ * Discovery reads only the curated local library: cached online results are unexplained evidence,
+ * not something to browse. No browsing activity is recorded.
+ */
 export function useDiscovery(): DiscoveryData | undefined {
   const { references } = useRepositories();
   return useLiveQuery(async () => {
@@ -16,6 +19,9 @@ export function useDiscovery(): DiscoveryData | undefined {
       references.getAll(),
       references.getAllInterpretations(),
     ]);
-    return { references: all, summaries: summarizeByReference(interpretations) };
+    return {
+      references: all.filter((r) => r.editorialState !== 'retrieved'),
+      summaries: summarizeByReference(interpretations),
+    };
   }, [references]);
 }

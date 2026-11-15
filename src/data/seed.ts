@@ -5,6 +5,7 @@ import type {
   Decade,
   Interpretation,
   Reference,
+  ReferenceKind,
   SpoilerLevel,
 } from '../domain/types';
 
@@ -26,6 +27,7 @@ interface SeedDefinition {
   id: string;
   title: string;
   category: Category;
+  kind: ReferenceKind;
   decade?: Decade;
   origin?: string;
   tags: string[];
@@ -36,6 +38,7 @@ interface SeedDefinition {
 const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   {
     id: 'hakuna-matata-lion-king',
+    kind: 'quote',
     title: 'Hakuna Matata (The Lion King)',
     category: 'cartoon',
     decade: '1990s',
@@ -55,6 +58,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'hakuna-matata-swahili',
+    kind: 'phrase',
     title: 'Hakuna matata (Swahili phrase)',
     category: 'saying',
     origin: 'Swahili, spoken across East Africa',
@@ -72,6 +76,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'let-it-go-frozen',
+    kind: 'work',
     title: 'Let It Go (Frozen)',
     category: 'music',
     decade: '2010s+',
@@ -91,6 +96,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'let-it-go-saying',
+    kind: 'phrase',
     title: 'Let it go (everyday saying)',
     category: 'saying',
     tags: ['advice'],
@@ -107,6 +113,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'king-of-the-world-titanic',
+    kind: 'quote',
     title: "“I'm the king of the world!” (Titanic)",
     category: 'film',
     decade: '1990s',
@@ -135,6 +142,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'doh-simpsons',
+    kind: 'quote',
     title: "D'oh! (The Simpsons)",
     category: 'cartoon',
     decade: '1990s',
@@ -153,6 +161,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'how-you-doin-friends',
+    kind: 'quote',
     title: "“How you doin'?” (Friends)",
     category: 'catchphrase',
     decade: '1990s',
@@ -172,6 +181,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'bazinga-big-bang-theory',
+    kind: 'quote',
     title: 'Bazinga! (The Big Bang Theory)',
     category: 'catchphrase',
     decade: '2000s',
@@ -190,6 +200,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'thats-what-she-said-office',
+    kind: 'quote',
     title: "“That's what she said” (The Office)",
     category: 'tv',
     decade: '2000s',
@@ -217,6 +228,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'winter-is-coming-got',
+    kind: 'quote',
     title: '“Winter is coming” (Game of Thrones)',
     category: 'tv',
     decade: '2010s+',
@@ -236,6 +248,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'this-is-fine-dog',
+    kind: 'meme',
     title: 'This is fine (dog meme)',
     category: 'meme',
     decade: '2010s+',
@@ -255,6 +268,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'distracted-boyfriend',
+    kind: 'meme',
     title: 'Distracted boyfriend (meme)',
     category: 'meme',
     decade: '2010s+',
@@ -274,6 +288,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'all-izz-well-3-idiots',
+    kind: 'quote',
     title: '“All izz well” (3 Idiots)',
     category: 'film',
     decade: '2000s',
@@ -293,6 +308,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'i-choose-you-pokemon',
+    kind: 'quote',
     title: '“I choose you!” (Pokémon)',
     category: 'cartoon',
     decade: '1990s',
@@ -311,6 +327,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'ok-boomer',
+    kind: 'meme',
     title: 'OK boomer',
     category: 'meme',
     decade: '2010s+',
@@ -330,6 +347,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
   },
   {
     id: 'the-snap-avengers',
+    kind: 'other',
     title: 'The snap (Avengers)',
     category: 'film',
     decade: '2010s+',
@@ -370,9 +388,11 @@ export function buildSeed(): SeedData {
     title: def.title,
     normalizedTitle: normalizePhrase(def.title),
     category: def.category,
+    kind: def.kind,
     decade: def.decade,
     origin: def.origin,
     tags: def.tags,
+    sourceIds: [],
     editorialState: 'demo',
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,

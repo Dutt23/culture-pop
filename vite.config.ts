@@ -2,10 +2,12 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { connectSrc } from './src/services/retrieval/hosts';
 
 /**
  * Production-only CSP: same-origin everything, no inline scripts or styles, no plugins.
- * Phase 2 must add each verified retrieval origin to connect-src explicitly.
+ * connect-src lists exactly the retrieval hosts in `src/services/retrieval/hosts.ts`, the same
+ * list the HTTP client enforces, so the two can't drift.
  * Dev is excluded because Vite's dev server injects inline styles and an HMR socket.
  */
 // Motion's AnimatePresence `popLayout` appends an EMPTY <style> and fills it via CSSOM insertRule
@@ -19,12 +21,16 @@ const CONTENT_SECURITY_POLICY = [
   `style-src 'self' ${EMPTY_INLINE_STYLE_HASH}`,
   "img-src 'self' data:",
   "font-src 'self'",
-  "connect-src 'self'",
+  // Verified retrieval providers only (docs/SOURCE_INVENTORY.md).
+  connectSrc(),
   "worker-src 'self'",
   "manifest-src 'self'",
+  "media-src 'none'",
+  "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  'upgrade-insecure-requests',
 ].join('; ');
 
 function contentSecurityPolicy(): Plugin {

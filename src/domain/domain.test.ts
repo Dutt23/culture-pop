@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { makeAlias, makeInterpretation, makeReference } from '../test/factories';
-import { filterByCategory, groupByEra, seededShuffle } from './discovery';
+import {
+  eraOf,
+  filterByCategory,
+  filterOptions,
+  groupByEra,
+  matchesFilter,
+  NO_FILTER,
+  seededShuffle,
+} from './discovery';
 import { externalSearchLinks } from './externalSearch';
+import { matchReason } from './labels';
 import { relatedReferences } from './related';
 import { DEFAULT_SETTINGS, parseSettings } from './settings';
 import { describeStorageError } from './storageErrors';
@@ -98,9 +107,64 @@ describe('describeStorageError', () => {
 });
 
 describe('externalSearchLinks', () => {
-  it('URL-encodes user input', () => {
-    const [wikipedia, web] = externalSearchLinks(' rock & roll? ');
-    expect(wikipedia.href).toBe('https://en.wikipedia.org/w/index.php?search=rock%20%26%20roll%3F');
-    expect(web.href).toBe('https://duckduckgo.com/?q=rock%20%26%20roll%3F');
+  const links = externalSearchLinks(' rock & roll? ').flatMap((g) => g.links);
+
+  it('URL-encodes user input into every link', () => {
+    expect(links.find((l) => l.site === 'Wikipedia')?.href).toBe(
+      'https://en.wikipedia.org/w/index.php?search=rock%20%26%20roll%3F',
+    );
+    expect(links.find((l) => l.site === 'Know Your Meme')?.href).toBe(
+      'https://knowyourmeme.com/search?q=rock%20%26%20roll%3F',
+    );
+    for (const link of links) expect(link.href).toMatch(/^https:\/\/[^/]+\/.*rock%20%26%20roll%3F$/);
+  });
+
+  it('groups sites so memes, shows and general searches stay separate', () => {
+    expect(externalSearchLinks('x').map((g) => g.label)).toEqual([
+      'Encyclopedias and quotes',
+      'Memes and slang',
+      'Shows, films and anime',
+      'Anything else',
+    ]);
+  });
+});
+
+describe('matchReason', () => {
+  const ref = makeReference('r', 'Let It Go (Frozen)');
+  it.each([
+    ['exact_title', 'Let It Go (Frozen)', 'Exact title'],
+    ['exact_alias', 'let it go', 'Also known as \u201clet it go\u201d'],
+    ['title_prefix', 'Let It Go (Frozen)', 'Starts with your search'],
+    ['partial', 'Let It Go (Frozen)', 'Possible match'],
+  ] as const)('%s → %s', (kind, matchedPhrase, expected) => {
+    expect(matchReason({ reference: ref, kind, matchedPhrase })).toBe(expected);
+  });
+});
+
+describe('search filters', () => {
+  const film1999 = makeReference('m', 'The Matrix', { category: 'film', year: 1999 });
+  const cartoon1993 = makeReference('s', 'SWAT Kats', { category: 'cartoon', year: 1993 });
+  const oldFilm = makeReference('o', 'Casablanca', { category: 'film', year: 1942 });
+  const saying = makeReference('p', 'Break a leg', { category: 'saying' });
+
+  it('prefers a sourced year over the editorial decade', () => {
+    expect(eraOf({ year: 2004, decade: '1990s' })).toBe('2000s');
+    expect(eraOf({ decade: '1990s' })).toBe('1990s');
+    expect(eraOf({ year: 1942 })).toBe('earlier');
+    expect(eraOf({})).toBe('timeless');
+  });
+
+  it('filters by category and era together', () => {
+    const items = [film1999, cartoon1993, oldFilm, saying];
+    expect(items.filter((i) => matchesFilter(i, NO_FILTER))).toHaveLength(4);
+    expect(items.filter((i) => matchesFilter(i, { category: 'film', era: 'all' }))).toEqual([film1999, oldFilm]);
+    expect(items.filter((i) => matchesFilter(i, { category: 'all', era: '1990s' }))).toEqual([film1999, cartoon1993]);
+  });
+
+  it('offers only options that leave something to show, in canonical order', () => {
+    expect(filterOptions([saying, film1999, cartoon1993, oldFilm])).toEqual({
+      categories: ['cartoon', 'film', 'saying'],
+      eras: ['earlier', '1990s', 'timeless'],
+    });
   });
 });

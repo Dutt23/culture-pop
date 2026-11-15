@@ -1,4 +1,5 @@
 import type { EraKey } from './discovery';
+import type { RankedMatch } from './ranking';
 import type { Category, Provenance } from './types';
 
 export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
@@ -9,6 +10,7 @@ export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
   catchphrase: 'Catchphrase',
   music: 'Music',
   saying: 'Saying',
+  other: 'Other',
 };
 
 export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
@@ -19,6 +21,7 @@ export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
   catchphrase: 'Catchphrases',
   music: 'Music',
   saying: 'Sayings',
+  other: 'Other',
 };
 
 export const CATEGORIES: readonly Category[] = [
@@ -32,10 +35,11 @@ export const CATEGORIES: readonly Category[] = [
 ];
 
 export const ERA_LABEL: Readonly<Record<EraKey, string>> = {
+  earlier: 'Before 1990',
   '1990s': '1990s',
   '2000s': '2000s',
   '2010s+': '2010s & later',
-  timeless: 'Timeless sayings',
+  timeless: 'Timeless',
 };
 
 export const PROVENANCE_LABEL: Readonly<Record<Provenance, string>> = {
@@ -44,3 +48,18 @@ export const PROVENANCE_LABEL: Readonly<Record<Provenance, string>> = {
   model_suggested: 'Model suggestion · unverified',
   unverified: 'Unverified',
 };
+
+/** Why a result is listed, in plain words (docs/SEARCH_RANKING.md). */
+export function matchReason(match: RankedMatch): string {
+  switch (match.kind) {
+    case 'exact_title':
+      return 'Exact title';
+    case 'exact_alias':
+      return `Also known as \u201c${match.matchedPhrase}\u201d`;
+    case 'title_prefix':
+    case 'alias_prefix':
+      return 'Starts with your search';
+    case 'partial':
+      return 'Possible match';
+  }
+}

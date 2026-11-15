@@ -55,6 +55,11 @@ export default tseslint.config(
     },
   },
   {
+    // Tests feed hostile inputs (e.g. javascript: URLs) on purpose to prove they are rejected.
+    files: ['**/*.test.{ts,tsx}'],
+    rules: { 'no-script-url': 'off' },
+  },
+  {
     // Phase 2 retrieval adapters are the only place allowed to touch the network.
     files: ['src/services/**/*.{ts,tsx}'],
     rules: { 'no-restricted-globals': 'off' },

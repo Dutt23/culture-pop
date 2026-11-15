@@ -66,6 +66,13 @@
   color: var(--color-warm);
 }
 
+.pending {
+  font-weight: var(--weight-medium);
+  font-style: italic;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .title {
   font-family: var(--font-display);
   font-size: var(--text-lg);
@@ -100,6 +107,6 @@
   color: var(--color-accent);
 }
 
-.demo {
+.badge {
   margin-inline-start: auto;
 }

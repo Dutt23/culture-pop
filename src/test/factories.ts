@@ -9,6 +9,8 @@ export function makeReference(id: string, title: string, overrides: Partial<Refe
     title,
     normalizedTitle: normalizePhrase(title),
     category: 'film',
+    kind: 'quote',
+    sourceIds: [],
     tags: [],
     editorialState: 'demo',
     createdAt: TIMESTAMP,

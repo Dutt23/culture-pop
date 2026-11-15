@@ -1,0 +1,107 @@
+[
+ {
+  "score": 1.1462317,
+  "show": {
+   "id": 65904,
+   "url": "https://www.tvmaze.com/shows/65904/break-point",
+   "name": "Break Point",
+   "type": "Documentary",
+   "language": "English",
+   "genres": [
+    "Sports"
+   ],
+   "status": "Ended",
+   "runtime": null,
+   "averageRuntime": 48,
+   "premiered": "2023-01-13",
+   "ended": "2024-01-10",
+   "officialSite": "https://www.netflix.com/title/81569920",
+   "schedule": {
+    "time": "",
+    "days": []
+   },
+   "rating": {
+    "average": null
+   },
+   "weight": 51,
+   "network": null,
+   "webChannel": {
+    "id": 1,
+    "name": "Netflix",
+    "country": null,
+    "officialSite": "https://www.netflix.com/"
+   },
+   "dvdCountry": null,
+   "externals": {
+    "tvrage": null,
+    "thetvdb": 428389,
+    "imdb": "tt17048442"
+   },
+   "image": {
+    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/499/1248501.jpg",
+    "original": "https://static.tvmaze.com/uploads/images/original_untouched/499/1248501.jpg"
+   },
+   "summary": "<p>Travel alongside some of the world's most talented tennis players as they swing for greatness and Grand Slams through an action-packed season.</p>",
+   "updated": 1710098940,
+   "_links": {
+    "self": {
+     "href": "https://api.tvmaze.com/shows/65904"
+    },
+    "previousepisode": {
+     "href": "https://api.tvmaze.com/episodes/2737108",
+     "name": "Becoming The One"
+    }
+   }
+  }
+ },
+ {
+  "score": 1.1404394,
+  "show": {
+   "id": 89074,
+   "url": "https://www.tvmaze.com/shows/89074/point-break",
+   "name": "Point Break",
+   "type": "Scripted",
+   "language": "English",
+   "genres": [],
+   "status": "In Development",
+   "runtime": null,
+   "averageRuntime": null,
+   "premiered": null,
+   "ended": null,
+   "officialSite": null,
+   "schedule": {
+    "time": "",
+    "days": []
+   },
+   "rating": {
+    "average": null
+   },
+   "weight": 46,
+   "network": {
+    "id": 20,
+    "name": "AMC",
+    "country": {
+     "name": "United States",
+     "code": "US",
+     "timezone": "America/New_York"
+    },
+    "officialSite": null
+   },
+   "webChannel": null,
+   "dvdCountry": null,
+   "externals": {
+    "tvrage": null,
+    "thetvdb": null,
+    "imdb": null
+   },
+   "image": null,
+   "summary": "<p>The series is set 35 years after the events of the original film and is focused on a dangerous heist crew with ties to the Ex-Presidents gang. </p>",
+   "updated": 1765975525,
+   "_links": {
+    "self": {
+     "href": "https://api.tvmaze.com/shows/89074"
+    }
+   }
+  }
+ }
+]

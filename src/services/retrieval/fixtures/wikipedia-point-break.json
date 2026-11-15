@@ -1,0 +1,113 @@
+{
+ "batchcomplete": true,
+ "continue": {
+  "gsroffset": 5,
+  "continue": "gsroffset||"
+ },
+ "query": {
+  "pages": [
+   {
+    "pageid": 483274,
+    "ns": 0,
+    "title": "Point Break",
+    "index": 1,
+    "pageprops": {
+     "wikibase_item": "Q1146552"
+    },
+    "extract": "Point Break is a 1991 American action film directed by Kathryn Bigelow and written by W. Peter Iliff. It stars Patrick Swayze, Keanu Reeves, Gary Busey and Lori Petty.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-14T07:03:43Z",
+    "lastrevid": 1385075872,
+    "length": 42966,
+    "fullurl": "https://en.wikipedia.org/wiki/Point_Break",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Point_Break&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Point_Break"
+   },
+   {
+    "pageid": 27283679,
+    "ns": 0,
+    "title": "Point Break (disambiguation)",
+    "index": 5,
+    "pageprops": {
+     "disambiguation": "",
+     "wikibase_item": "Q7207967"
+    },
+    "extract": "Point Break is a 1991 action film.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-07T19:54:37Z",
+    "lastrevid": 1265435583,
+    "length": 436,
+    "fullurl": "https://en.wikipedia.org/wiki/Point_Break_(disambiguation)",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Point_Break_(disambiguation)&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Point_Break_(disambiguation)"
+   },
+   {
+    "pageid": 42041384,
+    "ns": 0,
+    "title": "Point Break (2015 film)",
+    "index": 2,
+    "pageprops": {
+     "wikibase_item": "Q17410299"
+    },
+    "extract": "Point Break is a 2015 action-thriller film directed and shot by Ericson Core and written by Kurt Wimmer. He co-produced it with John Baldecchi, Broderick Johnson, Andrew A. Kosove, Christopher Taylor and David Valdes.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-14T07:24:03Z",
+    "lastrevid": 1384919278,
+    "length": 61263,
+    "fullurl": "https://en.wikipedia.org/wiki/Point_Break_(2015_film)",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Point_Break_(2015_film)&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Point_Break_(2015_film)"
+   },
+   {
+    "pageid": 68870499,
+    "ns": 0,
+    "title": "Break Point (2021 TV series)",
+    "index": 4,
+    "pageprops": {
+     "wikibase_item": "Q108919894"
+    },
+    "extract": "Break Point is an Indian documentary series from ZEE5 directed by Nitesh Tiwari and Ashwiny Iyer Tiwari, produced by Earthsky Pictures. The series is inspired by the successful Indian tennis doubles duo Mahesh Bhupathi and Leander Paes.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-14T07:33:46Z",
+    "lastrevid": 1384691129,
+    "length": 12764,
+    "fullurl": "https://en.wikipedia.org/wiki/Break_Point_(2021_TV_series)",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Break_Point_(2021_TV_series)&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Break_Point_(2021_TV_series)"
+   },
+   {
+    "pageid": 72751944,
+    "ns": 0,
+    "title": "Break Point",
+    "index": 3,
+    "pageprops": {
+     "disambiguation": "",
+     "wikibase_item": "Q116203550"
+    },
+    "extract": "Break Point may refer to:",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-07T19:48:09Z",
+    "lastrevid": 1382615970,
+    "length": 793,
+    "fullurl": "https://en.wikipedia.org/wiki/Break_Point",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Break_Point&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Break_Point"
+   }
+  ]
+ }
+}

@@ -1,8 +1,31 @@
 import type { Category, Decade, Reference } from './types';
 
-export type EraKey = Decade | 'timeless';
+const CATEGORY_ORDER: readonly Category[] = [
+  'cartoon',
+  'film',
+  'tv',
+  'meme',
+  'catchphrase',
+  'music',
+  'saying',
+  'other',
+];
 
-const ERA_ORDER: readonly EraKey[] = ['1990s', '2000s', '2010s+', 'timeless'];
+export type EraKey = 'earlier' | Decade | 'timeless';
+
+const ERA_ORDER: readonly EraKey[] = ['earlier', '1990s', '2000s', '2010s+', 'timeless'];
+
+const FIRST_TRACKED_YEAR = 1990;
+
+/** A sourced year wins over the editorial decade label. */
+export function eraOf(reference: Pick<Reference, 'year' | 'decade'>): EraKey {
+  const { year } = reference;
+  if (year === undefined) return reference.decade ?? 'timeless';
+  if (year < FIRST_TRACKED_YEAR) return 'earlier';
+  if (year < 2000) return '1990s';
+  if (year < 2010) return '2000s';
+  return '2010s+';
+}
 
 export type CategoryFilter = Category | 'all';
 
@@ -19,7 +42,7 @@ export function groupByEra(
 ): { era: EraKey; references: Reference[] }[] {
   return ERA_ORDER.map((era) => ({
     era,
-    references: references.filter((r) => (r.decade ?? 'timeless') === era),
+    references: references.filter((r) => eraOf(r) === era),
   })).filter((group) => group.references.length > 0);
 }
 
@@ -44,4 +67,33 @@ export function seededShuffle<T>(items: readonly T[], seed: number): T[] {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+export interface ResultFilter {
+  category: CategoryFilter;
+  era: EraKey | 'all';
+}
+
+export const NO_FILTER: ResultFilter = { category: 'all', era: 'all' };
+
+type Filterable = Pick<Reference, 'category' | 'year' | 'decade'>;
+
+export function matchesFilter(item: Filterable, filter: ResultFilter): boolean {
+  return (
+    (filter.category === 'all' || item.category === filter.category) &&
+    (filter.era === 'all' || eraOf(item) === filter.era)
+  );
+}
+
+/** Only offer filters that would leave something to show, in canonical order. */
+export function filterOptions(items: readonly Filterable[]): {
+  categories: Category[];
+  eras: EraKey[];
+} {
+  const categories = new Set(items.map((i) => i.category));
+  const eras = new Set(items.map(eraOf));
+  return {
+    categories: CATEGORY_ORDER.filter((c) => categories.has(c)),
+    eras: ERA_ORDER.filter((e) => eras.has(e)),
+  };
 }

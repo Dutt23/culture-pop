@@ -30,3 +30,5 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # test:e2e builds dist/; prove nothing test-only shipped in it.
+      - run: npm run check:dist

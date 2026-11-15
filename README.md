@@ -38,6 +38,7 @@ npm test           # Vitest unit + integration (jsdom + fake-indexeddb)
 npm run test:e2e   # Playwright at 360px and 390px (builds and previews automatically)
 npm run format:check
 npm run audit:gate # dependency vulnerability gate (see SECURITY.md)
+npm run check:dist # after a build: proves no tests, fixtures or source maps shipped
 ```
 
 ## Architecture (short)
@@ -57,5 +58,9 @@ No search or browsing history is ever stored.
 
 ## Privacy
 
-Phase 1 makes no network requests for searches. External search links (Wikipedia, DuckDuckGo)
-open only when you tap them, in a new tab, with `noreferrer`.
+When a search isn't answered by what's saved on the device, the app can look it up on Wikipedia,
+Wikidata, Wiktionary and Wikiquote (TVmaze is asked only about TV series they find, never your
+search text), but only after you agree (Settings → Online search: Ask first / On / Off).
+Only the search text is sent, with no cookies or referrer, and searches are never stored. Results
+and their citations are cached on the device for offline use. External search links open only when
+you tap them. Sources and their terms: `docs/SOURCE_INVENTORY.md`.

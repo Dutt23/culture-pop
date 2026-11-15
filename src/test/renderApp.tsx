@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { AppProviders } from '../app/AppProviders';
 import { AppRoutes } from '../app/AppRoutes';
+import type { RetrievalService } from '../app/RetrievalContext';
 import { createDatabase, type PopCultureDb } from '../data/db';
+import { unusedRetrievalService } from './fakeRetrieval';
 
 let counter = 0;
 
@@ -13,14 +15,18 @@ export function createTestDatabase(): PopCultureDb {
   return createDatabase(`test-db-${counter}-${Math.random().toString(36).slice(2)}`);
 }
 
-export function renderApp(route: string, db: PopCultureDb = createTestDatabase()) {
+export function renderApp(
+  route: string,
+  db: PopCultureDb = createTestDatabase(),
+  retrieval: RetrievalService = unusedRetrievalService(),
+) {
   const user = userEvent.setup();
   const view = render(
-    <AppProviders db={db}>
+    <AppProviders db={db} retrieval={retrieval}>
       <MemoryRouter initialEntries={[route]}>
         <AppRoutes />
       </MemoryRouter>
     </AppProviders>,
   );
-  return { db, user, ...view };
+  return { db, user, retrieval, ...view };
 }

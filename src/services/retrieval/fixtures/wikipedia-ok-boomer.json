@@ -1,0 +1,111 @@
+{
+ "batchcomplete": true,
+ "continue": {
+  "gsroffset": 5,
+  "continue": "gsroffset||"
+ },
+ "query": {
+  "pages": [
+   {
+    "pageid": 52794935,
+    "ns": 0,
+    "title": "Chlöe Swarbrick",
+    "index": 2,
+    "pageprops": {
+     "wikibase_item": "Q28137192"
+    },
+    "extract": "Chlöe Charlotte Swarbrick (born 26 June 1994) is a New Zealand politician. She has been a Member of Parliament in the House of Representatives since 2017, and has served as co-leader of the Green Party of Aotearoa New Zealand since 2024.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-15T06:10:07Z",
+    "lastrevid": 1385792366,
+    "length": 81422,
+    "fullurl": "https://en.wikipedia.org/wiki/Chl%C3%B6e_Swarbrick",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Chl%C3%B6e_Swarbrick&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Chl%C3%B6e_Swarbrick"
+   },
+   {
+    "pageid": 61316957,
+    "ns": 0,
+    "title": "List of HBO Max original programming",
+    "index": 5,
+    "pageprops": {
+     "wikibase_item": "Q83544919"
+    },
+    "extract": "HBO Max (formerly Max) is an over-the-top subscription service owned and operated by Skydance Corporation and run by Warner Bros. Entertainment.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-13T14:46:46Z",
+    "lastrevid": 1385488204,
+    "length": 122891,
+    "fullurl": "https://en.wikipedia.org/wiki/List_of_HBO_Max_original_programming",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=List_of_HBO_Max_original_programming&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/List_of_HBO_Max_original_programming"
+   },
+   {
+    "pageid": 62251585,
+    "ns": 0,
+    "title": "OK boomer",
+    "index": 1,
+    "pageprops": {
+     "wikibase_item": "Q74367025"
+    },
+    "extract": "\"OK boomer\" or \"okay boomer\" is a catchphrase and internet meme used to dismiss or mock attitudes typically associated with baby boomers – people born in the two decades following World War II. The phrase first drew widespread attention due to a November 2019 TikTok video in response to an older man, though the phrase had been coined years before that. The phrase has developed into a retort for resistance to technological change, climate change denial, marginalization of members of minority groups, or opposition to younger generations' values more generally.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-15T00:37:35Z",
+    "lastrevid": 1384749388,
+    "length": 37121,
+    "fullurl": "https://en.wikipedia.org/wiki/OK_boomer",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=OK_boomer&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/OK_boomer"
+   },
+   {
+    "pageid": 63468909,
+    "ns": 0,
+    "title": "Neekolul",
+    "index": 3,
+    "pageprops": {
+     "wikibase_item": "Q88496083"
+    },
+    "extract": "Nicole Sanchez (born July 14, 1997), better known as Neekolul, is an American online streamer, YouTuber and internet personality. In March 2020, her popularity online rose when she uploaded a TikTok featuring her lip syncing to the song \"Oki Doki Boomer\" while wearing a Bernie 2020 crop top; this TikTok was a direct reference to the \"OK boomer\" Internet meme that was popularized in late 2019.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-14T07:31:52Z",
+    "lastrevid": 1371453798,
+    "length": 21454,
+    "fullurl": "https://en.wikipedia.org/wiki/Neekolul",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Neekolul&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Neekolul"
+   },
+   {
+    "pageid": 72492630,
+    "ns": 0,
+    "title": "Glossary of 2020s slang",
+    "index": 4,
+    "pageprops": {
+     "wikibase_item": "Q115776225"
+    },
+    "extract": "English-language slang used or popularized in the 2020s, usually by Generation Z (Gen Z) or by Generation Alpha (Gen Alpha), differs from that of earlier generations. Ease of communication via social media and other internet outlets has facilitated its rapid proliferation, creating \"an unprecedented variety of linguistic variation\", according to Danielle Abril of The Washington Post.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-15T06:37:23Z",
+    "lastrevid": 1385795714,
+    "length": 141838,
+    "fullurl": "https://en.wikipedia.org/wiki/Glossary_of_2020s_slang",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Glossary_of_2020s_slang&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Glossary_of_2020s_slang"
+   }
+  ]
+ }
+}

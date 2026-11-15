@@ -4,6 +4,7 @@ import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import type {
   MotionPreference,
+  RetrievalPreference,
   SpoilerPreference,
   ThemePreference,
 } from '../../domain/settings';
@@ -27,6 +28,12 @@ const SPOILER_OPTIONS: readonly SegmentedOption<SpoilerPreference>[] = [
   { value: 'show', label: 'Show automatically' },
 ];
 
+const RETRIEVAL_OPTIONS: readonly SegmentedOption<RetrievalPreference>[] = [
+  { value: 'ask', label: 'Ask first' },
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+];
+
 const SAVE_ERROR = "Couldn't save that setting. Please try again.";
 
 export function SettingsPage() {
@@ -42,10 +49,12 @@ export function SettingsPage() {
   };
 
   const reset = async () => {
-    if (!window.confirm('Remove all favourites and reset settings? This cannot be undone.')) return;
+    const question =
+      'Remove all favourites, reset settings and delete online results saved on this device? This cannot be undone.';
+    if (!window.confirm(question)) return;
     try {
       await resetLocalData();
-      setMessage({ tone: 'ok', text: 'Favourites and settings were reset.' });
+      setMessage({ tone: 'ok', text: 'Favourites, settings and saved online results were cleared.' });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't reset local data. Please try again." });
     }
@@ -75,14 +84,30 @@ export function SettingsPage() {
           value={settings.spoilers}
           onChange={(value) => save(() => setSetting('spoilers', value))}
         />
+        <div className={styles.withNote}>
+          <SegmentedControl
+            legend="Online search"
+            name="retrieval"
+            options={RETRIEVAL_OPTIONS}
+            value={settings.retrieval}
+            onChange={(value) => save(() => setSetting('retrieval', value))}
+          />
+          <p className={styles.ok}>
+            When something isn't in your library, your search text can be sent to Wikipedia,
+            Wikidata, Wiktionary and Wikiquote (Wikimedia Foundation) to find it. TVmaze is asked
+            only about TV series they find, never your search text. Your search text is never
+            saved, but what they find is kept on this device for offline use until you clear it
+            below.
+          </p>
+        </div>
       </div>
 
       <Section
         title="Your data"
-        description="Everything stays in this browser. Searches are never saved or sent anywhere unless you tap an external search link."
+        description="Everything stays in this browser. Search text is never saved; it leaves the device only through online search (if you turn it on) or an external search link you tap. Results found online are kept here until you clear them."
       >
         <button type="button" className={styles.reset} onClick={reset}>
-          Reset favourites &amp; settings
+          Reset favourites, settings &amp; saved online results
         </button>
         {message && (
           <p

@@ -7,9 +7,14 @@ import { MOTION_ATTRIBUTE } from '../../motion/presets';
 
 interface SettingsContextValue {
   settings: Settings;
+  /** False until stored settings have been read; until then `settings` holds defaults. */
+  settingsLoaded: boolean;
   setSetting: <K extends SettingKey>(key: K, value: Settings[K]) => Promise<void>;
-  /** Clears favourites and settings. Reference content is untouched. */
+  /** Clears favourites, settings and cached online results. Curated content is untouched. */
   resetLocalData: () => Promise<void>;
+  /** "Not now" on the online-search prompt: lasts until the app is reloaded, never stored. */
+  onlineSearchSkipped: boolean;
+  skipOnlineSearch: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -20,6 +25,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // Choices apply instantly; otherwise controlled inputs snap back until the IndexedDB write lands.
   // shortcut: overrides win over stored rows for this tab's lifetime, so another tab's change shows only after reload; reconcile with rows if multi-tab sync is ever needed.
   const [optimistic, setOptimistic] = useState<Partial<Settings>>({});
+  const [onlineSearchSkipped, setOnlineSearchSkipped] = useState(false);
   const settings = useMemo(
     () => ({ ...parseSettings(rows ?? []), ...optimistic }),
     [rows, optimistic],
@@ -35,6 +41,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
+      settingsLoaded: rows !== undefined,
       setSetting: async (key, value) => {
         setOptimistic((previous) => ({ ...previous, [key]: value }));
         try {
@@ -51,9 +58,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       resetLocalData: async () => {
         await resetUserData();
         setOptimistic({});
+        setOnlineSearchSkipped(false);
       },
+      onlineSearchSkipped,
+      skipOnlineSearch: () => setOnlineSearchSkipped(true),
     }),
-    [settings, settingsRepository, resetUserData],
+    [settings, rows, settingsRepository, resetUserData, onlineSearchSkipped],
   );
 
   return (

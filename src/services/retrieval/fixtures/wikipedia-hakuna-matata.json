@@ -1,0 +1,111 @@
+{
+ "batchcomplete": true,
+ "continue": {
+  "gsroffset": 5,
+  "continue": "gsroffset||"
+ },
+ "query": {
+  "pages": [
+   {
+    "pageid": 385706,
+    "ns": 0,
+    "title": "The Lion King 1½",
+    "index": 3,
+    "pageprops": {
+     "wikibase_item": "Q223217"
+    },
+    "extract": "The Lion King 1+1⁄2 (known internationally as The Lion King 3: Hakuna Matata) is a 2004 American animated direct-to-video musical comedy film directed by Bradley Raymond and  produced by Disneytoon Studios. The third installment in the Lion King trilogy, the film focuses on the supporting characters Timon and Pumbaa.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-15T00:01:16Z",
+    "lastrevid": 1385731835,
+    "length": 34309,
+    "fullurl": "https://en.wikipedia.org/wiki/The_Lion_King_1%C2%BD",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=The_Lion_King_1%C2%BD&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/The_Lion_King_1%C2%BD"
+   },
+   {
+    "pageid": 413832,
+    "ns": 0,
+    "title": "Hakuna matata",
+    "index": 1,
+    "pageprops": {
+     "wikibase_item": "Q1570072"
+    },
+    "extract": "\"Hakuna matata\" (pronounced [hɑˈkunɑ mɑˈtɑtɑ] ) is a Swahili language phrase. In English, it means \"no trouble\" or \"no worries\" and \"take it easy\" (literally hakuna: \"there is no/there are no\"; matata: \"worries\").",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-10T14:37:18Z",
+    "lastrevid": 1359032804,
+    "length": 3879,
+    "fullurl": "https://en.wikipedia.org/wiki/Hakuna_matata",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Hakuna_matata&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Hakuna_matata"
+   },
+   {
+    "pageid": 7699672,
+    "ns": 0,
+    "title": "Hakuna Matata (song)",
+    "index": 2,
+    "pageprops": {
+     "wikibase_item": "Q1646614"
+    },
+    "extract": "\"Hakuna Matata\" is a song from Disney's 1994 animated feature film The Lion King. The music was written by Elton John with lyrics by Tim Rice.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-14T07:09:26Z",
+    "lastrevid": 1378539183,
+    "length": 19441,
+    "fullurl": "https://en.wikipedia.org/wiki/Hakuna_Matata_(song)",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Hakuna_Matata_(song)&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Hakuna_Matata_(song)"
+   },
+   {
+    "pageid": 13265548,
+    "ns": 0,
+    "title": "List of The Lion King (franchise) characters",
+    "index": 4,
+    "pageprops": {
+     "wikibase_item": "Q2640658"
+    },
+    "extract": "The following is a list of characters appearing in  Disney's The Lion King franchise. It includes characters from the 1994 film, its direct-to-video sequel and prequel, its two television series, printed media, and the prequel to its 2019 photorealistic remake.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-13T07:17:00Z",
+    "lastrevid": 1380554753,
+    "length": 132806,
+    "fullurl": "https://en.wikipedia.org/wiki/List_of_The_Lion_King_(franchise)_characters",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=List_of_The_Lion_King_(franchise)_characters&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/List_of_The_Lion_King_(franchise)_characters"
+   },
+   {
+    "pageid": 31531898,
+    "ns": 0,
+    "title": "Hakuna Matata Restaurant",
+    "index": 5,
+    "pageprops": {
+     "wikibase_item": "Q5640632"
+    },
+    "extract": "Hakuna Matata Restaurant is a restaurant located in Adventureland in Disneyland Paris. It is themed to the 1994 film The Lion King.",
+    "contentmodel": "wikitext",
+    "pagelanguage": "en",
+    "pagelanguagehtmlcode": "en",
+    "pagelanguagedir": "ltr",
+    "touched": "2026-11-14T07:20:00Z",
+    "lastrevid": 1333594790,
+    "length": 5481,
+    "fullurl": "https://en.wikipedia.org/wiki/Hakuna_Matata_Restaurant",
+    "editurl": "https://en.wikipedia.org/w/index.php?title=Hakuna_Matata_Restaurant&action=edit",
+    "canonicalurl": "https://en.wikipedia.org/wiki/Hakuna_Matata_Restaurant"
+   }
+  ]
+ }
+}

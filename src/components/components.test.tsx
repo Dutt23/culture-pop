@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { makeInterpretation } from '../test/factories';
 import { FavouriteButton } from './favourite-button/FavouriteButton';
+import { ExternalLinks } from './ui/ExternalLinks';
+import { safeHref } from './ui/safeHref';
 import { InterpretationCard } from './interpretation-card/InterpretationCard';
 import { SearchBar } from './search-bar/SearchBar';
 
@@ -87,3 +89,33 @@ describe('FavouriteButton', () => {
     expect(screen.getByRole('button', { name: 'Favourite' })).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+describe('external link safety', () => {
+  it.each([
+    ['javascript:alert(1)', undefined],
+    ['data:text/html,<b>x</b>', undefined],
+    ['http://example.com/page', undefined],
+    ['https://user:pass@example.com/', undefined],
+    ['not a url', undefined],
+    ['https://knowyourmeme.com/memes/ok-boomer', 'https://knowyourmeme.com/memes/ok-boomer'],
+  ])('safeHref(%s)', (input, expected) => {
+    expect(safeHref(input)).toBe(expected);
+  });
+
+  it('never renders an unsafe link, and opens safe ones without a referrer', () => {
+    render(
+      <ExternalLinks
+        links={[
+          { label: 'Evil', href: 'javascript:alert(1)' },
+          { label: 'Know Your Meme', href: 'https://knowyourmeme.com/memes/ok-boomer' },
+        ]}
+      />,
+    );
+    expect(screen.queryByRole('link', { name: /Evil/ })).not.toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /Know Your Meme/ });
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+});
+
