@@ -1,0 +1,68 @@
+/* Design tokens. Change a value here and every consumer updates; never override per screen. */
+:root {
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 2rem;
+  --space-8: 3rem;
+  --space-gutter: 1rem;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  --font-display: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.625rem;
+  --text-2xl: clamp(2.125rem, 9vw, 3.25rem);
+  --leading-tight: 1.15;
+  --leading-body: 1.55;
+  --tracking-label: 0.08em;
+  --weight-medium: 500;
+  --weight-bold: 650;
+
+  --layout-max: 44rem;
+  --nav-height: 4.25rem;
+  --tap-min: 44px;
+  --size-card-feature: 12rem;
+  --size-card-row: 15rem;
+  --size-icon: 1.25rem;
+  --size-logo: 2rem;
+  --border-width: 1px;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  --z-nav: 10;
+  --z-skip: 20;
+
+  --motion-duration-fast: 140ms;
+  --motion-duration-ambient: 48s;
+  --motion-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-lift: -3px;
+  --motion-scale: 0.97;
+  --motion-ambient-state: running;
+}
+
+/* Reduced motion for CSS micro-interactions. Motion-driven presets: see src/motion/presets.ts. */
+:root[data-motion='reduce'] {
+  --motion-lift: 0px;
+  --motion-scale: 1;
+  --motion-ambient-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion='system'] {
+    --motion-lift: 0px;
+    --motion-scale: 1;
+    --motion-ambient-state: paused;
+  }
+}

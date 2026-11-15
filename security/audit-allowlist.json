@@ -1,0 +1,4 @@
+{
+  "$comment": "Reviewed npm audit exceptions. Every entry needs id, package, scope, reason and expires (YYYY-MM-DD); the gate fails when one expires. Emptied 2026-11-15 after upgrading react-router 7, vite 8, vitest 4.",
+  "advisories": []
+}

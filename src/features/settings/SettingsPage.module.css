@@ -1,0 +1,25 @@
+.controls {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.reset {
+  justify-self: start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-danger);
+  font-weight: var(--weight-bold);
+}
+
+.ok {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}

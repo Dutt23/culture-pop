@@ -1,0 +1,21 @@
+.loading {
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.interpretations,
+.related {
+  display: grid;
+  gap: var(--space-3);
+}

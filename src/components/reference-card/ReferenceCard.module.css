@@ -1,0 +1,105 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, var(--color-surface), var(--color-surface-muted));
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    transform var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+    border-color var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.card:hover {
+  transform: translateY(var(--motion-lift));
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-raised);
+}
+
+.card:active {
+  transform: scale(var(--motion-scale));
+}
+
+.compact {
+  min-height: var(--tap-min);
+}
+
+/* Feature: a cinematic "ticket" with film-strip perforations along the top. */
+.feature {
+  min-height: var(--size-card-feature);
+  justify-content: flex-end;
+  padding: var(--space-7) var(--space-5) var(--space-5);
+  background:
+    radial-gradient(120% 90% at 100% 0%, var(--color-ambient-1), transparent 60%),
+    radial-gradient(90% 80% at 0% 100%, var(--color-ambient-2), transparent 60%),
+    var(--color-surface);
+}
+
+.feature::before {
+  content: '';
+  position: absolute;
+  inset: var(--space-3) var(--space-4) auto;
+  height: var(--space-2);
+  background: radial-gradient(circle, var(--color-border) 40%, transparent 45%) 0 0 / var(--space-4)
+    100% repeat-x;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.era {
+  color: var(--color-warm);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.feature .title {
+  font-size: var(--text-xl);
+}
+
+.teaser {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.matchNote {
+  color: var(--color-accent);
+}
+
+.demo {
+  margin-inline-start: auto;
+}

@@ -1,0 +1,48 @@
+.surprise {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Anchor for AnimatePresence popLayout so the outgoing card overlaps the incoming one. */
+.stage {
+  position: relative;
+}
+
+.stageCard {
+  display: grid;
+}
+
+.shuffle {
+  justify-self: start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-weight: var(--weight-medium);
+}
+
+.filters {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: none;
+}
+
+/* Horizontal shelf scrolls inside itself; the page never scrolls sideways. */
+.row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: min(var(--size-card-row), 80%);
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding: var(--space-1) var(--space-1) var(--space-3);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.rowItem {
+  display: grid;
+  scroll-snap-align: start;
+}

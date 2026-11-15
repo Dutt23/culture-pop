@@ -1,0 +1,32 @@
+.message,
+.error {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-gutter);
+}
+
+.message {
+  color: var(--color-text-muted);
+}
+
+.error {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--color-danger);
+}
+
+.button {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: var(--weight-bold);
+}

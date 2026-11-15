@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Pop Culture Decoder</title>
+  <!-- Full-bleed for Android adaptive icons: the mascot stays inside the 80% safe circle. -->
+  <rect width="512" height="512" fill="#0d0b1f"/>
+  <g transform="translate(256 262) scale(3.1) translate(-60 -57)">
+    <path d="M50 30 L40 14 M70 30 L82 12" stroke="#f3efff" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="40" cy="14" r="4.5" fill="#ffb27a"/>
+    <circle cx="82" cy="12" r="4.5" fill="#ffb27a"/>
+    <rect x="34" y="98" width="12" height="8" rx="4" fill="#6a3df0"/>
+    <rect x="74" y="98" width="12" height="8" rx="4" fill="#6a3df0"/>
+    <rect x="16" y="30" width="88" height="72" rx="20" fill="#6a3df0"/>
+    <rect x="24" y="38" width="72" height="56" rx="14" fill="#b29bff"/>
+    <circle cx="35" cy="76" r="5" fill="#e8604c" opacity="0.55"/>
+    <circle cx="85" cy="76" r="5" fill="#e8604c" opacity="0.55"/>
+    <circle cx="46" cy="60" r="11" fill="#f3efff"/>
+    <circle cx="74" cy="60" r="11" fill="#f3efff"/>
+    <circle cx="49" cy="62" r="5" fill="#0d0b1f"/>
+    <circle cx="71" cy="63" r="5" fill="#0d0b1f"/>
+    <circle cx="50.5" cy="60" r="1.6" fill="#f3efff"/>
+    <circle cx="72.5" cy="61" r="1.6" fill="#f3efff"/>
+    <path d="M44 78 q16 12 32 0" stroke="#0d0b1f" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <circle cx="96" cy="34" r="3" fill="#ffb27a"/>
+  </g>
+</svg>

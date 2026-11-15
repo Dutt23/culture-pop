@@ -1,0 +1,20 @@
+.empty {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  color: var(--color-text-muted);
+}
