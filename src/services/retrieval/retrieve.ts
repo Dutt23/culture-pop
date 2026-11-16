@@ -20,6 +20,7 @@ import type { PresentIn, Source } from '../../domain/types';
 import { classify, EXCLUDED_CLASSES, SERIES_CLASSES } from './classify';
 import { pickExternalLinks } from './externalLinks';
 import { rerankCandidates } from './rerank';
+import { questionSubject } from './community';
 import { DEFAULT_REWRITE_OPTIONS, planRewrite, type RewriteOptions } from './rewrite';
 import {
   RetrievalError,

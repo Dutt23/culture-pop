@@ -7,7 +7,12 @@ import { formatDate } from '../../domain/dates';
 import type { RetrievalPreference } from '../../domain/settings';
 import { PUBLISHER } from '../../domain/sources';
 import { listOf } from '../../domain/text';
-import { communitySearchLinks, suggestCommunityLinks } from '../../services/retrieval/community';
+import {
+  communitySearchLinks,
+  isWeakHit,
+  looksLikeQuestion,
+  suggestCommunityLinks,
+} from '../../services/retrieval/community';
 import { candidateToReference } from '../../services/retrieval/toReference';
 import type {
   CandidateRole,
@@ -202,8 +207,17 @@ function CommunityLinks({ query }: { query: string }) {
         Where people talk about it
       </h2>
       <p>
-        Nothing found online explains &ldquo;{query.trim()}&rdquo; as a phrase. If it&rsquo;s slang
-        or a meme, these sites often do.
+        {looksLikeQuestion(query) ? (
+          <>
+            This sounds like a running joke or a question. Communities explain these better than
+            encyclopedias.
+          </>
+        ) : (
+          <>
+            Nothing found online explains &ldquo;{query.trim()}&rdquo; as a phrase. If it&rsquo;s
+            slang or a meme, these sites often do.
+          </>
+        )}
       </p>
       <ExternalLinks
         accessiblePrefix="Search "
@@ -240,6 +254,9 @@ export function OnlineResults(props: OnlineResultsProps) {
     state.result.outcomes.every((o) => o.status === 'failed' || o.status === 'skipped');
   const showFresh =
     result !== undefined && (settled || candidates.length > 0 || failures.length > 0);
+  // For a question-style query, related pages that share no word with it are folded away.
+  const weak = looksLikeQuestion(query) ? candidates.filter((c) => isWeakHit(query, c)) : [];
+  const strong = candidates.filter((c) => !weak.includes(c));
 
   return (
     <div className={styles.online}>
@@ -263,9 +280,23 @@ export function OnlineResults(props: OnlineResultsProps) {
               )}
             </div>
           )}
+          {result?.searched && (
+            <p className={styles.note}>
+              Searched for &ldquo;{result.searched}&rdquo;, your question without its first words.
+            </p>
+          )}
           {result?.rewrite && <p className={styles.note}>{rewriteNote(result.rewrite)}</p>}
           {candidates.length > 0 ? (
-            <CandidateList candidates={candidates} onOpen={props.onOpen} />
+            <>
+              {strong.length > 0 && <CandidateList candidates={strong} onOpen={props.onOpen} />}
+              {weak.length > 0 && (
+                // Related pages that share nothing with the question look like answers; folded away.
+                <details className={styles.otherPages}>
+                  <summary>Other pages found ({weak.length})</summary>
+                  <CandidateList candidates={weak} onOpen={props.onOpen} />
+                </details>
+              )}
+            </>
           ) : (
             // Unfiltered count: a type or era filter hiding every match isn't "no matches".
             state.status === 'done' &&

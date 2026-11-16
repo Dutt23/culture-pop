@@ -1,6 +1,6 @@
 # Search evaluation, 2026-11-16
 
-Generated 2026-11-16T06:01:14.331Z by `src/test/search-eval/live.eval.ts`. Definitions: `docs/SEARCH_RANKING.md` ("Evaluation set").
+Generated 2026-11-16T06:05:16.029Z by `src/test/search-eval/live.eval.ts`. Definitions: `docs/SEARCH_RANKING.md` ("Evaluation set").
 Set: 109 cases, 98 scored. Live runs hit real providers, so numbers drift as Wikipedia changes.
 
 ## Summary
@@ -8,7 +8,7 @@ Set: 109 cases, 98 scored. Live runs hit real providers, so numbers drift as Wik
 | Group | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage (n) | p50 ms | p90 ms | p95 ms | max ms |
 |---|---|---|---|---|---|---|---|---|---|---|
 | local | 42 | 50.0% | 0.500 | 0.0% | 50.0% | 50.0% (6) | 0.04 | 0.05 | 0.07 | 0.15 |
-| live | 98 | 64.3% | 0.565 | 28.6% | 21.4% | 57.1% (21) | 4079 | 21222 | 21570 | 26632 |
+| live | 98 | 70.4% | 0.622 | 33.7% | 11.2% | 61.9% (21) | 3592 | 21222 | 21704 | 26632 |
 
 ## Local ranker (seeded library)
 
@@ -91,19 +91,19 @@ Cases run: **42 of 42**.
 
 Cases run: **98 of 98**.
 
-HTTP requests: **426** over 98 searches (4.35 per search).
+HTTP requests: **447** over 98 searches (4.56 per search).
 
-Degraded cases (a provider failed): **35** of 98. Rerun before recording a baseline if this is not 0.
+Degraded cases (a provider failed): **27** of 98. Rerun before recording a baseline if this is not 0.
 
 ### By category
 
 | Group | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage (n) | p50 ms | p90 ms | p95 ms | max ms |
 |---|---|---|---|---|---|---|---|---|---|---|
 | anime_game | 3 | 33.3% | 0.333 | 33.3% | 33.3% | 0.0% (1) | 3981 | 21149 | 21149 | 21149 |
-| film | 12 | 66.7% | 0.479 | 41.7% | 25.0% | 55.6% (9) | 2616 | 21222 | 22426 | 22426 |
+| film | 12 | 66.7% | 0.479 | 50.0% | 16.7% | 55.6% (9) | 2616 | 21222 | 22426 | 22426 |
 | meme | 20 | 90.0% | 0.817 | 20.0% | 5.0% | – | 3898 | 21570 | 21644 | 22671 |
-| music | 11 | 54.5% | 0.500 | 9.1% | 45.5% | – | 21092 | 21209 | 21224 | 21224 |
-| quote | 40 | 50.0% | 0.433 | 37.5% | 25.0% | 20.0% (5) | 3592 | 21205 | 21232 | 21263 |
+| music | 11 | 90.9% | 0.818 | 18.2% | 9.1% | – | 3812 | 21092 | 21709 | 21709 |
+| quote | 40 | 55.0% | 0.483 | 45.0% | 12.5% | 40.0% (5) | 3047 | 21205 | 21232 | 21704 |
 | slang | 6 | 66.7% | 0.667 | 16.7% | 16.7% | 100.0% (1) | 1945 | 21170 | 21170 | 21170 |
 | tv | 6 | 100.0% | 0.917 | 16.7% | 0.0% | 100.0% (5) | 4445 | 26632 | 26632 | 26632 |
 
@@ -111,17 +111,17 @@ Degraded cases (a provider failed): **35** of 98. Rerun before recording a basel
 
 | Group | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage (n) | p50 ms | p90 ms | p95 ms | max ms |
 |---|---|---|---|---|---|---|---|---|---|---|
-| misremembered: yes | 11 | 27.3% | 0.182 | 54.5% | 36.4% | 100.0% (1) | 3047 | 21232 | 22426 | 22426 |
-| misremembered: no | 87 | 69.0% | 0.614 | 25.3% | 19.5% | 55.0% (20) | 4155 | 21212 | 21263 | 26632 |
-| ambiguous: yes | 22 | 63.6% | 0.545 | 27.3% | 27.3% | 57.1% (21) | 6897 | 21222 | 21263 | 26632 |
-| ambiguous: no | 76 | 64.5% | 0.571 | 28.9% | 19.7% | – | 3978 | 21212 | 21570 | 22671 |
+| misremembered: yes | 11 | 27.3% | 0.182 | 81.8% | 9.1% | 100.0% (1) | 2317 | 21704 | 22426 | 22426 |
+| misremembered: no | 87 | 75.9% | 0.677 | 27.6% | 11.5% | 60.0% (20) | 3812 | 21205 | 21570 | 26632 |
+| ambiguous: yes | 22 | 68.2% | 0.591 | 27.3% | 22.7% | 61.9% (21) | 6897 | 21222 | 21263 | 26632 |
+| ambiguous: no | 76 | 71.1% | 0.630 | 35.5% | 7.9% | – | 3118 | 21212 | 21704 | 22671 |
 | indian: yes | 25 | 64.0% | 0.540 | 28.0% | 28.0% | 63.6% (11) | 4155 | 21212 | 21644 | 26632 |
-| indian: no | 73 | 64.4% | 0.574 | 28.8% | 19.2% | 50.0% (10) | 4079 | 21222 | 21263 | 22671 |
-| ambiguous or indian: yes | 36 | 58.3% | 0.486 | 30.6% | 30.6% | 57.1% (21) | 6449 | 21222 | 21644 | 26632 |
-| ambiguous or indian: no | 62 | 67.7% | 0.612 | 27.4% | 16.1% | – | 3898 | 21209 | 21239 | 22671 |
+| indian: no | 73 | 72.6% | 0.650 | 35.6% | 5.5% | 60.0% (10) | 3546 | 21222 | 21704 | 22671 |
+| ambiguous or indian: yes | 36 | 61.1% | 0.514 | 30.6% | 27.8% | 61.9% (21) | 6449 | 21222 | 21644 | 26632 |
+| ambiguous or indian: no | 62 | 75.8% | 0.684 | 35.5% | 1.6% | – | 3047 | 21184 | 21704 | 22671 |
 | origin: coverage | 37 | 62.2% | 0.520 | 37.8% | 18.9% | 57.9% (19) | 3687 | 21222 | 21263 | 26632 |
-| origin: demand | 49 | 73.5% | 0.667 | 20.4% | 18.4% | 50.0% (2) | 4361 | 21224 | 21570 | 22671 |
-| origin: variant | 12 | 33.3% | 0.292 | 33.3% | 41.7% | – | 4155 | 21195 | 22426 | 22426 |
+| origin: demand | 49 | 83.7% | 0.759 | 28.6% | 2.0% | 100.0% (2) | 3118 | 21184 | 21644 | 22671 |
+| origin: variant | 12 | 41.7% | 0.375 | 41.7% | 25.0% | – | 4155 | 21704 | 22426 | 22426 |
 
 ### Per case
 
@@ -152,31 +152,31 @@ Degraded cases (a provider failed): **35** of 98. Rerun before recording a basel
 | Q2 | where's the beef | 1 | Where's the beef? (wd:Q1459668) | 1 | 1974 | – |
 | Q2-v | where is the beef | 1 | Where's the beef? (wd:Q1459668) | 1 | 5559 | – |
 | Q3 | i'm kind of a big deal | 3 | Shaniera Akram (wd:Q23092271) | 1 | 2477 | – |
-| Q3-v | im kind of a big deal i have many leather bound books | – | – | 0 | 21192 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
-| Q4 | show me the money | – | – | 0/2 | 21045 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| Q3-v | im kind of a big deal i have many leather bound books | – | Carl Jung (wd:Q41532) | 0 | 21704 | wikidata:timeout, wiktionary:rate_limited |
+| Q4 | show me the money | 1 | Jerry Maguire (wd:Q329131) | 2/2 | 12998 | wikidata:timeout |
 | Q5 | the revolution will not be televised | 1 | The Revolution Will Not Be Televised (wd:Q1753999) | 1 | 3118 | – |
 | Q5-v | revolution will not be televised quote | 1 | The Revolution Will Not Be Televised (wd:Q1753999) | 1 | 1995 | – |
-| Q6 | hey baby i hear the news are calling for salads and scrambled eggs | – | – | 0 | 21152 | wiktionary:rate_limited |
-| Q6-v | frasier theme song lyrics | – | – | 0 | 21195 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| Q6 | hey baby i hear the news are calling for salads and scrambled eggs | – | Hey! Baby (wd:Q3135074) | 0 | 1747 | – |
+| Q6-v | frasier theme song lyrics | 1 | Frasier (wd:Q209282) | 1 | 21149 | wiktionary:rate_limited |
 | Q7 | omae wa mou shindeiru | 1 | Kenshiro (wd:Q1185545) | 1 | 2273 | – |
 | Q7-v | oh my yo wa moo shin dae doo hee yun knee | – | Oh My Kadavule (wd:Q85790351) | 0 | 2317 | – |
-| Q8 | yeah i got time incredibles | 1 | The Incredibles (wd:Q213326) | 1 | 21239 | wiktionary:rate_limited |
-| Q9 | want a sprite cranberry | – | – | 0 | 21198 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| Q8 | yeah i got time incredibles | 1 | The Incredibles (wd:Q213326) | 1 | 2699 | – |
+| Q9 | want a sprite cranberry | – | Sprite (drink) (wd:Q206978) | 0 | 2967 | – |
 | Q10 | that was his mistake big hero 6 | – | To Be Hero X (wd:Q133866311) | 0 | 3978 | – |
 | T1 | baby yoda | 1 | Grogu (wd:Q77001957) | 1 | 8916 | – |
-| F1 | three fingers inglorious bastards | – | – | 0 | 21198 | wikipedia:rate_limited |
+| F1 | three fingers inglorious bastards | – | List of action films of the 1970s (wd:Q2115050) | 0 | 21184 | wikidata:timeout, wikiquote:rate_limited |
 | F1-v | inglorious bastards | 2 | The Inglorious Bastards (wd:Q338002) | 1 | 22426 | – |
 | A1 | nah id win | – | Global public good (wd:Q8270788) | 0 | 1324 | – |
 | A2 | steal a brainrot | 1 | Steal a Brainrot (wd:Q135921344) | 1 | 3981 | – |
-| B1 | midwest emo | – | – | 0 | 21209 | wikipedia:rate_limited, wikiquote:rate_limited |
+| B1 | midwest emo | 1 | Midwest emo (wd:Q39052425) | 1 | 3546 | – |
 | B2 | neutral milk hotel meme | 2 | In the Aeroplane Over the Sea (wd:Q1660782) | 1 | 19665 | – |
 | B3 | messages from the stars rah band | 1 | Richard Anthony Hewson (wd:Q709410) | 1 | 2026 | – |
-| B4 | tool band | 1 | Tool (band) (wd:Q184827) | 1 | 21204 | wikiquote:rate_limited |
-| B5 | ruler of everything tally hall | – | – | 0 | 21202 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| B4 | tool band | 1 | Tool (band) (wd:Q184827) | 1 | 4458 | – |
+| B5 | ruler of everything tally hall | 1 | Marvin's Marvelous Mechanical Museum (album) (wd:Q6778267) | 1 | 21709 | – |
 | B6 | can you play wonderwall | 1 | Wonderwall (wd:Q1045517) | 1 | 4361 | – |
 | B7 | fucking magnets how do they work | 1 | Miracles (Insane Clown Posse song) (wd:Q6872509) | 1 | 2324 | – |
-| B8 | mo bamba | – | – | 0 | 21184 | wikipedia:rate_limited, wiktionary:rate_limited |
-| B9 | post malone ozzy osbourne | – | – | 0 | 21224 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| B8 | mo bamba | 2 | Mo Bamba (wd:Q29318958) | 1 | 2967 | – |
+| B9 | post malone ozzy osbourne | 1 | Take What You Want (wd:Q68097173) | 1 | 3812 | – |
 | B10 | everywhere at the end of time | 1 | Everywhere at the End of Time (wd:Q104771220) | 1 | 1525 | – |
 | I1 | mogambo khush hua | 2 | Mogambo (character) (wd:Q136377380) | 1 | 1722 | – |
 | I2 | rasode mein kaun tha | 2 | Rucha Hasabnis (wd:Q7376575) | 1 | 21644 | wikidata:timeout |

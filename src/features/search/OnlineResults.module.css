@@ -65,3 +65,14 @@
   display: grid;
   gap: var(--space-5);
 }
+
+.otherPages {
+  margin-block-start: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.otherPages summary {
+  cursor: pointer;
+  padding-block: var(--space-2);
+}

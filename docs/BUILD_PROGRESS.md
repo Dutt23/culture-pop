@@ -394,3 +394,11 @@ requests). An unquoted Wikiquote search was tried and dropped (no effect). Small
 Same pass: the three leftover duplicates from the duplication review (H1 `stripDisambiguator`, H3 `safeUrl`
 built on `safeHref`, M1 one `src/domain/sources.ts` for publisher names and source-ID helpers).
 Checks run by the agent: `npm test`, typecheck, lint, e2e (24 of 24) and `check:dist`, all passing.
+
+### Question-style searches (agent, 2026-11-16, at the owner's request; D44)
+"why are ferrari fans depressed" style queries are searched by their subject, show the community sites first
+(Know Your Meme, Urban Dictionary, Reddit) when nothing online explains them, and fold related pages that
+share no word with the question into a collapsed "Other pages found". Detection is one rule next to
+`looksLikePhrase`; quotes like "what's up doc" and addressed phrases like "how you doin" are not questions.
+Four unscored question rows (Z1 to Z4) added to the eval set. Tests: detection (positive and negative),
+community-first rendering, folded vs visible hits, the searched-subject note.

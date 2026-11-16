@@ -186,3 +186,16 @@ For reference, same arithmetic for the others (gross, before free allowance): Ta
 Not recommended: Serper, SerpApi (scrapers, legal exposure), Kagi (reseller at $12 per 1,000, terms not found), Exa (queries train models; app display rights unclear), Tavily and You.com (acceptable fallbacks; terms for display and cache not verified), Marginalia (non-commercial small-web only). Unavailable: Bing Web Search API, Google Custom Search JSON API (new customers).
 
 Next actions (all need owner approval before any of them): (a) approve a free-tier test with Brave and Mojeek using 25 pop-culture and Hinglish queries; (b) email Brave about on-device LLM use and storage rights, and Mojeek for the full Search API Terms; (c) update spec section 2/7 and `docs/DECISIONS.md` for the backend and privacy disclosure; (d) record sources in `docs/SOURCE_INVENTORY.md`.
+
+## Update 2026-11-16: Parallel (owner suggestion) and free tiers
+
+- **Parallel** (https://parallel.ai/pricing, read 2026-11-16): "Build" pay-as-you-go plan gives
+  "$5 free monthly with a card on file, plus up to $80 at signup", "up to 5,000 free requests per
+  month", Search API "from $1 per 1k requests" (10 results), Extract "$1 per 1k URLs", 600 requests
+  per minute. A card is required. Zero data retention only on the $1,000/month Scale plan, so queries
+  are retained on the free plan. Display, caching and LLM-use terms (Customer Terms & Conditions)
+  NOT VERIFIED; Reddit and Hinglish coverage NOT VERIFIED.
+- Free-tier ranking for a small app (searches per month at no cost, from this file's earlier rows):
+  Parallel about 5,000 (card) > Exa about 2,500 Lite (no card; queries train models) > Tavily
+  1,000 (no card) ≈ Brave about 1,000 ($5 credit, card; clearest display terms) > Mojeek (small
+  test credit).

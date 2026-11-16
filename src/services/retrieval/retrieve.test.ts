@@ -662,4 +662,36 @@ describe('retrieve', () => {
       expect(requests.filter((r) => r.startsWith(WIKIPEDIA))).toHaveLength(1);
     });
   });
+
+  describe('question-style queries (D44)', () => {
+    function recording() {
+      const requests: string[] = [];
+      const getJson: GetJson = async (url) => {
+        const u = new URL(url);
+        requests.push(
+          `${u.hostname} ${u.searchParams.get('gsrsearch') ?? u.searchParams.get('srsearch') ?? u.searchParams.get('titles') ?? ''}`,
+        );
+        if (u.hostname === WIKTIONARY) return { query: { pages: [{ title: 'x', missing: true }] } };
+        if (u.hostname === WIKIQUOTE) return { query: { search: [] } };
+        return { batchcomplete: true };
+      };
+      return { getJson, requests };
+    }
+
+    it('searches a question by its subject and says so', async () => {
+      const { getJson, requests } = recording();
+      const result = await retrieve('why are ferrari fans depressed', { getJson, now });
+      expect(result.searched).toBe('ferrari fans depressed');
+      const searchedTexts = requests.filter((r) => r.startsWith(WIKIPEDIA)).map((r) => r.slice(WIKIPEDIA.length + 1));
+      expect(searchedTexts[0]).toBe('ferrari fans depressed');
+      expect(requests.some((r) => r.includes('why are'))).toBe(false);
+    });
+
+    it('searches any other query exactly as typed and reports nothing extra', async () => {
+      const { getJson, requests } = recording();
+      const result = await retrieve('what is the matrix', { getJson, now });
+      expect(result.searched).toBeUndefined();
+      expect(requests.some((r) => r.endsWith('what is the matrix'))).toBe(true);
+    });
+  });
 });

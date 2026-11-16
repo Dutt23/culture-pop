@@ -778,6 +778,69 @@ describe('search UX (D37)', () => {
     expect(within(region).getByText(note)).toBeInTheDocument();
   });
 
+  describe('question-style searches', () => {
+    const topic = (id: string, title: string) => ({
+      ...film(id, title),
+      kind: 'other' as const,
+      category: 'other' as const,
+      role: 'topic' as const,
+    });
+    const outcomes = [
+      { provider: 'wikipedia' as const, status: 'ok' as const },
+      { provider: 'wikidata' as const, status: 'ok' as const },
+      { provider: 'wiktionary' as const, status: 'empty' as const },
+      { provider: 'wikiquote' as const, status: 'empty' as const },
+      { provider: 'tvmaze' as const, status: 'skipped' as const },
+    ];
+    async function open(candidates: RetrievedCandidate[], searched?: string) {
+      const { service, finish } = controllableRetrievalService();
+      renderApp('/search?q=why%20are%20ferrari%20fans%20depressed', await withConsent(), service);
+      await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
+      await act(async () => finish({ candidates, outcomes, ...(searched ? { searched } : {}) }));
+      return screen.findByRole('region', { name: 'Found online' });
+    }
+
+    it('puts the community sites first, in question wording, and says what was searched', async () => {
+      const found = await open(
+        [topic('wd:Q1', 'Pink Floyd'), topic('wd:Q2', 'Scuderia Ferrari')],
+        'ferrari fans depressed',
+      );
+      const heading = await screen.findByRole('heading', { name: 'Where people talk about it' });
+      expect(
+        screen.getByText(/This sounds like a running joke or a question/),
+      ).toBeInTheDocument();
+      // The community block comes before the online results.
+      expect(heading.compareDocumentPosition(found) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        within(found).getByText(/Searched for \u201cferrari fans depressed\u201d/),
+      ).toBeInTheDocument();
+    });
+
+    it('folds away related pages that share nothing with the question, but keeps Scuderia Ferrari', async () => {
+      const found = await open(
+        [topic('wd:Q1', 'Pink Floyd'), topic('wd:Q2', 'Scuderia Ferrari'), topic('wd:Q3', 'Lando Norris')],
+        'ferrari fans depressed',
+      );
+      const folded = within(found).getByText('Other pages found (2)').closest('details');
+      expect(folded).not.toHaveAttribute('open');
+      expect(within(folded as HTMLElement).getByText('Pink Floyd')).toBeInTheDocument();
+      expect(within(folded as HTMLElement).getByText('Lando Norris')).toBeInTheDocument();
+      const visible = within(found)
+        .getAllByRole('link')
+        .filter((link) => !(folded as HTMLElement).contains(link));
+      expect(visible.map((link) => link.textContent)).toEqual([expect.stringContaining('Scuderia Ferrari')]);
+    });
+
+    it('shows no community block or folded section when a candidate explains the question', async () => {
+      const explained = { ...topic('wd:Q9', 'Ferrari fans'), kind: 'meme' as const };
+      const found = await open([explained, topic('wd:Q1', 'Pink Floyd')], 'ferrari fans depressed');
+      await waitFor(() => expect(screen.queryByText(/Still searching/)).toBeNull());
+      expect(screen.queryByRole('heading', { name: 'Where people talk about it' })).toBeNull();
+      // Pink Floyd is still weak, so it is folded; the meme is not.
+      expect(within(found).getByText('Other pages found (1)')).toBeInTheDocument();
+    });
+  });
+
   it('shows no fallback note for a plain search', async () => {
     const { service, finish } = controllableRetrievalService();
     renderApp('/search?q=zzqx%20nothing', await withConsent(), service);

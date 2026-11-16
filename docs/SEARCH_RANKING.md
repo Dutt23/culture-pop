@@ -101,7 +101,7 @@ Code: `src/test/search-eval/`. Written and first run 2026-11-15 (numbers in "Bas
   for the page's `wikibase_item`, then Wikidata `wbgetentities` labels; five items without an
   enwiki page via `wbsearchentities`), header `Api-User-Agent: PopCultureDecoder-dev/0.2`.
   Wiktionary titles were checked with `prop=info`. Not scored: 5 `unverified` cases (canonical
-  unresolved or resting on one Reddit comment: T2, T3, I9, I10, I11) and 6 `no_target` cases
+  unresolved or resting on one Reddit comment: T2, T3, I9, I10, I11) and 6 `no_target` cases (plus 4 question-style rows, Z1 to Z4, added 2026-11-16 with no encyclopedic answer to score; D44)
   (verified reference with no item or entry to match: M4, M5, S4, S5, I7, I8).
 
 | Scored cases | Count |
