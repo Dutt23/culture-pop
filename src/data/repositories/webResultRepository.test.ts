@@ -123,7 +123,7 @@ describe('schema v5', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(5);
+    expect(db.verno).toBe(6);
     expect(db.tables.map((t) => t.name)).toContain('webResults');
     expect(await db.webResults.count()).toBe(0);
     expect(await db.searchHistory.count()).toBe(1);
@@ -152,7 +152,9 @@ describe('device results never leave the device', () => {
   it.each(Object.entries(sources).filter(([path]) => !path.includes('.test.')))(
     '%s does not read the device store',
     (_path, text) => {
-      expect(text).not.toMatch(/webResultRepository|webResults|SavedWebResults/);
+      expect(text).not.toMatch(
+        /webResultRepository|webResults|SavedWebResults|savedLinkRepository|savedLinks|SavedLink/,
+      );
     },
   );
 });

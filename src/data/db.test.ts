@@ -8,7 +8,14 @@ import { FIXED_NOW, fixtureGetJson } from '../test/fakeRetrieval';
 import { makeCandidate, makeSource } from '../test/factories';
 import { createTestDatabase } from '../test/renderApp';
 import { isFromOnline } from '../domain/types';
-import { createDatabase, SCHEMA_V1, SCHEMA_V2_CHANGES, type PopCultureDb } from './db';
+import {
+  createDatabase,
+  SCHEMA_V1,
+  SCHEMA_V2_CHANGES,
+  SCHEMA_V4_CHANGES,
+  SCHEMA_V5_CHANGES,
+  type PopCultureDb,
+} from './db';
 import { createRepositories } from './repositories';
 import { buildSeed } from './seed';
 
@@ -112,7 +119,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(5);
+    expect(db.verno).toBe(6);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
@@ -187,7 +194,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(5);
+    expect(db.verno).toBe(6);
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
       summary: 'S',
@@ -233,12 +240,37 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(5);
+    expect(db.verno).toBe(6);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
     expect(await db.references.count()).toBe(1);
     expect(await db.favourites.count()).toBe(1);
     expect(await db.settings.toArray()).toEqual([{ key: 'theme', value: 'dark' }]);
+    db.close();
+  });
+
+  it('upgrades a real v5 database: adds an empty saved links store and keeps everything else', async () => {
+    const name = `upgrade-v5-${Math.random().toString(36).slice(2)}`;
+    const v5 = new Dexie(name);
+    v5.version(1).stores(SCHEMA_V1);
+    v5.version(2).stores(SCHEMA_V2_CHANGES);
+    v5.version(3).stores({});
+    v5.version(4).stores(SCHEMA_V4_CHANGES);
+    v5.version(5).stores(SCHEMA_V5_CHANGES);
+    await v5.open();
+    await v5.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
+    await v5.table('settings').add({ key: 'theme', value: 'dark' });
+    await v5.table('webResults').add({ key: 'ferrari fans', savedAt: 1, results: [] });
+    v5.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(6);
+    expect(db.tables.map((t) => t.name)).toContain('savedLinks');
+    expect(await db.savedLinks.count()).toBe(0);
+    expect(await db.favourites.count()).toBe(1);
+    expect(await db.settings.toArray()).toEqual([{ key: 'theme', value: 'dark' }]);
+    expect(await db.webResults.count()).toBe(1);
     db.close();
   });
 });

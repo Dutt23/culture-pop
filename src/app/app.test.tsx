@@ -147,6 +147,71 @@ describe('reference detail', () => {
   });
 });
 
+describe('favourites from cards and saved web links', () => {
+  const LINK = {
+    title: 'Why are Ferrari fans always sad?',
+    url: 'https://www.reddit.com/r/formula1/comments/abc/',
+  };
+
+  it('favourites a search result card without opening it, and it shows on Favourites', async () => {
+    const db = createTestDatabase();
+    const first = renderApp('/search?q=bazinga', db);
+    await first.user.click(await screen.findByRole('button', { name: /^Favourite Bazinga!/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^Favourite Bazinga!/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
+    expect(screen.queryByRole('heading', { level: 1, name: /Bazinga!/ })).not.toBeInTheDocument();
+    first.unmount();
+
+    renderApp('/favourites', db);
+    expect(await screen.findByRole('link', { name: /Bazinga!/ })).toBeInTheDocument();
+  });
+
+  it('unfavourites from a card on the Favourites page', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    await createRepositories(db).favourites.toggle('doh-simpsons');
+    const { user } = renderApp('/favourites', db);
+
+    const heart = await screen.findByRole('button', { name: /^Favourite D'oh!/ });
+    expect(heart).toHaveAttribute('aria-pressed', 'true');
+    await user.click(heart);
+
+    const empty = await screen.findByRole('heading', { name: 'No favourites yet' });
+    expect(empty).toBeInTheDocument();
+    expect(screen.getByText(/web links/)).toBeInTheDocument();
+  });
+
+  it('lists a saved web link under "Saved web links", where it can be removed', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    await createRepositories(db).savedLinks.toggle(LINK);
+    const { user } = renderApp('/favourites', db);
+
+    const section = await screen.findByRole('region', { name: 'Saved web links' });
+    const link = within(section).getByRole('link', { name: /Why are Ferrari fans always sad/ });
+    expect(link).toHaveAttribute('href', LINK.url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(section).toHaveTextContent('reddit.com');
+    expect(section).toHaveTextContent('Web link, unverified');
+    expect(screen.queryByRole('heading', { name: 'No favourites yet' })).not.toBeInTheDocument();
+
+    const heart = within(section).getByRole('button', { name: `Save link ${LINK.title}` });
+    expect(heart).toHaveAttribute('aria-pressed', 'true');
+    await user.click(heart);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Saved web links' })).not.toBeInTheDocument(),
+    );
+    expect(await db.savedLinks.count()).toBe(0);
+    expect(await screen.findByRole('heading', { name: 'No favourites yet' })).toBeInTheDocument();
+  });
+});
+
 describe('discover', () => {
   it('filters eras by category', async () => {
     const { user } = renderApp('/discover');
@@ -217,24 +282,27 @@ describe('settings', () => {
     expect(screen.getByRole('radio', { name: 'System' })).toBeChecked();
   });
 
-  it('resets favourites, settings and saved online results after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('resets favourites, saved web links, settings and saved online results after confirmation', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const db = createTestDatabase();
     await db.open();
     const repos = createRepositories(db);
     await repos.favourites.toggle('ok-boomer');
+    await repos.savedLinks.toggle({ title: 'A link', url: 'https://example.test/page' });
     await repos.settings.set('theme', 'dark');
     await cacheOnlineResults(db, 'the matrix');
 
     const { user } = renderApp('/settings', db);
     await user.click(await screen.findByRole('button', { name: /Reset favourites/ }));
 
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/saved web links/));
     expect(
       await screen.findByText(
-        'Favourites, search history, settings and saved online results were cleared.',
+        'Favourites, saved web links, search history, settings and saved online results were cleared.',
       ),
     ).toBeInTheDocument();
     expect(await repos.favourites.list()).toEqual([]);
+    expect(await db.savedLinks.count()).toBe(0);
     expect(await repos.settings.getAll()).toEqual([]);
     expect(await db.references.get('wd:Q83495')).toBeUndefined();
     expect(await db.sources.count()).toBe(0);

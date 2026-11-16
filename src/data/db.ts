@@ -1,7 +1,15 @@
 import Dexie, { type EntityTable, type InsertType } from 'dexie';
 import type { HistoryEntry } from '../domain/history';
 import type { SavedWebResults } from './repositories/webResultRepository';
-import type { Alias, Favourite, Interpretation, Reference, Setting, Source } from '../domain/types';
+import type {
+  Alias,
+  Favourite,
+  Interpretation,
+  Reference,
+  SavedLink,
+  Setting,
+  Source,
+} from '../domain/types';
 import { storeCuration } from './curationStore';
 import { buildSeed } from './seed';
 
@@ -16,6 +24,7 @@ export type PopCultureDb = Dexie & {
   settings: EntityTable<Setting, 'key'>;
   searchHistory: EntityTable<HistoryEntry, 'id'>;
   webResults: EntityTable<SavedWebResults, 'key'>;
+  savedLinks: EntityTable<SavedLink, 'url'>;
 };
 
 /** Shipped schema v1. Exported so upgrade tests can create a genuine v1 database. */
@@ -49,6 +58,16 @@ export const SCHEMA_V4_CHANGES = {
  */
 export const SCHEMA_V5_CHANGES = {
   webResults: 'key, savedAt',
+} as const;
+
+/**
+ * v6 changes: wider-web links the reader saves (D46, owner choice "A"). Title and link only, never
+ * the snippet: the snippet is the search provider's output, while a bare link is a bookmark to a
+ * public page. Kept until the reader removes it, on this device only: never synced or sent anywhere,
+ * so a future cross-device sync must skip this table. `savedAt` serves newest-first listing.
+ */
+export const SCHEMA_V6_CHANGES = {
+  savedLinks: 'url, savedAt',
 } as const;
 
 /**
@@ -110,6 +129,9 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
 
   // v5 (backend phase): a new, empty store for wider-web results kept on this device. Nothing to move.
   db.version(5).stores(SCHEMA_V5_CHANGES);
+
+  // v6: a new, empty store for saved wider-web links. Nothing to move.
+  db.version(6).stores(SCHEMA_V6_CHANGES);
 
   db.on('populate', (tx) => {
     const seed = buildSeed();

@@ -13,9 +13,17 @@
   gap: var(--space-1);
 }
 
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .title {
   font-weight: var(--weight-bold);
   color: var(--color-accent);
+  overflow-wrap: anywhere;
 }
 
 .host,

@@ -11,3 +11,8 @@ export function safeHref(value: string): string | undefined {
     return undefined;
   }
 }
+
+/** The site name to show beside a link. Only for a URL that already passed `safeHref`. */
+export function hostOf(url: string): string {
+  return new URL(url).hostname.replace(/^www\./, '');
+}

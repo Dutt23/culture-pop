@@ -130,6 +130,14 @@ export interface Favourite {
   savedAt: string;
 }
 
+/** A wider-web link kept by the reader (D46): title and address only, never the snippet. */
+export interface SavedLink {
+  url: string;
+  title: string;
+  /** ISO timestamp. */
+  savedAt: string;
+}
+
 export interface Setting {
   key: string;
   value: string;

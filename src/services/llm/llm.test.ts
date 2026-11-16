@@ -698,6 +698,23 @@ describe('createLlmClient', () => {
     expect(await firstValueFrom(client.run(job))).toEqual(result);
   });
 
+  it('stays ready when a progress message arrives after loading finished', async () => {
+    // Comlink sends progress on its own message channel, so it can land after the load result.
+    let lateProgress: () => void = () => {};
+    const connection = fakeConnection({
+      load: async (_record, _thinking, onProgress) => {
+        lateProgress = () => onProgress({ progress: 1, text: 'Finish loading' });
+        return { ms: 900, fromCache: true };
+      },
+      run: async () => result,
+    });
+    const client = createLlmClient(() => connection);
+    await firstValueFrom(client.load(family, variant, consent).pipe(toArray()));
+    lateProgress();
+    expect(client.status().state).toBe('ready');
+    expect(await firstValueFrom(client.run(job))).toEqual(result);
+  });
+
   it('keeps one worker per model: loading again terminates the previous one', async () => {
     const connections = [fakeConnection({ load: loads }), fakeConnection({ load: loads })];
     let next = 0;

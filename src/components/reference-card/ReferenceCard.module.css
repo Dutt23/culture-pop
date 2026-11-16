@@ -51,6 +51,22 @@
     100% repeat-x;
 }
 
+/* With a heart: the card's own wrapper anchors it, and the card leaves room so text stays clear. */
+.wrapper {
+  position: relative;
+  min-width: 0;
+}
+
+.favourite {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+.hasFavourite {
+  padding-inline-end: calc(var(--tap-min) + var(--space-4));
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;

@@ -12,6 +12,7 @@ import { filterOptions, matchesFilter, NO_FILTER, type ResultFilter } from '../.
 import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
 import { isExactMatch } from '../../domain/ranking';
+import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
 import { OnlineResults, SavedOnlineResults } from './OnlineResults';
 import { SearchFilters } from './SearchFilters';
@@ -67,6 +68,11 @@ export function SearchPage() {
   const recordSearch = useRecordSearch();
   const recent = useRecentSearches(RECENT_CHIPS);
   const openResult = (referenceId: string) => recordSearch(query, referenceId);
+  const favourites = useFavourites();
+  const favouriteOf = (referenceId: string) => ({
+    isFavourite: favourites.ids.has(referenceId),
+    onToggle: () => void favourites.toggle(referenceId),
+  });
 
   // Spec §6: go online only on a local miss (no eligible top match) and with consent. Latched per
   // query: saving explains the results, which would otherwise end the lookup and move its cards.
@@ -189,11 +195,18 @@ export function SearchPage() {
                       meaningsCount={summary?.meaningsCount}
                       matchNote={matchReason(match)}
                       onOpen={() => openResult(match.reference.id)}
+                      favourite={favouriteOf(match.reference.id)}
                     />
                   </AnimatedItem>
                 );
               })}
             </ul>
+          )}
+
+          {favourites.error && (
+            <p className={styles.error} role="alert">
+              {favourites.error}
+            </p>
           )}
 
           {consentError && (
@@ -221,6 +234,7 @@ export function SearchPage() {
               onSkip={skipOnlineSearch}
               onRetry={online.retry}
               onOpen={openResult}
+              favouriteOf={favouriteOf}
             />
           )}
 
@@ -228,6 +242,7 @@ export function SearchPage() {
             <SavedOnlineResults
               saved={savedShown}
               onOpen={openResult}
+              favouriteOf={favouriteOf}
               // Reruns the lookup through the same per-query latch; it saves again when done.
               onRefresh={() => setOnlineQuery(query)}
             />

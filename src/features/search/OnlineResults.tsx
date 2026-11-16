@@ -1,5 +1,8 @@
 import { Link } from 'react-router';
-import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
+import {
+  ReferenceCard,
+  type ReferenceCardFavourite,
+} from '../../components/reference-card/ReferenceCard';
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { Section } from '../../components/ui/Section';
@@ -69,6 +72,8 @@ interface OnlineResultsProps {
   onSkip: () => void;
   onRetry: () => void;
   onOpen: (referenceId: string) => void;
+  /** The heart for a card. Fresh results get one only once they are saved to the library. */
+  favouriteOf: (referenceId: string) => ReferenceCardFavourite;
 }
 
 function savedOn(isoDate: string): string | undefined {
@@ -178,9 +183,11 @@ function OnlineStatus(props: OnlineResultsProps) {
 interface CandidateListProps {
   candidates: readonly RetrievedCandidate[];
   onOpen: (referenceId: string) => void;
+  /** Undefined until the candidates are saved: a favourite needs its reference in the library. */
+  favouriteOf?: (referenceId: string) => ReferenceCardFavourite;
 }
 
-function CandidateList({ candidates, onOpen }: CandidateListProps) {
+function CandidateList({ candidates, onOpen, favouriteOf }: CandidateListProps) {
   return (
     <ul className={styles.list}>
       {/* Keyed by stable candidate ID, so a card updates in place as later providers answer. */}
@@ -192,6 +199,7 @@ function CandidateList({ candidates, onOpen }: CandidateListProps) {
             matchNote={ROLE_LABEL[candidate.role]}
             pending={candidate.classifying}
             onOpen={() => onOpen(candidate.id)}
+            favourite={favouriteOf?.(candidate.id)}
           />
         </AnimatedItem>
       ))}
@@ -248,6 +256,8 @@ export function OnlineResults(props: OnlineResultsProps) {
     state.status === 'done' && suggestCommunityLinks(query, state.result.candidates);
   const result = state.status === 'partial' || state.status === 'done' ? state.result : undefined;
   const settled = state.status === 'done';
+  // Fresh candidates reach the library only when the lookup is done and the save worked.
+  const favouriteOf = state.status === 'done' && state.cached ? props.favouriteOf : undefined;
   const failures = result ? failedProviders(result.outcomes) : [];
   const allFailed =
     state.status === 'done' &&
@@ -288,12 +298,22 @@ export function OnlineResults(props: OnlineResultsProps) {
           {result?.rewrite && <p className={styles.note}>{rewriteNote(result.rewrite)}</p>}
           {candidates.length > 0 ? (
             <>
-              {strong.length > 0 && <CandidateList candidates={strong} onOpen={props.onOpen} />}
+              {strong.length > 0 && (
+                <CandidateList
+                  candidates={strong}
+                  onOpen={props.onOpen}
+                  favouriteOf={favouriteOf}
+                />
+              )}
               {weak.length > 0 && (
                 // Related pages that share nothing with the question look like answers; folded away.
                 <details className={styles.otherPages}>
                   <summary>Other pages found ({weak.length})</summary>
-                  <CandidateList candidates={weak} onOpen={props.onOpen} />
+                  <CandidateList
+                    candidates={weak}
+                    onOpen={props.onOpen}
+                    favouriteOf={favouriteOf}
+                  />
                 </details>
               )}
             </>
@@ -319,7 +339,7 @@ export function OnlineResults(props: OnlineResultsProps) {
         </Section>
       )}
 
-      <SavedOnlineResults saved={saved} onOpen={props.onOpen} />
+      <SavedOnlineResults saved={saved} onOpen={props.onOpen} favouriteOf={props.favouriteOf} />
     </div>
   );
 }
@@ -327,6 +347,7 @@ export function OnlineResults(props: OnlineResultsProps) {
 interface SavedOnlineResultsProps {
   saved: readonly SavedOnlineMatch[];
   onOpen: (referenceId: string) => void;
+  favouriteOf: (referenceId: string) => ReferenceCardFavourite;
   /** Offered when the saved answer stands alone (no lookup running): reruns it and saves again. */
   onRefresh?: () => void;
 }
@@ -336,7 +357,12 @@ interface SavedOnlineResultsProps {
  * already resolves the query (no lookup runs), and below fresh results otherwise. Never refreshed on a
  * timer: only when the reader asks (D37).
  */
-export function SavedOnlineResults({ saved, onOpen, onRefresh }: SavedOnlineResultsProps) {
+export function SavedOnlineResults({
+  saved,
+  onOpen,
+  favouriteOf,
+  onRefresh,
+}: SavedOnlineResultsProps) {
   if (saved.length === 0) return null;
   return (
     <Section
@@ -351,6 +377,7 @@ export function SavedOnlineResults({ saved, onOpen, onRefresh }: SavedOnlineResu
               teaser={teaser}
               matchNote={savedOn(reference.updatedAt)}
               onOpen={() => onOpen(reference.id)}
+              favourite={favouriteOf(reference.id)}
             />
           </AnimatedItem>
         ))}

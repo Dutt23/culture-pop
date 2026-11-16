@@ -42,13 +42,13 @@ export function SettingsPage() {
 
   const reset = async () => {
     const question =
-      'Remove all favourites and search history, reset settings and delete online results saved on this device? This cannot be undone.';
+      'Remove all favourites, saved web links and search history, reset settings and delete online results saved on this device? This cannot be undone.';
     if (!window.confirm(question)) return;
     try {
       await resetLocalData();
       setMessage({
         tone: 'ok',
-        text: 'Favourites, search history, settings and saved online results were cleared.',
+        text: 'Favourites, saved web links, search history, settings and saved online results were cleared.',
       });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't reset local data. Please try again." });
@@ -127,8 +127,9 @@ export function SettingsPage() {
             keep it and use it to improve its service. Nothing else is sent. The links it finds are
             not checked. Results from the wider web can be kept on this device, for you only, for 30
             days while search history is on; they are never sent anywhere, and Clear history deletes
-            them. Off hides the button. It needs an access code from the owner; the app never stores
-            the code, only a sign-in cookie from our server.
+            them. A link you save with the heart keeps only its title and address, on this device,
+            until you remove it or reset. Off hides the button. It needs an access code from the
+            owner; the app never stores the code, only a sign-in cookie from our server.
           </p>
           <button type="button" className={styles.reset} onClick={forgetAccessCode}>
             Forget access code
@@ -146,7 +147,7 @@ export function SettingsPage() {
             Searches you submit or open a result from are kept on this device, so recent searches
             and your regulars can be shown. They are never sent anywhere. Turning this off stops
             saving new searches; Clear history deletes the ones already saved, with any wider web
-            results kept for them.
+            results kept for them. Favourites and saved web links stay.
           </p>
           <button type="button" className={styles.reset} onClick={clearHistory}>
             Clear history
@@ -156,10 +157,10 @@ export function SettingsPage() {
 
       <Section
         title="Your data"
-        description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on), a wider web search you tap, or an external search link you tap. Search history and results found online are kept here until you clear them; wider web results are kept for 30 days, only while search history is on."
+        description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on), a wider web search you tap, or an external search link you tap. Search history and results found online are kept here until you clear them; wider web results are kept for 30 days, only while search history is on. Web links you save stay until you remove them or reset."
       >
         <button type="button" className={styles.reset} onClick={reset}>
-          Reset favourites, history, settings &amp; saved online results
+          Reset favourites, saved links, history, settings &amp; saved online results
         </button>
         {message && (
           <p

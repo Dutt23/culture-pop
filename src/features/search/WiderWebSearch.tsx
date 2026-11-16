@@ -2,7 +2,9 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/RetrievalContext';
+import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
+import { hostOf } from '../../components/ui/safeHref';
 import type { SavedWebResults } from '../../data/repositories/webResultRepository';
 import { formatDate } from '../../domain/dates';
 import type { WebSearchPreference } from '../../domain/settings';
@@ -12,6 +14,7 @@ import {
   type WebResult,
   type WebSearchFailure,
 } from '../../services/retrieval/webSearch';
+import { useSavedLinks } from '../favourites/useSavedLinks';
 import styles from './OnlineResults.module.css';
 import own from './WiderWebSearch.module.css';
 
@@ -36,6 +39,8 @@ const WEB_SEARCH_DISCLOSURE = [
   'Results are links to other sites, and nobody has checked them.',
   'Results from the wider web can be kept on this device, for you only, for 30 days while search',
   'history is on. They are never sent anywhere else, and Clear history deletes them.',
+  'A link you save with the heart (its title and address only) stays on this device until you',
+  'remove it or reset the app.',
 ].join(' ');
 
 const failureOf = (error: unknown): WebSearchFailure =>
@@ -57,10 +62,6 @@ interface WiderWebSearchProps {
   historyOn: boolean;
   /** Stores "On" after the reader agrees in the consent card. */
   onAllow: () => Promise<void>;
-}
-
-function hostOf(url: string): string {
-  return new URL(url).hostname.replace(/^www\./, '');
 }
 
 /**
@@ -302,6 +303,7 @@ function CommunitySuggests({
   refreshDisabled,
 }: CommunitySuggestsProps) {
   const savedOn = savedAt === undefined ? undefined : formatDate(new Date(savedAt).toISOString());
+  const savedLinks = useSavedLinks();
   return (
     <section className={styles.community} aria-labelledby="web-results-title">
       <h2 id="web-results-title" className={styles.communityTitle}>
@@ -316,13 +318,30 @@ function CommunitySuggests({
             Links found by a web search. Nobody has checked them.{' '}
             {kept ? 'Kept on this device for 30 days, for you only.' : 'Not saved on this device.'}
           </p>
+          <p className={styles.note}>Tap the heart to save a link until you remove it.</p>
+          {savedLinks.error && (
+            <p className={styles.note} role="alert">
+              {savedLinks.error}
+            </p>
+          )}
           {/* Text and links only: a result URL is never an image, video or frame source. */}
           <ul className={own.results}>
             {results.map((result) => (
               <li key={result.url} className={own.result}>
-                <ExternalAnchor href={result.url} className={own.title}>
-                  {result.title}
-                </ExternalAnchor>
+                <div className={own.titleRow}>
+                  <ExternalAnchor href={result.url} className={own.title}>
+                    {result.title}
+                  </ExternalAnchor>
+                  <FavouriteButton
+                    iconOnly
+                    label={`Save link ${result.title}`}
+                    isFavourite={savedLinks.isSaved(result.url)}
+                    // Title and link only: the snippet is never kept with a saved link.
+                    onToggle={() =>
+                      void savedLinks.toggle({ url: result.url, title: result.title })
+                    }
+                  />
+                </div>
                 <span className={own.host}>{hostOf(result.url)}</span>
                 {result.snippet && <p className={own.snippet}>{result.snippet}</p>}
               </li>

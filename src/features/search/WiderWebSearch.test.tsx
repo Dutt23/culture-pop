@@ -101,6 +101,50 @@ describe('wider-web search (D45)', () => {
     expect(await db.webResults.count()).toBe(0);
   });
 
+  it('saves a result as a link with its title and URL only, and removes it again', async () => {
+    const db = await databaseWith({ webSearch: 'on' });
+    const { user } = renderApp(
+      ROUTE,
+      db,
+      serviceWith(async () => [RESULT]),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
+    expect(block).toHaveTextContent('Tap the heart to save a link until you remove it.');
+    const heart = () => within(block).getByRole('button', { name: `Save link ${RESULT.title}` });
+    expect(heart()).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(heart());
+    await waitFor(() => expect(heart()).toHaveAttribute('aria-pressed', 'true'));
+    // The snippet is the provider's text: it is never kept with a saved link.
+    expect(await db.savedLinks.toArray()).toEqual([
+      { title: RESULT.title, url: RESULT.url, savedAt: expect.any(String) },
+    ]);
+
+    await user.click(heart());
+    await waitFor(() => expect(heart()).toHaveAttribute('aria-pressed', 'false'));
+    expect(await db.savedLinks.count()).toBe(0);
+  });
+
+  it('saves a link even while search history is off, and shows a saved link as saved', async () => {
+    const db = await databaseWith({ webSearch: 'on', history: 'off' });
+    await createRepositories(db).savedLinks.toggle(RESULT);
+    const { user } = renderApp(
+      ROUTE,
+      db,
+      serviceWith(async () => [RESULT]),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
+    expect(block).toHaveTextContent('Not saved on this device.');
+    await waitFor(() =>
+      expect(
+        within(block).getByRole('button', { name: `Save link ${RESULT.title}` }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(await db.webResults.count()).toBe(0);
+  });
+
   it('never keeps shown-once results', async () => {
     const db = await databaseWith({ webSearch: 'on' });
     // An expired row elsewhere: the save prunes it, which proves the save finished before we look.

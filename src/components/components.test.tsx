@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { makeInterpretation } from '../test/factories';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { makeInterpretation, makeReference } from '../test/factories';
 import { FavouriteButton } from './favourite-button/FavouriteButton';
+import { ReferenceCard } from './reference-card/ReferenceCard';
 import { ExternalLinks } from './ui/ExternalLinks';
 import { safeHref } from './ui/safeHref';
 import { InterpretationCard } from './interpretation-card/InterpretationCard';
@@ -94,6 +96,59 @@ describe('FavouriteButton', () => {
       'aria-pressed',
       'true',
     );
+  });
+
+  it('can be icon-only with its own accessible name, keeping aria-pressed', async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    render(<FavouriteButton isFavourite iconOnly label="Save link Ferrari" onToggle={onToggle} />);
+    const button = screen.getByRole('button', { name: 'Save link Ferrari' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button.textContent).toBe('');
+    await user.click(button);
+    expect(onToggle).toHaveBeenCalledOnce();
+  });
+});
+
+describe('ReferenceCard favourite', () => {
+  const reference = makeReference('bazinga', 'Bazinga!');
+
+  function renderCard(favourite?: { isFavourite: boolean; onToggle: () => void }) {
+    return render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<ReferenceCard reference={reference} favourite={favourite} />} />
+          <Route path="/references/:id" element={<p>Reference page</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('puts the heart beside the link, never inside it, and toggling does not open the card', async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    renderCard({ isFavourite: false, onToggle });
+    const button = screen.getByRole('button', { name: 'Favourite Bazinga!' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('link', { name: /Bazinga!/ })).not.toContainElement(button);
+
+    await user.click(button);
+    expect(onToggle).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Reference page')).not.toBeInTheDocument();
+  });
+
+  it('shows the saved state', () => {
+    renderCard({ isFavourite: true, onToggle: () => undefined });
+    expect(screen.getByRole('button', { name: 'Favourite Bazinga!' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('has no button without the favourite prop', () => {
+    renderCard();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Bazinga!/ })).toBeInTheDocument();
   });
 });
 

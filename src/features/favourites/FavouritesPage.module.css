@@ -2,3 +2,37 @@
   display: grid;
   gap: var(--space-3);
 }
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.linkText {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.linkTitle {
+  font-weight: var(--weight-bold);
+  color: var(--color-accent);
+  overflow-wrap: anywhere;
+}
+
+.linkMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

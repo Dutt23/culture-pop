@@ -313,6 +313,8 @@ export function createLlmClient(
       connection = connect();
       status$.next({ state: 'loading', progress: 0 });
       const onProgress = proxy((p: LoadProgress) => {
+        // Progress has its own channel and can land after the load result: never undo `ready`.
+        if (status$.value.state !== 'loading') return;
         status$.next({ state: 'loading', progress: p.progress });
         subscriber.next({ type: 'progress', ...p });
       });

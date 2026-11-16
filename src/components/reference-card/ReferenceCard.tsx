@@ -1,10 +1,16 @@
 import { Link } from 'react-router';
 import { CATEGORY_LABEL, ERA_LABEL, fromWorks } from '../../domain/labels';
 import type { Reference } from '../../domain/types';
+import { FavouriteButton } from '../favourite-button/FavouriteButton';
 import { classNames } from '../ui/classNames';
 import styles from './ReferenceCard.module.css';
 
 export type ReferenceCardVariant = 'compact' | 'feature';
+
+export interface ReferenceCardFavourite {
+  isFavourite: boolean;
+  onToggle: () => void;
+}
 
 interface ReferenceCardProps {
   reference: Reference;
@@ -17,6 +23,8 @@ interface ReferenceCardProps {
   pending?: boolean;
   /** Called when the card is opened (e.g. to record the search that led here). */
   onOpen?: () => void;
+  /** Adds a heart that favourites the reference without opening it. */
+  favourite?: ReferenceCardFavourite;
 }
 
 /** Static card; entrance motion belongs to the list item or stage that hosts it. */
@@ -28,12 +36,13 @@ export function ReferenceCard({
   matchNote,
   pending = false,
   onOpen,
+  favourite,
 }: ReferenceCardProps) {
   const works = fromWorks(reference);
-  return (
+  const card = (
     <Link
       to={`/references/${encodeURIComponent(reference.id)}`}
-      className={classNames(styles.card, styles[variant])}
+      className={classNames(styles.card, styles[variant], favourite && styles.hasFavourite)}
       onClick={onOpen}
     >
       <span className={styles.meta}>
@@ -70,5 +79,20 @@ export function ReferenceCard({
         )}
       </span>
     </Link>
+  );
+  if (!favourite) return card;
+  return (
+    <div className={styles.wrapper}>
+      {card}
+      {/* A sibling of the link, never inside it: a link can't contain a button. */}
+      <div className={styles.favourite}>
+        <FavouriteButton
+          iconOnly
+          label={`Favourite ${reference.title}`}
+          isFavourite={favourite.isFavourite}
+          onToggle={favourite.onToggle}
+        />
+      </div>
+    </div>
   );
 }
