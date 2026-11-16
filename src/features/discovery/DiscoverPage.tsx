@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
@@ -84,7 +84,7 @@ export function DiscoverPage() {
           <div className={styles.stage}>
             <AnimatePresence mode="popLayout" initial={false}>
               {surprise && (
-                <motion.div
+                <m.div
                   key={surprise.id}
                   className={styles.stageCard}
                   variants={reveal}
@@ -97,7 +97,7 @@ export function DiscoverPage() {
                     variant="feature"
                     teaser={data?.summaries.get(surprise.id)?.teaser}
                   />
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>

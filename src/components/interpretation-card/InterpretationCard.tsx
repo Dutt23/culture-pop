@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PROVENANCE_LABEL } from '../../domain/labels';
 import type { Interpretation, Source } from '../../domain/types';
@@ -53,7 +53,7 @@ export function InterpretationCard({
 
       <AnimatePresence mode="popLayout" initial={false}>
         {isHidden ? (
-          <motion.div
+          <m.div
             key="veil"
             className={styles.veil}
             variants={reveal}
@@ -65,9 +65,9 @@ export function InterpretationCard({
             <button type="button" className={styles.button} onClick={() => setRevealedHere(true)}>
               Reveal spoiler
             </button>
-          </motion.div>
+          </m.div>
         ) : (
-          <motion.div
+          <m.div
             key="body"
             className={styles.body}
             variants={reveal}
@@ -99,15 +99,15 @@ export function InterpretationCard({
                 <div id={contextId} className={styles.contextRegion}>
                   <AnimatePresence initial={false}>
                     {contextOpen && (
-                      <motion.div key="context" className={styles.contextPanel} {...expand}>
+                      <m.div key="context" className={styles.contextPanel} {...expand}>
                         <p className={styles.context}>{interpretation.context}</p>
-                      </motion.div>
+                      </m.div>
                     )}
                   </AnimatePresence>
                 </div>
               </>
             )}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 

@@ -421,3 +421,9 @@ community-first rendering, folded vs visible hits, the searched-subject note.
   on the way. `vercel dev` reads `.env`, not `.env.local`; the SPA rewrite skips Vite's `/@` dev paths.
 - Gate: `docs/PHASE3_GATE.md` (commands, 360/390 px walkthrough, unresolved issues). **STOP FOR OWNER
   REVIEW.**
+
+### Deploy scripts and bundle size (agent, 2026-11-16, at the owner's request; D48)
+`npm run deploy:check`, `deploy:preview` and `deploy` (Vercel 65.9.0 pinned); the owner guide in
+`docs/BACKEND_PLAN.md` section 10 now uses them. Pages other than Discover load on first open and
+Motion uses `LazyMotion`: first load 635 KB → 534 KB (gzip 204 → 176 KB), measured on a scratch build.
+

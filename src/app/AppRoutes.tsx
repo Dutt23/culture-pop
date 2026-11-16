@@ -1,12 +1,25 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { DiscoverPage } from '../features/discovery/DiscoverPage';
-import { FavouritesPage } from '../features/favourites/FavouritesPage';
 import { NotFoundPage } from '../features/not-found/NotFoundPage';
-import { ReferencePage } from '../features/references/ReferencePage';
-import { SearchPage } from '../features/search/SearchPage';
-import { SettingsPage } from '../features/settings/SettingsPage';
 import { AppShell } from './AppShell';
+
+// Discover is the landing page and stays in the first download; the others load when first opened.
+// The service worker precaches every chunk, so they still open offline.
+const SearchPage = lazy(() =>
+  import('../features/search/SearchPage').then((m) => ({ default: m.SearchPage })),
+);
+const ReferencePage = lazy(() =>
+  import('../features/references/ReferencePage').then((m) => ({ default: m.ReferencePage })),
+);
+const FavouritesPage = lazy(() =>
+  import('../features/favourites/FavouritesPage').then((m) => ({ default: m.FavouritesPage })),
+);
+const SettingsPage = lazy(() =>
+  import('../features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
+
+const later = (page: ReactNode) => <Suspense fallback={null}>{page}</Suspense>;
 
 // Development-only: the import is dead code in production builds and gets tree-shaken.
 const DevComponentsPage = import.meta.env.DEV
@@ -22,10 +35,10 @@ export function AppRoutes() {
       <Routes>
         <Route path="/" element={<Navigate to="/discover" replace />} />
         <Route path="/discover" element={<DiscoverPage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/references/:id" element={<ReferencePage />} />
-        <Route path="/favourites" element={<FavouritesPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/search" element={later(<SearchPage />)} />
+        <Route path="/references/:id" element={later(<ReferencePage />)} />
+        <Route path="/favourites" element={later(<FavouritesPage />)} />
+        <Route path="/settings" element={later(<SettingsPage />)} />
         {DevComponentsPage && (
           <Route
             path="/dev/components"

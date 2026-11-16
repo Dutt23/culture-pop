@@ -420,51 +420,47 @@ ES modules need at run time (the project is `"type": "module"`).
 ### Commands (for the owner to run)
 
 ```bash
-rtk npx --yes vercel@latest link
+rtk npx --yes vercel@65.9.0 link
 ```
 
 ```bash
-rtk npx --yes vercel@latest env add PARALLEL_API_KEY production
+rtk npx --yes vercel@65.9.0 env add PARALLEL_API_KEY production
 ```
 
 ```bash
-rtk npx --yes vercel@latest env add ACCESS_CODE production
+rtk npx --yes vercel@65.9.0 env add ACCESS_CODE production
 ```
 
 ```bash
-rtk npx --yes vercel@latest env add ACCESS_COOKIE_SECRET production
+rtk npx --yes vercel@65.9.0 env add ACCESS_COOKIE_SECRET production
 ```
 
-Checks:
+Check, then deploy. `deploy:check` runs every gate check in order and stops at the first failure:
+the security audit gate, typecheck, lint, code formatting (`src`, `api`, `scripts`, `e2e`; docs are
+not checked), unit tests, browser tests on a fresh build (`CI=1`, so a stale preview server is never
+reused) and the bundle scan. `deploy:preview` and `deploy` run it first and deploy only if it
+passes; Vercel then builds the app itself from the uploaded source. Keys live only in Vercel.
 
 ```bash
-rtk proxy npx vitest run api src/services/retrieval/webSearch.test.ts src/data/repositories/retrievalRepository.test.ts src/features/search/WiderWebSearch.test.tsx
+rtk npm run deploy:check
 ```
 
+Optional: a preview deployment (its own URL, production data untouched) to try first:
+
 ```bash
-rtk npm test
+rtk npm run deploy:preview
 ```
 
+Production:
+
 ```bash
-rtk npm run typecheck
+rtk npm run deploy
 ```
 
-```bash
-rtk npm run lint
-```
+If a deployment misbehaves, put the previous one back (Vercel keeps them):
 
 ```bash
-rtk npm run format:check
-```
-
-```bash
-rtk npm run test:e2e
-```
-
-Deploy:
-
-```bash
-rtk npx --yes vercel@latest deploy --prod
+rtk npx --yes vercel@65.9.0 rollback
 ```
 
 Then on the phone: search "why are ferrari fans depressed", tap **Search the wider web**, agree,
