@@ -28,6 +28,7 @@ function show(state: RetrievalState, held: { newCount?: number; newLead?: string
         onShowNew={() => {}}
         onAllow={() => {}}
         onSkip={() => {}}
+        stories
         onRetry={() => {}}
         onOpen={() => {}}
         favouriteOf={() => ({ isFavourite: false, onToggle: () => {} })}

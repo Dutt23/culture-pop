@@ -14,6 +14,19 @@ function request(q: string | null, headers: Record<string, string> = {}): Reques
   return rawRequest(JSON.stringify(q === null ? {} : { q }), headers);
 }
 
+/** A search the app says is a question; any `question` value can be sent to test validation. */
+function questionRequest(q: string, question: unknown = true): Request {
+  return rawRequest(JSON.stringify({ q, question }));
+}
+
+/** What the handler sent to Parallel on its first call. */
+function sentOf(fetchMock: { mock: { calls: Parameters<typeof fetch>[] } }) {
+  return JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+    objective: string;
+    search_queries: string[];
+  };
+}
+
 function rawRequest(body: string, headers: Record<string, string> = {}): Request {
   return new Request(URL_PATH, {
     method: 'POST',
@@ -187,6 +200,47 @@ describe('upstream request', () => {
     expect(objective).toMatch(/means/);
     expect(objective).toMatch(/comes from/);
   });
+});
+
+describe('question searches', () => {
+  const SUFFIX = ' in fiction myths anime films TV books games';
+
+  it('asks for fiction and pop culture, and widens the search query to match', async () => {
+    const { fetchMock, handle } = setup();
+    await handle(questionRequest('who committed the worst genocides'));
+    const { objective, search_queries } = sentOf(fetchMock);
+    expect(objective).toContain('"who committed the worst genocides"');
+    expect(objective).toMatch(/fiction, myths and pop culture/);
+    expect(objective).toMatch(/legends and folklore/);
+    expect(objective).toMatch(/not real-world history or news/);
+    expect(search_queries).toEqual([`who committed the worst genocides${SUFFIX}`]);
+  });
+
+  it('cuts a long question so the search query stays within 200 characters', async () => {
+    const { fetchMock, handle } = setup();
+    expect((await handle(questionRequest('why '.repeat(50).trim()))).status).toBe(200);
+    const [query] = sentOf(fetchMock).search_queries;
+    expect(query).toHaveLength(200);
+    expect(query?.endsWith(`…${SUFFIX}`)).toBe(true);
+  });
+
+  it('leaves a search that is not a question exactly as it was', async () => {
+    const { fetchMock, handle } = setup();
+    await handle(questionRequest('red pill', false));
+    const { objective, search_queries } = sentOf(fetchMock);
+    expect(search_queries).toEqual(['red pill']);
+    expect(objective).toMatch(/comes from/);
+    expect(objective).not.toMatch(/fiction, myths and pop culture/);
+  });
+
+  it.each([['true'], [1], ['yes'], [null], [{}]])(
+    'treats a non-boolean flag (%j) as false, not as an error',
+    async (flag) => {
+      const { fetchMock, handle } = setup();
+      expect((await handle(questionRequest(QUERY, flag))).status).toBe(200);
+      expect(sentOf(fetchMock).search_queries).toEqual([QUERY]);
+    },
+  );
 });
 
 describe('curation', () => {

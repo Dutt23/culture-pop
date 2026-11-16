@@ -6,3 +6,9 @@ export function formatDate(iso: string): string | undefined {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? undefined : DATE_FORMAT.format(date);
 }
+
+/** "Saved 15 Nov 2026" for a stored online result, or undefined when the date is invalid. */
+export function savedOn(iso: string): string | undefined {
+  const date = formatDate(iso);
+  return date && `Saved ${date}`;
+}

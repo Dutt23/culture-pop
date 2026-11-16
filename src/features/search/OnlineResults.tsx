@@ -6,14 +6,14 @@ import {
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { Section } from '../../components/ui/Section';
-import { formatDate } from '../../domain/dates';
+import { savedOn } from '../../domain/dates';
 import type { RetrievalPreference } from '../../domain/settings';
 import { PUBLISHER } from '../../domain/sources';
 import { listOf } from '../../domain/text';
 import {
   communitySearchLinks,
-  isWeakHit,
   looksLikeQuestion,
+  splitFolded,
   suggestCommunityLinks,
 } from '../../services/retrieval/community';
 import { candidateToReference } from '../../services/retrieval/toReference';
@@ -76,11 +76,8 @@ interface OnlineResultsProps {
   onOpen: (referenceId: string) => void;
   /** The heart for a card. Fresh results get one only once they are saved to the library. */
   favouriteOf: (referenceId: string) => ReferenceCardFavourite;
-}
-
-function savedOn(isoDate: string): string | undefined {
-  const date = formatDate(isoDate);
-  return date && `Saved ${date}`;
+  /** Questions lean to stories and myths: real-world pages fold away (the "Stories & myths" box). */
+  stories: boolean;
 }
 
 function failedProviders(outcomes: readonly ProviderOutcome[]): string[] {
@@ -243,6 +240,8 @@ function CommunityLinks({ query }: { query: string }) {
 /** Says what a fallback search looked for, so nobody mistakes its results for the plain search's. */
 function rewriteNote(rewrite: Rewrite): string {
   switch (rewrite.kind) {
+    case 'topic':
+      return `Also searched “${rewrite.text}”, the topic of your search.`;
     case 'suggestion':
       return `Also searched \u201c${rewrite.text}\u201d, Wikipedia's suggestion for your spelling.`;
     case 'shorter_phrase':
@@ -266,9 +265,9 @@ export function OnlineResults(props: OnlineResultsProps) {
     state.result.outcomes.every((o) => o.status === 'failed' || o.status === 'skipped');
   const showFresh =
     result !== undefined && (settled || candidates.length > 0 || failures.length > 0);
-  // For a question-style query, related pages that share no word with it are folded away.
-  const weak = looksLikeQuestion(query) ? candidates.filter((c) => isWeakHit(query, c)) : [];
-  const strong = candidates.filter((c) => !weak.includes(c));
+  // For a question-style query, related pages that share no word with it, and pages that are not
+  // pop culture, are folded away.
+  const { shown: strong, folded: weak } = splitFolded(query, candidates, props.stories);
 
   return (
     <div className={styles.online}>
@@ -308,7 +307,7 @@ export function OnlineResults(props: OnlineResultsProps) {
                 />
               )}
               {weak.length > 0 && (
-                // Related pages that share nothing with the question look like answers; folded away.
+                // Pages that share nothing with the question, or aren't pop culture, look like answers.
                 <details className={styles.otherPages}>
                   <summary>Other pages found ({weak.length})</summary>
                   <CandidateList

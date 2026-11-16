@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PopCultureDb } from '../data/db';
 import { createRepositories } from '../data/repositories';
 import { buildSeed } from '../data/seed';
-import { isFromOnline, type Source } from '../domain/types';
+import { formatDate } from '../domain/dates';
+import { isFromOnline, type Reference, type Source } from '../domain/types';
+import { makeReference } from '../test/factories';
 import { retrieve } from '../services/retrieval/retrieve';
 import { RetrievalError, type RetrievedCandidate } from '../services/retrieval/types';
 import {
@@ -222,19 +224,250 @@ describe('discover', () => {
     expect(screen.queryByRole('heading', { name: '1990s' })).not.toBeInTheDocument();
   });
 
-  it('never lists results cached from online searches', async () => {
+  const DOOM_DATE = formatDate('2026-01-01T00:00:00.000Z');
+
+  /** Online references as earlier searches left them: three explained, one bare, one quote page. */
+  async function withOnlineReferences() {
     const db = createTestDatabase();
     await db.open();
-    await cacheOnlineResults(db, 'the matrix');
+    const online = (
+      id: string,
+      title: string,
+      year: number,
+      editorialState: Reference['editorialState'] = 'source_curated',
+    ) => makeReference(id, title, { category: 'comics', kind: 'character', year, editorialState });
+    await db.references.bulkPut([
+      online('wd:Q1', 'Doctor Doom', 1962),
+      online('wd:Q3', 'Galactus', 1966),
+      online('wd:Q2', 'Unexplained Hero', 1970, 'retrieved'),
+      online('enwikiquote:7', 'Doom quotes', 1970),
+    ]);
+    return db;
+  }
+
+  /** The reader opened these from a search, so each is in some search's `referenceIds`. */
+  async function openedFromSearch(db: PopCultureDb, ...referenceIds: string[]) {
+    const { history } = createRepositories(db);
+    for (const referenceId of referenceIds) {
+      await history.record({ text: 'doctor doom', referenceId }, Date.now());
+    }
+  }
+
+  const browseOf = () => screen.findByRole('region', { name: 'Browse' });
+
+  it('lists an explained found-online reference the reader opened, under its year, marked with its date', async () => {
+    const db = await withOnlineReferences();
+    await openedFromSearch(db, 'wd:Q1');
     renderApp('/discover', db);
-    expect(await screen.findByRole('heading', { name: '1990s' })).toBeInTheDocument();
-    expect(screen.queryByText('The Matrix')).not.toBeInTheDocument();
+    const doom = await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    expect(doom).toHaveTextContent('Explained from sources');
+    expect(doom).toHaveTextContent(`Found online · Saved ${DOOM_DATE}`);
+    expect(
+      within(await browseOf()).getByRole('heading', { name: 'Before 1990' }),
+    ).toBeInTheDocument();
+  });
+
+  it('lists a found-online reference the reader favourited', async () => {
+    const db = await withOnlineReferences();
+    await createRepositories(db).favourites.toggle('wd:Q3');
+    renderApp('/discover', db);
+    expect(
+      await within(await browseOf()).findByRole('link', { name: /Galactus/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves out found-online references nobody opened or favourited, and unexplained ones', async () => {
+    const db = await withOnlineReferences();
+    await openedFromSearch(db, 'wd:Q1', 'wd:Q2');
+    renderApp('/discover', db);
+    await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    expect(screen.queryByText('Galactus')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unexplained Hero')).not.toBeInTheDocument();
     expect(screen.queryByText('Found online · unverified')).not.toBeInTheDocument();
   });
 
-  it('never claims surprise picks are trending', async () => {
+  it('never lists a Wikiquote page, even one the reader opened', async () => {
+    const db = await withOnlineReferences();
+    await openedFromSearch(db, 'wd:Q1', 'enwikiquote:7');
+    renderApp('/discover', db);
+    await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    expect(screen.queryByText('Doom quotes')).not.toBeInTheDocument();
+  });
+
+  it('drops found-online references from Discover when saved online results are cleared', async () => {
+    const db = await withOnlineReferences();
+    await openedFromSearch(db, 'wd:Q1');
+    await createRepositories(db).favourites.toggle('wd:Q3');
+    renderApp('/discover', db);
+    await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+
+    await act(async () => createRepositories(db).retrieval.clear());
+
+    await waitFor(() => expect(screen.queryByText('Doctor Doom')).not.toBeInTheDocument());
+    expect(screen.queryByText('Galactus')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '1990s' })).toBeInTheDocument();
+  });
+
+  it('browses by era by default and switches to one section per type, with counts', async () => {
+    const db = await withOnlineReferences();
+    await openedFromSearch(db, 'wd:Q1');
+    const { user } = renderApp('/discover', db);
+    const browse = await browseOf();
+    expect(within(browse).getByRole('radio', { name: 'By era' })).toBeChecked();
+    expect(within(browse).getByRole('group', { name: 'Filter by category' })).toBeInTheDocument();
+
+    await user.click(within(browse).getByRole('radio', { name: 'By type' }));
+
+    expect(within(browse).getByRole('radio', { name: 'By type' })).toBeChecked();
+    expect(await within(browse).findByRole('heading', { name: 'Comics · 1' })).toBeInTheDocument();
+    expect(within(browse).getByRole('heading', { name: /^Cartoons · \d+$/ })).toBeInTheDocument();
+    expect(within(browse).queryByRole('heading', { name: /^Games/ })).not.toBeInTheDocument();
+    expect(
+      within(browse).queryByRole('group', { name: 'Filter by category' }),
+    ).not.toBeInTheDocument();
+    const comics = within(browse).getByRole('region', { name: 'Comics · 1' });
+    expect(within(comics).getByRole('link', { name: /Doctor Doom/ })).toBeInTheDocument();
+  });
+
+  it('says, per empty type, how to find one, and never offers "Other"', async () => {
+    const { user } = renderApp('/discover');
+    const browse = await browseOf();
+    await user.click(within(browse).getByRole('radio', { name: 'By type' }));
+
+    expect(
+      await within(browse).findByText(
+        'No comics yet. Search a character, like Doctor Doom, to find one.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(browse).getByText('No games yet. Search a game, like Among Us, to find one.'),
+    ).toBeInTheDocument();
+    expect(within(browse).queryByText(/^No other/i)).not.toBeInTheDocument();
+    expect(within(browse).queryByText(/^No cartoons/)).not.toBeInTheDocument();
+  });
+
+  it('says how to fill an empty category in the era view', async () => {
+    const { user } = renderApp('/discover');
+    await user.click(await screen.findByRole('button', { name: 'Comics' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Nothing in Comics yet' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Search a character, like Doctor Doom, to find one.'),
+    ).toBeInTheDocument();
+  });
+
+  it('offline, says once to browse the device instead of suggesting searches', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const { user } = renderApp('/discover');
+    const browse = await browseOf();
+    await user.click(await within(browse).findByRole('radio', { name: 'By type' }));
+
+    const offline =
+      "You're offline. Browse what's on this device, or search when you're back online.";
+    expect(await within(browse).findByText(offline)).toBeInTheDocument();
+    expect(within(browse).getAllByText(/Browse what's on this device/)).toHaveLength(1);
+    expect(within(browse).queryByText(/Search a/)).not.toBeInTheDocument();
+
+    await user.click(within(browse).getByRole('radio', { name: 'By era' }));
+    await user.click(within(browse).getByRole('button', { name: 'Comics' }));
+    expect(await within(browse).findByText(offline)).toBeInTheDocument();
+    expect(within(browse).queryByText(/Search a/)).not.toBeInTheDocument();
+  });
+
+  it('never claims surprise picks are trending, and says where they come from', async () => {
     renderApp('/discover');
-    expect(await screen.findByText(/not a trend/)).toBeInTheDocument();
+    expect(
+      await screen.findByText('A random pick from your library, not a trend.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/trending/i)).not.toBeInTheDocument();
+  });
+
+  it('says the surprise can include what the reader opened online', async () => {
+    const db = await withOnlineReferences();
+    await openedFromSearch(db, 'wd:Q1');
+    renderApp('/discover', db);
+    expect(
+      await screen.findByText(
+        "A random pick from your library and what you've opened online, not a trend.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('picks the surprise from the chosen category, and again after "Show another"', async () => {
+    const { user } = renderApp('/discover');
+    const surprise = await screen.findByRole('region', { name: 'Surprise me' });
+    await user.click(screen.getByRole('button', { name: 'Sayings' }));
+
+    const onlySayings = () =>
+      waitFor(() => {
+        const cards = within(surprise).getAllByRole('link');
+        expect(cards).toHaveLength(1);
+        expect(cards[0]).toHaveTextContent('Saying');
+      });
+    await onlySayings();
+    expect(
+      within(surprise).getByText('A random pick from Sayings, not a trend.'),
+    ).toBeInTheDocument();
+    await user.click(within(surprise).getByRole('button', { name: 'Show another' }));
+    await onlySayings();
+  });
+
+  it('falls back to the whole library when the chosen category is empty, and says so', async () => {
+    const { user } = renderApp('/discover');
+    const surprise = await screen.findByRole('region', { name: 'Surprise me' });
+    await user.click(await screen.findByRole('button', { name: 'Comics' }));
+
+    expect(
+      await within(surprise).findByText(
+        'Nothing in Comics yet, so this is a random pick from everything.',
+      ),
+    ).toBeInTheDocument();
+    const cards = within(surprise).getAllByRole('link');
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).not.toHaveTextContent('Comics');
+  });
+
+  it('puts the category back to All when switching to By type, so the surprise never changes silently', async () => {
+    const { user } = renderApp('/discover');
+    const surprise = await screen.findByRole('region', { name: 'Surprise me' });
+    await user.click(await screen.findByRole('button', { name: 'Sayings' }));
+    expect(
+      within(surprise).getByText('A random pick from Sayings, not a trend.'),
+    ).toBeInTheDocument();
+
+    await user.click(within(await browseOf()).getByRole('radio', { name: 'By type' }));
+    expect(
+      await within(surprise).findByText('A random pick from your library, not a trend.'),
+    ).toBeInTheDocument();
+
+    await user.click(within(await browseOf()).getByRole('radio', { name: 'By era' }));
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(surprise).getByText('A random pick from your library, not a trend.'),
+    ).toBeInTheDocument();
+  });
+
+  it('favourites from a Discover card, and the reference shows on Favourites', async () => {
+    const { user } = renderApp('/discover');
+    const heart = await within(await browseOf()).findByRole('button', { name: /^Favourite D'oh!/ });
+    await user.click(heart);
+    await waitFor(() => expect(heart).toHaveAttribute('aria-pressed', 'true'));
+
+    await user.click(screen.getByRole('link', { name: 'Favourites' }));
+    const saved = await screen.findByRole('button', { name: /^Favourite D'oh!/ });
+    expect(saved).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows an alert when a favourite cannot be saved from Discover', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    vi.spyOn(db.favourites, 'add').mockRejectedValue(new Error('QuotaExceededError'));
+    const { user } = renderApp('/discover', db);
+    await user.click(
+      await within(await browseOf()).findByRole('button', { name: /^Favourite D'oh!/ }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't update your favourites");
   });
 });
 
@@ -863,9 +1096,13 @@ describe('search UX (D37)', () => {
       { provider: 'wikiquote' as const, status: 'empty' as const },
       { provider: 'tvmaze' as const, status: 'skipped' as const },
     ];
-    async function open(candidates: RetrievedCandidate[], searched?: string) {
+    async function open(
+      candidates: RetrievedCandidate[],
+      searched?: string,
+      question = 'why are ferrari fans depressed',
+    ) {
       const { service, finish } = controllableRetrievalService();
-      renderApp('/search?q=why%20are%20ferrari%20fans%20depressed', await withConsent(), service);
+      renderApp(`/search?q=${encodeURIComponent(question)}`, await withConsent(), service);
       await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
       await act(async () => finish({ candidates, outcomes, ...(searched ? { searched } : {}) }));
       return screen.findByRole('region', { name: 'Found online' });
@@ -887,11 +1124,11 @@ describe('search UX (D37)', () => {
       ).toBeInTheDocument();
     });
 
-    it('folds away related pages that share nothing with the question, but keeps Scuderia Ferrari', async () => {
+    it('folds away related pages that share nothing with the question, but keeps a film that does', async () => {
       const found = await open(
         [
           topic('wd:Q1', 'Pink Floyd'),
-          topic('wd:Q2', 'Scuderia Ferrari'),
+          film('wd:Q2', 'Ferrari fans: the film'),
           topic('wd:Q3', 'Lando Norris'),
         ],
         'ferrari fans depressed',
@@ -904,8 +1141,22 @@ describe('search UX (D37)', () => {
         .getAllByRole('link')
         .filter((link) => !(folded as HTMLElement).contains(link));
       expect(visible.map((link) => link.textContent)).toEqual([
-        expect.stringContaining('Scuderia Ferrari'),
+        expect.stringContaining('Ferrari fans: the film'),
       ]);
+    });
+
+    it('folds a real-world page, and offers the wider web when nothing pop culture is left', async () => {
+      const found = await open(
+        [topic('wd:Q1', 'Genocides in history (WWI\u2013WWII)')],
+        undefined,
+        'who committed the worst genocides',
+      );
+      const folded = within(found).getByText('Other pages found (1)').closest('details');
+      expect(folded).not.toHaveAttribute('open');
+      expect(within(folded as HTMLElement).getByText(/Genocides in history/)).toBeInTheDocument();
+      // Not hidden behind "Not what I meant": nothing visible answers the question.
+      expect(screen.getByRole('button', { name: 'Search the wider web' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Not what I meant' })).toBeNull();
     });
 
     it('shows no community block or folded section when a candidate explains the question', async () => {

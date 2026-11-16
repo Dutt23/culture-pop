@@ -427,3 +427,18 @@ community-first rendering, folded vs visible hits, the searched-subject note.
 `docs/BACKEND_PLAN.md` section 10 now uses them. Pages other than Discover load on first open and
 Motion uses `LazyMotion`: first load 635 KB → 534 KB (gzip 204 → 176 KB), measured on a scratch build.
 
+## Phase 3: approved by the owner, 2026-11-16 (committed through `5e25d1b`)
+
+No phone run for the model (not achieved, off). Install and offline checks on the phone move to Phase 5.
+
+## Current phase: 4: discovery and editorial depth (owner approved 2026-11-16)
+
+### Phase 4 built and checked (agent, 2026-11-16, at the owner's request; D49)
+Discover shows the library plus online references the reader opened or favourited; browse by era or
+by type; reasoned related links; Surprise me explains itself; hearts on Discover; offline hints and an
+offline browser test. `npm run deploy:check` passes (816 unit, 26 browser tests). Gate:
+`docs/PHASE4_GATE.md`. **STOP FOR OWNER REVIEW.**
+
+## Phase 4: approved by the owner, 2026-11-16
+
+Next: Phase 5 (polish and release), including the owner's request to polish the UI and make it faster.

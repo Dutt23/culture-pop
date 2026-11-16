@@ -1,4 +1,8 @@
-# Phase 3 gate (2026-11-16): STOP FOR OWNER REVIEW
+# Phase 3 gate (2026-11-16): approved by the owner
+
+**Approved 2026-11-16.** The owner approved Phase 3 and Phase 4 to start. No phone run is needed
+for the model, which is not achieved and off; installing and offline use on the phone are checked
+in Phase 5.
 
 Spec §5 Phase 3 gate: _validate 30-case corpus, provenance, model fallback, consent, persistence and
 errors._ Every phase also needs: code committed, actual commands and results, a mobile visual

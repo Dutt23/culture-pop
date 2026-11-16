@@ -1,6 +1,17 @@
-import { CATEGORY_ORDER, type EraKey } from './discovery';
+import {
+  CATEGORY_ORDER,
+  type BrowsableCategory,
+  type CategoryFilter,
+  type EraKey,
+} from './discovery';
 import type { RankedMatch } from './ranking';
-import type { Category, PresentIn, Provenance, Reference } from './types';
+import {
+  isFromOnline,
+  type Category,
+  type PresentIn,
+  type Provenance,
+  type Reference,
+} from './types';
 
 export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
   cartoon: 'Cartoon',
@@ -28,8 +39,50 @@ export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
   other: 'Other',
 };
 
+/** How to find something for an empty category: one example search each. */
+export const SEARCH_HINT: Readonly<Record<BrowsableCategory, string>> = {
+  cartoon: 'Search a show, like SpongeBob SquarePants, to find one.',
+  comics: 'Search a character, like Doctor Doom, to find one.',
+  games: 'Search a game, like Among Us, to find one.',
+  film: 'Search a film, like The Matrix, to find one.',
+  tv: 'Search a series, like Breaking Bad, to find one.',
+  meme: 'Search a meme, like 6-7, to find one.',
+  catchphrase: 'Search a line, like Hasta la vista, baby, to find one.',
+  music: 'Search a song, like Bohemian Rhapsody, to find one.',
+  saying: 'Search a phrase, like Break a leg, to find one.',
+};
+
 /** Browsable categories: the canonical order, without the catch-all "other". */
-export const CATEGORIES: readonly Category[] = CATEGORY_ORDER.filter((c) => c !== 'other');
+export const CATEGORIES: readonly BrowsableCategory[] = CATEGORY_ORDER.filter(
+  (c): c is BrowsableCategory => c !== 'other',
+);
+
+/** "No games yet. Search a game, like Among Us, to find one." Acronyms like TV keep their case. */
+export function emptyCategoryNote(category: BrowsableCategory): string {
+  const label = CATEGORY_PLURAL_LABEL[category];
+  const name = label === label.toUpperCase() ? label : label.toLowerCase();
+  return `No ${name} yet. ${SEARCH_HINT[category]}`;
+}
+
+/**
+ * Says where the surprise came from: the chosen category (or the library), what the reader opened
+ * online when the pool holds any, and, after a fallback, that the category had nothing.
+ */
+export function surpriseNote(
+  pool: readonly Reference[],
+  filter: CategoryFilter,
+  fellBack: boolean,
+): string {
+  if (fellBack && filter !== 'all') {
+    const name = CATEGORY_PLURAL_LABEL[filter];
+    return `Nothing in ${name} yet, so this is a random pick from everything.`;
+  }
+  const from = filter === 'all' ? 'your library' : CATEGORY_PLURAL_LABEL[filter];
+  const online = pool.some((r) => isFromOnline(r.editorialState))
+    ? " and what you've opened online"
+    : '';
+  return `A random pick from ${from}${online}, not a trend.`;
+}
 
 export const ERA_LABEL: Readonly<Record<EraKey, string>> = {
   earlier: 'Before 1990',
@@ -68,14 +121,19 @@ export function matchReason(match: RankedMatch): string {
 const MAX_FROM_WORKS = 3;
 
 /**
- * Each name once: Wikidata gives the comic and its films as different works with the same name
- * ("Fantastic Four" three times), which reads as a repeat. The first of each name is kept.
+ * Each work once. Wikidata gives the comic and its films as different works with the same name
+ * ("Fantastic Four" three times), and one work can come under two labels; either reads as a repeat.
+ * A work is a repeat when its qid or its name (any case) was already seen; the first is kept.
  */
 export function distinctWorks(works: readonly PresentIn[]): PresentIn[] {
-  const seen = new Set<string>();
+  const qids = new Set<string>();
+  const names = new Set<string>();
   return works.filter((work) => {
     const name = work.label.toLowerCase();
-    return !seen.has(name) && seen.add(name);
+    if (qids.has(work.qid) || names.has(name)) return false;
+    qids.add(work.qid);
+    names.add(name);
+    return true;
   });
 }
 

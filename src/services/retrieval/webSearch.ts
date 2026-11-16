@@ -1,4 +1,5 @@
 import { safeHref } from '../../components/ui/safeHref';
+import { looksLikeQuestion } from './community';
 import { isRecord, stringField } from './validate';
 
 /**
@@ -69,7 +70,8 @@ export class WebSearchError extends Error {
 }
 
 export interface WebSearchClient {
-  search: (query: string, signal?: AbortSignal) => Promise<WebResult[]>;
+  /** `stories`: a question leans to fiction and myths (the "Stories & myths" box); on by default. */
+  search: (query: string, signal?: AbortSignal, stories?: boolean) => Promise<WebResult[]>;
   /** Sends the code once; the server answers with the cookie. Throws `wrong_code` if it's wrong. */
   unlock: (code: string) => Promise<void>;
   /** Asks the server to clear the cookie ("Forget access code"). */
@@ -190,9 +192,13 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
   });
 
   return {
-    // POST, so the search text is never part of a URL that request logs could record.
-    search: async (query, signal) =>
-      parseWebResults(await call(WEB_SEARCH_PATH, post({ q: query.trim() }), signal)),
+    // POST, so the search text is never part of a URL that request logs could record. The server
+    // can't import the page's question rule, so it is told whether this search is a question that
+    // leans to stories; with "Stories & myths" unticked it is searched like any other text.
+    search: async (query, signal, stories = true) => {
+      const body = { q: query.trim(), question: stories && looksLikeQuestion(query) };
+      return parseWebResults(await call(WEB_SEARCH_PATH, post(body), signal));
+    },
     unlock: async (code) => {
       await call(UNLOCK_PATH, post({ code }));
     },

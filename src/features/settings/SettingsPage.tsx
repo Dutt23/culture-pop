@@ -69,6 +69,8 @@ export function SettingsPage() {
   const forgetAccessCode = async () => {
     try {
       await webSearch.lock();
+      // Without the cookie a search can't run by itself; the button comes back.
+      await setSetting('webAccess', 'unknown');
       setMessage({ tone: 'ok', text: 'The access code was forgotten on this device.' });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't reach the server. Please try again." });
@@ -122,7 +124,8 @@ export function SettingsPage() {
             onChange={(value) => save(() => setSetting('webSearch', value))}
           />
           <p className={styles.ok}>
-            When nothing explains a search, you can tap &ldquo;Search the wider web&rdquo;. Your
+            When nothing explains a search, you can tap &ldquo;Search the wider web&rdquo;. With On,
+            once a search has worked on this device, it runs by itself on those searches. Your
             search text then goes through our server to a web-search provider (Parallel), which may
             keep it and use it to improve its service. Nothing else is sent. The links it finds are
             not checked. Results from the wider web can be kept on this device, for you only, for 30

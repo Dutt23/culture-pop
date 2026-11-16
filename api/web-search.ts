@@ -22,7 +22,7 @@ const MAX_EXCERPT = 4000;
 const MAX_URL = 2048;
 /** Parallel's answers are a few KB; anything bigger is refused unread. */
 const MAX_UPSTREAM_BYTES = 256 * 1024;
-/** `{ "q": "…" }` with a 200-character query fits easily; anything bigger is refused. */
+/** `{ "q": "…", "question": true }` with a 200-character query fits; anything bigger is refused. */
 const MAX_REQUEST_BYTES = 1024;
 /** What we send the phone stays small; results are dropped from the end until it fits. */
 const MAX_RESPONSE_BYTES = 16 * 1024;
@@ -58,14 +58,19 @@ export interface HandlerOptions {
   checkAccess?: (request: Request) => AccessResult;
 }
 
-/** The raw `q` from a JSON body `{ "q": "…" }`; null when the body is oversized, not JSON or has no string `q`. */
-async function readQuery(request: Request): Promise<string | null> {
+/**
+ * The raw `q` and the `question` flag from a JSON body `{ "q": "…", "question": true }`. `q` is
+ * null when the body is oversized, not JSON or has no string `q`; any `question` that is not
+ * exactly `true` counts as false, so a bad flag never blocks a search.
+ */
+async function readBody(request: Request): Promise<{ q: string | null; question: boolean }> {
   try {
     const body: unknown = JSON.parse(await readCapped(request, MAX_REQUEST_BYTES));
-    const q = typeof body === 'object' && body !== null ? (body as { q?: unknown }).q : null;
-    return typeof q === 'string' ? q : null;
+    const fields = typeof body === 'object' && body !== null ? body : {};
+    const { q, question } = fields as { q?: unknown; question?: unknown };
+    return { q: typeof q === 'string' ? q : null, question: question === true };
   } catch {
-    return null;
+    return { q: null, question: false };
   }
 }
 
@@ -120,10 +125,23 @@ function safeUrl(value: unknown): URL | undefined {
 
 /**
  * What we ask Parallel for: the meaning and origin, so its excerpts explain rather than just mention.
+ * A question leans to fiction, myths and pop culture (D50) unless the reader unticked "Stories &
+ * myths", in which case the app sends `question: false`: left to itself, Parallel answers "who
+ * committed the worst genocides" with real-world history.
  * `q` is already validated (≤200 characters, no control characters).
  */
-export function objective(q: string): string {
+export function objective(q: string, question = false): string {
+  if (question) {
+    return `Answer "${q}" about fiction, myths and pop culture: characters, events and works in films, TV, anime, books, comics, games, myths, legends and folklore — not real-world history or news. Name the characters and works.`;
+  }
   return `Explain "${q}": what it means or refers to in pop culture or internet culture (films, TV, comics, games, music, memes, slang), and where it comes from.`;
+}
+
+const QUESTION_QUERY_SUFFIX = ' in fiction myths anime films TV books games';
+
+/** The text sent as Parallel's search query: a question gets fiction words, cut to fit MAX_QUERY. */
+export function searchQuery(q: string, question = false): string {
+  return question ? cut(q, MAX_QUERY - QUESTION_QUERY_SUFFIX.length) + QUESTION_QUERY_SUFFIX : q;
 }
 
 /**
@@ -197,7 +215,8 @@ export function createHandler(
     if (allowed === 'not_configured') return json(503, { error: 'not_configured' });
     if (allowed === 'locked') return json(401, { error: 'locked' });
 
-    const q = validQuery(await readQuery(request));
+    const { q: rawQuery, question } = await readBody(request);
+    const q = validQuery(rawQuery);
     if (!q) return json(400, { error: 'bad_query' });
 
     // Local testing only (never on a Vercel deployment): canned answers, no key, nothing spent.
@@ -223,8 +242,8 @@ export function createHandler(
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         // No session_id: Parallel can't link one search to the next.
         body: JSON.stringify({
-          objective: objective(q),
-          search_queries: [q],
+          objective: objective(q, question),
+          search_queries: [searchQuery(q, question)],
           mode: 'fast',
           max_chars_total: 6000,
           advanced_settings: { max_results: MAX_RESULTS },

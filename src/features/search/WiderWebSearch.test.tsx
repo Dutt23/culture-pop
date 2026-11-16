@@ -78,7 +78,11 @@ describe('wider-web search (D45)', () => {
     expect(block).toHaveTextContent('Kept on this device for 30 days, for you only.');
     // Text and links only: no media element is ever made from a result.
     expect(block.querySelector('img, video, iframe, picture, source')).toBeNull();
-    expect(retrieval.webSearch.search).toHaveBeenCalledWith(QUESTION, expect.any(AbortSignal));
+    expect(retrieval.webSearch.search).toHaveBeenCalledWith(
+      QUESTION,
+      expect.any(AbortSignal),
+      true,
+    );
 
     const repos = createRepositories(db);
     await waitFor(async () =>
@@ -290,6 +294,112 @@ describe('access code', () => {
     expect(await within(form).findByRole('alert')).toHaveTextContent("That code didn't work.");
     expect(input).toHaveValue('');
     expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('searching by itself once unlocked (D50)', () => {
+  const webAccessOf = async (db: PopCultureDb) =>
+    (await createRepositories(db).settings.getAll()).find((row) => row.key === 'webAccess')?.value;
+
+  it('runs without a tap when "On" and a search has worked on this device', async () => {
+    const db = await databaseWith({ webSearch: 'on', webAccess: 'unlocked' });
+    const retrieval = serviceWith(async () => [RESULT]);
+    renderApp(ROUTE, db, retrieval);
+    expect(
+      await screen.findByRole('region', { name: 'Community suggests… (unverified)' }),
+    ).toBeInTheDocument();
+    expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for a tap until a search has worked, then remembers it without searching twice', async () => {
+    const db = await databaseWith({ webSearch: 'on' });
+    const retrieval = serviceWith(async () => [RESULT]);
+    const { user } = renderApp(ROUTE, db, retrieval);
+    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
+    await waitFor(async () => expect(await webAccessOf(db)).toBe('unlocked'));
+    expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('still asks first under "Ask first", even on an unlocked device', async () => {
+    const retrieval = serviceWith(async () => [RESULT]);
+    renderApp(ROUTE, await databaseWith({ webSearch: 'ask', webAccess: 'unlocked' }), retrieval);
+    expect(await screen.findByRole('button', { name: 'Search the wider web' })).toBeInTheDocument();
+    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
+  });
+
+  it('shows kept results instead of paying for the same search again', async () => {
+    const db = await databaseWith({ webSearch: 'on', webAccess: 'unlocked' });
+    await createRepositories(db).webResults.save(QUESTION, [RESULT], Date.now());
+    const retrieval = serviceWith(async () => [RESULT]);
+    renderApp(ROUTE, db, retrieval);
+    const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
+    expect(block).toHaveTextContent(/Saved /);
+    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
+  });
+
+  it('on "locked", forgets the device was unlocked and brings the button back, no code form', async () => {
+    const db = await databaseWith({ webSearch: 'on', webAccess: 'unlocked' });
+    const retrieval = serviceWith(async () => {
+      throw new WebSearchError('locked', 'HTTP 401');
+    });
+    renderApp(ROUTE, db, retrieval);
+    expect(await screen.findByRole('button', { name: 'Search the wider web' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Enter access code' })).not.toBeInTheDocument();
+    await waitFor(async () => expect(await webAccessOf(db)).toBe('unknown'));
+    expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('"Forget access code" also stops searches running by themselves', async () => {
+    const db = await databaseWith({ webAccess: 'unlocked' });
+    const { user } = renderApp(
+      '/settings',
+      db,
+      serviceWith(async () => []),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Forget access code' }));
+    await waitFor(async () => expect(await webAccessOf(db)).toBe('unknown'));
+  });
+});
+
+describe('"Stories & myths" (D50)', () => {
+  it('is offered only for a question', async () => {
+    renderApp(
+      '/search?q=zzqx%20flarb',
+      await databaseWith({}),
+      serviceWith(async () => []),
+    );
+    await screen.findByRole('button', { name: 'Search the wider web' });
+    expect(screen.queryByRole('checkbox', { name: /Stories & myths/ })).not.toBeInTheDocument();
+  });
+
+  it('is ticked by default, and unticking searches the question as plain text', async () => {
+    const db = await databaseWith({ webSearch: 'on', webAccess: 'unlocked' });
+    const retrieval = serviceWith(async () => [RESULT]);
+    const { user } = renderApp(ROUTE, db, retrieval);
+    const box = await screen.findByRole('checkbox', { name: /Stories & myths/ });
+    expect(box).toBeChecked();
+    await waitFor(() =>
+      expect(retrieval.webSearch.search).toHaveBeenLastCalledWith(
+        QUESTION,
+        expect.any(AbortSignal),
+        true,
+      ),
+    );
+
+    await user.click(box);
+    await waitFor(() =>
+      expect(retrieval.webSearch.search).toHaveBeenLastCalledWith(
+        QUESTION,
+        expect.any(AbortSignal),
+        false,
+      ),
+    );
+    expect(box).not.toBeChecked();
+    expect(await createRepositories(db).settings.getAll()).toContainEqual({
+      key: 'stories',
+      value: 'off',
+    });
   });
 });
 

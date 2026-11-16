@@ -149,9 +149,25 @@ test('the app shell works offline after the first load', async ({ page, context 
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Decode any reference' })).toBeVisible();
-  await expect(page.getByText(/You're offline/)).toBeVisible();
+  await expect(page.getByText(/You're offline\. Everything saved/)).toBeVisible();
 
   await page.goto('/references/bazinga-big-bang-theory');
+  await expect(page.getByRole('heading', { level: 1, name: /Bazinga!/ })).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('Discover browses by type and opens a reference page offline', async ({ page, context }) => {
+  await page.goto('/discover');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByText(/You're offline\. Everything saved/)).toBeVisible();
+  const browse = page.getByRole('region', { name: 'Browse' });
+  await browse.getByRole('radio', { name: 'By type' }).check();
+  await expect(browse.getByText(/^You're offline\. Browse what's on this device/)).toBeVisible();
+
+  await browse.getByRole('link', { name: /Bazinga!/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Bazinga!/ })).toBeVisible();
   await context.setOffline(false);
 });

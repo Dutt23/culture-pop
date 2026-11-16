@@ -50,12 +50,34 @@ describe('search', () => {
     expect(url).toBe(WEB_SEARCH_PATH);
     expect(String(url)).not.toContain('ferrari');
     expect(init?.method).toBe('POST');
-    expect(JSON.parse(String(init?.body))).toEqual({ q: 'why are ferrari fans depressed' });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      q: 'why are ferrari fans depressed',
+      question: true,
+    });
     expect(init).toMatchObject({
       credentials: 'same-origin',
       referrerPolicy: 'no-referrer',
       cache: 'no-store',
       redirect: 'error',
+    });
+  });
+
+  it.each([
+    ['why are ferrari fans depressed', true],
+    ['who committed the worst genocides?', true],
+    ['ferrari fans', false],
+    ['what is the matrix', false],
+  ])('tells the server whether %j is a question, by the same rule as the page', async (q, flag) => {
+    const { fetchMock, client } = setup(answer({ storage: 'device', results: [] }));
+    await client.search(q);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ q, question: flag });
+  });
+
+  it('searches a question as plain text when "Stories & myths" is unticked', async () => {
+    const { fetchMock, client } = setup(answer({ storage: 'device', results: [] }));
+    await client.search('why are ferrari fans depressed', undefined, false);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      question: false,
     });
   });
 

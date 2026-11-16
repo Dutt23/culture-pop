@@ -110,11 +110,16 @@ const SMALL_WORDS: ReadonlySet<string> = new Set([
   ...['of', 'and', 'for', 'with', 'from', 'that', 'this', 'they', 'them', 'not', 'but', 'all'],
 ]);
 
-/** The words of a question's subject that say something: no filler, nothing under three letters. */
+/** Not a question word, article or small English joining word ("the", "of", "with"). */
+export const isContentWord = (word: string): boolean =>
+  !LEADING_FILLER.has(word) && !SMALL_WORDS.has(word);
+
+/** A word that says something: a content word of three letters or more. */
+export const isMeaningfulWord = (word: string): boolean => word.length >= 3 && isContentWord(word);
+
+/** The words of a question's subject that say something. */
 function meaningfulWords(query: string): string[] {
-  return tokenize(normalizePhrase(questionSubject(query) ?? query)).filter(
-    (word) => word.length >= 3 && !LEADING_FILLER.has(word) && !SMALL_WORDS.has(word),
-  );
+  return tokenize(normalizePhrase(questionSubject(query) ?? query)).filter(isMeaningfulWord);
 }
 
 /**
@@ -123,9 +128,41 @@ function meaningfulWords(query: string): string[] {
  * ("Pink Floyd" for "why are ferrari fans depressed"; "Scuderia Ferrari" shares "ferrari").
  */
 export function isWeakHit(query: string, candidate: RetrievedCandidate): boolean {
+  // A character is what a question about fiction is after ("Thanos" for "who committed the worst
+  // genocides"), even when its name shares no word with the question.
   if (candidate.role !== 'topic' || PHRASE_KINDS.has(candidate.kind)) return false;
+  if (candidate.kind === 'character') return false;
   const title = new Set(tokenize(normalizePhrase(candidate.title)));
   return !meaningfulWords(query).some((word) => title.has(word));
+}
+
+/**
+ * A page that is not pop culture: nothing Wikidata could class as a work, character, phrase, quote
+ * or meme (category and kind both "other"), such as a real-world history page. Wikiquote hits and
+ * Wiktionary entries have a kind, so they never count. A page Wikidata hasn't answered for yet
+ * might still turn out to be a work, so it doesn't count either.
+ */
+export const isOffTopicForQuestion = (candidate: RetrievedCandidate): boolean =>
+  candidate.category === 'other' && candidate.kind === 'other' && !candidate.classifying;
+
+/**
+ * What a question-style query shows and what is folded under "Other pages found": related pages
+ * that share nothing with the question, and, while questions lean to stories (`stories`), pages that
+ * are not pop culture. Any other query folds nothing. One rule for the results list and for deciding
+ * that nothing visible is left.
+ */
+export function splitFolded<T extends RetrievedCandidate>(
+  query: string,
+  candidates: readonly T[],
+  stories: boolean,
+): { shown: T[]; folded: T[] } {
+  const isFolded = (candidate: T) =>
+    looksLikeQuestion(query) &&
+    (isWeakHit(query, candidate) || (stories && isOffTopicForQuestion(candidate)));
+  return {
+    shown: candidates.filter((candidate) => !isFolded(candidate)),
+    folded: candidates.filter(isFolded),
+  };
 }
 
 /** True when a candidate explains the phrase itself: a meme, quote, phrase or dictionary entry. */

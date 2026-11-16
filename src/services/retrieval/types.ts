@@ -58,11 +58,11 @@ export interface RetrievedCandidate {
 }
 
 /**
- * The fallbacks that run only when the plain search misses (docs/SEARCH_RANKING.md, D43):
- * Wikipedia's "did you mean", and the first words of a long query. (An unquoted Wikiquote search was
- * tried and left out: it changed no result.)
+ * The fallbacks that run only when the plain search misses (docs/SEARCH_RANKING.md, D43): the topic
+ * of a request ("gundam" for "give me history of gundam"), Wikipedia's "did you mean", and the first
+ * words of a long query. (An unquoted Wikiquote search was tried and left out: it changed no result.)
  */
-export type RewriteKind = 'suggestion' | 'shorter_phrase';
+export type RewriteKind = 'topic' | 'suggestion' | 'shorter_phrase';
 
 /** What a fallback searched for, so the page can say so. */
 export interface Rewrite {

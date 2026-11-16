@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/RetrievalContext';
@@ -8,6 +8,7 @@ import { hostOf } from '../../components/ui/safeHref';
 import type { SavedWebResults } from '../../data/repositories/webResultRepository';
 import { formatDate } from '../../domain/dates';
 import type { WebSearchPreference } from '../../domain/settings';
+import { looksLikeQuestion } from '../../services/retrieval/community';
 import {
   isDeviceResult,
   WebSearchError,
@@ -62,25 +63,52 @@ interface WiderWebSearchProps {
   historyOn: boolean;
   /** Stores "On" after the reader agrees in the consent card. */
   onAllow: () => Promise<void>;
+  /** A search worked on this device before, so with "On" it runs by itself (`webAccess`). */
+  unlocked: boolean;
+  /** Records that a search worked here, or that the server said "locked" (cookie gone). */
+  onAccess: (unlocked: boolean) => void;
+  /** A question leans to stories and myths ("Stories & myths"). */
+  stories: boolean;
+  /**
+   * False once this search finished on this page, or while the online lookup may still answer it:
+   * the block moves when results arrive, and a remount must not pay for the same search twice.
+   */
+  mayAutoSearch: boolean;
+  /** This search finished (answered or failed), not cancelled. */
+  onSearched: () => void;
 }
 
 /**
- * "Search the wider web" for a local miss: one tap, consent first. `device` results are kept on this
- * device for 30 days while search history is on (D45), shown again with "Saved <date>" and Refresh;
- * `none` results live only in this component's state. Neither ever reaches the library, history's
- * reference IDs or favourites, and nothing kept here is ever sent anywhere.
+ * "Search the wider web" for a local miss: one tap, consent first. Once the reader said "On" and a
+ * search has worked on this device, it runs by itself instead (D50). `device` results are kept on
+ * this device for 30 days while search history is on (D45), shown again with "Saved <date>" and
+ * Refresh; `none` results live only in this component's state. Neither ever reaches the library,
+ * history's reference IDs or favourites, and nothing kept here is ever sent anywhere.
  */
 export function WiderWebSearch(props: WiderWebSearchProps) {
-  const { query, isOnline, preference, historyOn, onAllow } = props;
+  const { query, isOnline, preference, onAllow, unlocked, onAccess, stories, onSearched } = props;
+  // shortcut: kept results are keyed by the query alone, so a question searched with "Stories &
+  // myths" unticked is shown but not kept; key them by mode too if people untick it often.
+  const historyOn = props.historyOn && (stories || !looksLikeQuestion(query));
   const { webSearch } = useRetrievalService();
   const { webResults } = useRepositories();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [saved, setSaved] = useState<SavedWebResults | undefined>(undefined);
   const [saveFailed, setSaveFailed] = useState(false);
+  // With history off nothing is kept, so there is nothing to wait for before searching by itself.
+  const [savedChecked, setSavedChecked] = useState(!historyOn);
   const controller = useRef<AbortController | null>(null);
+  const started = useRef(false);
 
-  // Cancels a search still running when the query changes or the page closes.
-  useEffect(() => () => controller.current?.abort(), []);
+  // Cancels a search still running when the query changes or the page closes. A cancelled search
+  // never finished, so a remount (StrictMode's included) may start it again.
+  useEffect(
+    () => () => {
+      controller.current?.abort();
+      started.current = false;
+    },
+    [],
+  );
 
   // Results kept from an earlier search for this query; with history off, none are shown or kept.
   useEffect(() => {
@@ -89,33 +117,52 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
     webResults
       .get(query, Date.now())
       .then((row) => live && setSaved(row))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => live && setSavedChecked(true));
     return () => {
       live = false;
     };
   }, [webResults, query, historyOn]);
 
-  if (preference === 'off') return null;
-
-  const run = async () => {
+  const run = async (auto = false) => {
+    // Any search, tapped or not, means this mount never searches by itself again.
+    started.current = true;
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
     setPhase({ kind: 'loading' });
     try {
-      const results = await webSearch.search(query, current.signal);
+      const results = await webSearch.search(query, current.signal, stories);
       if (current.signal.aborted) return;
+      onSearched();
       setPhase({ kind: 'done', results });
+      if (!unlocked) onAccess(true);
       // Best effort: a failed write only means a new search next time.
       if (historyOn) {
         webResults.save(query, results.filter(isDeviceResult), Date.now()).catch(() => {});
       }
     } catch (error) {
       if (current.signal.aborted) return;
+      onSearched();
       const failure = failureOf(error);
-      setPhase(failure === 'locked' ? { kind: 'locked' } : { kind: 'error', failure });
+      if (failure === 'locked') onAccess(false);
+      // A search that ran by itself never pops up the code form: the button comes back instead.
+      if (failure === 'locked' && auto) setPhase({ kind: 'idle' });
+      else setPhase(failure === 'locked' ? { kind: 'locked' } : { kind: 'error', failure });
     }
   };
+
+  // Runs by itself once per query, after any kept results were checked: kept ones are shown free.
+  const autoSearch = useEffectEvent(() => void run(true));
+  const autoReady =
+    preference === 'on' && unlocked && isOnline && props.mayAutoSearch && savedChecked && !saved;
+  useEffect(() => {
+    if (autoReady && !started.current) autoSearch();
+    // An effect event never goes in the list; this plugin version doesn't know useEffectEvent yet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoReady]);
+
+  if (preference === 'off') return null;
 
   const allow = () => {
     setSaveFailed(false);

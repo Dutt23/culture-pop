@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { makeAlias, makeInterpretation, makeReference } from '../test/factories';
-import { formatDate } from './dates';
+import { formatDate, savedOn } from './dates';
 import { fromWorks } from './labels';
 import {
+  discoverable,
+  emptyCategories,
   eraOf,
   filterByCategory,
   filterOptions,
+  groupByCategory,
   groupByEra,
   matchesFilter,
   NO_FILTER,
   seededShuffle,
+  surprisePool,
 } from './discovery';
 import { externalSearchLinks } from './externalSearch';
-import { matchReason } from './labels';
+import { CATEGORIES, emptyCategoryNote, matchReason, SEARCH_HINT, surpriseNote } from './labels';
 import { relatedReferences } from './related';
 import { DEFAULT_SETTINGS, parseSettings } from './settings';
 import { describeStorageError } from './storageErrors';
@@ -41,7 +45,9 @@ describe('relatedReferences', () => {
     const related = relatedReferences(song, [song, saying, meme], aliases);
 
     expect(related.otherMeanings.map((r) => r.id)).toEqual(['saying']);
-    expect(related.sameEra.map((r) => r.id)).toEqual(['meme']);
+    expect(related.groups.map((g) => [g.kind, g.references.map((r) => r.id)])).toEqual([
+      ['era', ['meme']],
+    ]);
   });
 });
 
@@ -61,6 +67,27 @@ describe('discovery helpers', () => {
     expect(filterByCategory(refs, 'all')).toHaveLength(3);
   });
 
+  it('files an online reference under its sourced year, though it has no editorial decade', () => {
+    const online = makeReference('wd:Q1', 'Doctor Doom', {
+      category: 'comics',
+      year: 1962,
+      editorialState: 'source_curated',
+    });
+    expect(groupByEra([online, ...refs]).map((g) => g.era)).toEqual([
+      'earlier',
+      '1990s',
+      '2010s+',
+      'timeless',
+    ]);
+  });
+
+  it('orders each era by title, like the type view, whatever order the references came in', () => {
+    const zed = makeReference('z', 'Zed', { decade: '1990s' });
+    const alpha = makeReference('a', 'Alpha', { decade: '1990s' });
+    const mid = makeReference('m', 'Mid', { year: 1995 });
+    expect(groupByEra([zed, mid, alpha])[0].references.map((r) => r.id)).toEqual(['a', 'm', 'z']);
+  });
+
   it('shuffles deterministically per seed without mutating the input', () => {
     const items = [1, 2, 3, 4, 5, 6, 7, 8];
     const snapshot = [...items];
@@ -68,6 +95,125 @@ describe('discovery helpers', () => {
     expect(seededShuffle(items, 42)).toEqual(first);
     expect([...first].sort((x, y) => x - y)).toEqual(snapshot);
     expect(items).toEqual(snapshot);
+  });
+});
+
+describe('browse by type', () => {
+  const refs = [
+    makeReference('z', 'Zed', { category: 'meme' }),
+    makeReference('b', 'Beta', { category: 'comics' }),
+    makeReference('a', 'Alpha', { category: 'comics', year: 1962 }),
+    makeReference('c', 'Cee', { category: 'cartoon' }),
+  ];
+
+  it('groups by category in canonical order, each in title order, omitting empty ones', () => {
+    expect(groupByCategory(refs).map((g) => [g.category, g.references.map((r) => r.id)])).toEqual([
+      ['cartoon', ['c']],
+      ['comics', ['a', 'b']],
+      ['meme', ['z']],
+    ]);
+  });
+
+  it('lists the browsable categories with nothing in them, in canonical order, never "other"', () => {
+    expect(emptyCategories(refs)).toEqual([
+      'games',
+      'film',
+      'tv',
+      'catchphrase',
+      'music',
+      'saying',
+    ]);
+    expect(emptyCategories([])).toEqual(CATEGORIES);
+  });
+
+  it('has a search hint for every browsable category, in the same words', () => {
+    for (const category of CATEGORIES) {
+      expect(SEARCH_HINT[category]).toMatch(/^Search an? [^,]+, like .+, to find one\.$/);
+    }
+    expect(SEARCH_HINT.games).toBe('Search a game, like Among Us, to find one.');
+    expect(SEARCH_HINT.meme).toBe('Search a meme, like 6-7, to find one.');
+  });
+
+  it('writes one line per empty category from its hint', () => {
+    expect(emptyCategoryNote('games')).toBe(
+      'No games yet. Search a game, like Among Us, to find one.',
+    );
+    expect(emptyCategoryNote('tv')).toBe(
+      'No TV yet. Search a series, like Breaking Bad, to find one.',
+    );
+  });
+
+  it('draws a surprise from the chosen category, or from everything when it is empty', () => {
+    const comics = surprisePool(refs, 'comics');
+    expect(comics.pool.map((r) => r.id)).toEqual(['b', 'a']);
+    expect(comics.fellBack).toBe(false);
+    expect(surprisePool(refs, 'all')).toEqual({ pool: refs, fellBack: false });
+    expect(surprisePool(refs, 'games')).toEqual({ pool: refs, fellBack: true });
+  });
+
+  it('shuffles a filtered pool the same way for the same seed', () => {
+    const order = (seed: number) =>
+      seededShuffle(surprisePool(refs, 'comics').pool, seed).map((r) => r.id);
+    expect(order(7)).toEqual(order(7));
+    expect([...order(7)].sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('what Discover shows', () => {
+  const demo = makeReference('demo', 'Demo');
+  const online = (id: string, editorialState: 'source_curated' | 'retrieved' = 'source_curated') =>
+    makeReference(id, id, { editorialState });
+  const none = new Set<string>();
+  const ids = (list: readonly { id: string }[]) => list.map((r) => r.id);
+
+  it('always shows the library entries', () => {
+    expect(ids(discoverable([demo], none, none))).toEqual(['demo']);
+  });
+
+  it('shows an explained online reference only once it was opened or favourited', () => {
+    const refs = [demo, online('wd:Q1'), online('wd:Q2'), online('wd:Q3')];
+    expect(ids(discoverable(refs, none, none))).toEqual(['demo']);
+    expect(ids(discoverable(refs, new Set(['wd:Q1']), new Set(['wd:Q3'])))).toEqual([
+      'demo',
+      'wd:Q1',
+      'wd:Q3',
+    ]);
+  });
+
+  it('never shows a Wikiquote page or an unexplained result, opened or favourited', () => {
+    const refs = [online('enwikiquote:9'), online('wd:Q5', 'retrieved')];
+    const both = new Set(['enwikiquote:9', 'wd:Q5']);
+    expect(discoverable(refs, both, both)).toEqual([]);
+  });
+});
+
+describe('surpriseNote', () => {
+  const library = [makeReference('a', 'A')];
+  const withOnline = [
+    ...library,
+    makeReference('wd:Q1', 'B', { editorialState: 'source_curated' }),
+  ];
+
+  it('says it is random and not a trend', () => {
+    expect(surpriseNote(library, 'all', false)).toBe(
+      'A random pick from your library, not a trend.',
+    );
+  });
+
+  it('mentions what you opened online only when the pool holds online references', () => {
+    expect(surpriseNote(withOnline, 'all', false)).toBe(
+      "A random pick from your library and what you've opened online, not a trend.",
+    );
+  });
+
+  it('names the chosen category', () => {
+    expect(surpriseNote(library, 'comics', false)).toBe('A random pick from Comics, not a trend.');
+  });
+
+  it('says when it fell back to everything', () => {
+    expect(surpriseNote(library, 'comics', true)).toBe(
+      'Nothing in Comics yet, so this is a random pick from everything.',
+    );
   });
 });
 
@@ -187,6 +333,13 @@ describe('formatDate', () => {
   });
 });
 
+describe('savedOn', () => {
+  it('says "Saved <date>", and nothing for an invalid date', () => {
+    expect(savedOn('2026-11-15T12:00:00')).toBe('Saved 15 Nov 2026');
+    expect(savedOn('not a date')).toBeUndefined();
+  });
+});
+
 describe('listOf', () => {
   it('joins names in plain English, with no serial comma', () => {
     expect(listOf(['Stan Lee'])).toBe('Stan Lee');
@@ -219,6 +372,17 @@ describe('fromWorks', () => {
       ],
     };
     expect(fromWorks(reference).map((w) => w.label)).toEqual(['Fantastic Four', 'Avengers']);
+  });
+
+  it('shows a work once when Wikidata gives it under two names', () => {
+    const reference = {
+      ...base,
+      presentIn: [
+        { qid: 'Q1', label: 'Fantastic Four' },
+        { qid: 'Q1', label: 'F4' },
+      ],
+    };
+    expect(fromWorks(reference).map((w) => w.label)).toEqual(['Fantastic Four']);
   });
 
   it('is empty when Wikidata names no work', () => {

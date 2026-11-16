@@ -1,4 +1,6 @@
-import type { Category, Decade, Reference } from './types';
+import { compareReferences } from './collections';
+import { isWikiquoteReference } from './sources';
+import { isFromOnline, type Category, type Decade, type Reference } from './types';
 
 /** Canonical category order for every screen; `labels.ts` derives `CATEGORIES` from it. */
 export const CATEGORY_ORDER: readonly Category[] = [
@@ -13,6 +15,9 @@ export const CATEGORY_ORDER: readonly Category[] = [
   'saying',
   'other',
 ];
+
+/** The categories that have a chip: everything but the catch-all "other". */
+export type BrowsableCategory = Exclude<Category, 'other'>;
 
 export type EraKey = 'earlier' | Decade | 'timeless';
 
@@ -39,14 +44,64 @@ export function filterByCategory(
   return filter === 'all' ? [...references] : references.filter((r) => r.category === filter);
 }
 
-/** Groups by editorial era, keeping input order inside each group. Empty eras are omitted. */
+/**
+ * What Discover lists. The library always; a found-online reference only when the reader opened it
+ * from a search or favourited it, so strangers' search results never fill the page. A Wikiquote
+ * quote page and an unexplained (`retrieved`) result are never listed.
+ */
+export function discoverable(
+  references: readonly Reference[],
+  opened: ReadonlySet<string>,
+  favourites: ReadonlySet<string>,
+): Reference[] {
+  return references.filter((r) => {
+    if (!isFromOnline(r.editorialState)) return true;
+    if (r.editorialState === 'retrieved' || isWikiquoteReference(r.id)) return false;
+    return opened.has(r.id) || favourites.has(r.id);
+  });
+}
+
+/**
+ * Groups by era (the sourced year first, else the editorial decade), each in title order like the
+ * type view. Empty eras are omitted.
+ */
 export function groupByEra(
   references: readonly Reference[],
 ): { era: EraKey; references: Reference[] }[] {
   return ERA_ORDER.map((era) => ({
     era,
-    references: references.filter((r) => eraOf(r) === era),
+    references: references.filter((r) => eraOf(r) === era).sort(compareReferences),
   })).filter((group) => group.references.length > 0);
+}
+
+/** Groups by category in canonical order, each in title order. Empty categories are omitted. */
+export function groupByCategory(
+  references: readonly Reference[],
+): { category: Category; references: Reference[] }[] {
+  return CATEGORY_ORDER.map((category) => ({
+    category,
+    references: references.filter((r) => r.category === category).sort(compareReferences),
+  })).filter((group) => group.references.length > 0);
+}
+
+/** The browsable categories nothing is filed under yet, in canonical order. */
+export function emptyCategories(references: readonly Reference[]): BrowsableCategory[] {
+  const used = new Set(references.map((r) => r.category));
+  return CATEGORY_ORDER.filter((c): c is BrowsableCategory => c !== 'other' && !used.has(c));
+}
+
+/**
+ * What "Surprise me" draws from: the chosen category, or everything (`fellBack`) when it has
+ * nothing, so the page can say so instead of changing the pick silently.
+ */
+export function surprisePool(
+  references: readonly Reference[],
+  filter: CategoryFilter,
+): { pool: Reference[]; fellBack: boolean } {
+  const inCategory = filterByCategory(references, filter);
+  return inCategory.length > 0
+    ? { pool: inCategory, fellBack: false }
+    : { pool: [...references], fellBack: filter !== 'all' };
 }
 
 /** mulberry32 — small seeded PRNG so decorative discovery order is reproducible in tests. */

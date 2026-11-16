@@ -171,3 +171,40 @@ describe('reference page: "From" the work it appears in', () => {
     expect(text.querySelector('a')).toBeNull();
   });
 });
+
+describe('reference page: related references say why', () => {
+  const memeOf = (qid: string, title: string, inspiredBy: { qid: string; label: string }[]) =>
+    makeCandidate({
+      id: `wd:${qid}`,
+      title,
+      kind: 'meme',
+      category: 'meme',
+      role: 'topic',
+      inspiredBy,
+      sources: [makeSource(`src:wd:${qid}`, 'Wikidata', { title, sourceType: 'structured_data' })],
+    });
+  const matrixWork = [{ qid: 'Q83495', label: 'The Matrix' }];
+  const redPill = memeOf('Q99', 'Red pill and blue pill', matrixWork);
+  const rain = memeOf('Q100', 'Digital rain', matrixWork);
+
+  it('lists what shares a work under "Also inspired by <work>", linked to its page', async () => {
+    renderApp(pageOf(redPill.id), await withCached(redPill, rain));
+
+    const group = await screen.findByRole('region', { name: 'Also inspired by The Matrix' });
+    expect(within(group).getByRole('link', { name: /Digital rain/ })).toHaveAttribute(
+      'href',
+      pageOf(rain.id),
+    );
+    // The page itself is never offered as related to itself.
+    expect(within(group).queryByRole('link', { name: /Red pill/ })).not.toBeInTheDocument();
+  });
+
+  it('shows no related section when nothing is shared', async () => {
+    renderApp(pageOf(redPill.id), await withCached(redPill));
+
+    await screen.findByRole('heading', { name: 'Red pill and blue pill' });
+    expect(
+      screen.queryByRole('region', { name: /^Also (in|by|inspired by)/ }),
+    ).not.toBeInTheDocument();
+  });
+});

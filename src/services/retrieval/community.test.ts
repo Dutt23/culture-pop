@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { ReferenceKind } from '../../domain/types';
 import {
   communitySearchLinks,
+  isOffTopicForQuestion,
   isWeakHit,
   looksLikePhrase,
   looksLikeQuestion,
   questionSubject,
+  splitFolded,
   suggestCommunityLinks,
 } from './community';
 import type { RetrievedCandidate } from './types';
@@ -111,9 +113,49 @@ describe('question-style queries', () => {
     expect(isWeakHit(question, page('Scuderia Ferrari'))).toBe(false);
     expect(isWeakHit(question, page('Pink Floyd', { role: 'work', kind: 'work' }))).toBe(false);
     expect(isWeakHit(question, page('Pink Floyd', { kind: 'meme' }))).toBe(false);
+    // A fiction question wants characters, whose names rarely share a word with it.
+    expect(
+      isWeakHit('who committed the worst genocides', page('Thanos', { kind: 'character' })),
+    ).toBe(false);
     expect(isWeakHit(question, page('Pink Floyd', { kind: 'phrase', role: 'definition' }))).toBe(
       false,
     );
+  });
+
+  it('calls a real-world page off topic: unclassified, so not a work, character, phrase or quote', () => {
+    expect(isOffTopicForQuestion(page('Genocides in history (WWI\u2013WWII)'))).toBe(true);
+  });
+
+  it('keeps pop culture, and anything that explains a phrase, on topic', () => {
+    const work = { category: 'film', kind: 'work', role: 'work' } as const;
+    const character = { category: 'other', kind: 'character' } as const;
+    const quote = { category: 'catchphrase', kind: 'quote', role: 'quoted_in' } as const;
+    const entry = { category: 'saying', kind: 'phrase', role: 'definition' } as const;
+    for (const fields of [work, character, quote, entry]) {
+      expect(isOffTopicForQuestion(page('Thanos', fields))).toBe(false);
+    }
+    // Wikidata hasn't answered yet, so the page may still turn out to be a work.
+    expect(isOffTopicForQuestion(page('Thanos', { classifying: true }))).toBe(false);
+  });
+
+  it('splits a question into shown pages and folded ones, and folds nothing for other queries', () => {
+    const real = page('Genocides in history');
+    const anime = page('Attack on Titan', { category: 'cartoon', kind: 'work', role: 'work' });
+    expect(splitFolded('who committed the worst genocides', [real, anime], true)).toEqual({
+      shown: [anime],
+      folded: [real],
+    });
+    expect(splitFolded('genocides', [real], true)).toEqual({ shown: [real], folded: [] });
+  });
+
+  it('keeps real-world pages for a question once "Stories & myths" is unticked', () => {
+    const real = page('Genocides in history');
+    expect(splitFolded('who committed the worst genocides', [real], false)).toEqual({
+      shown: [real],
+      folded: [],
+    });
+    // A page sharing no word with the question is still only related, whatever the lean.
+    expect(splitFolded(question, [page('Pink Floyd')], false).folded).toHaveLength(1);
   });
 
   it('suggests the community sites first unless something online explains the question', () => {

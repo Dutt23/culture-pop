@@ -44,7 +44,7 @@ export function ReferencePage() {
     );
   }
 
-  const { reference, interpretations, sources, otherMeanings, sameEra } = detail;
+  const { reference, interpretations, sources, otherMeanings, groups } = detail;
   const yearSource = sources.find((s) => s.id === reference.yearSourceId);
   const when =
     reference.year !== undefined && yearSource
@@ -172,17 +172,17 @@ export function ReferencePage() {
         </Section>
       )}
 
-      {sameEra.length > 0 && reference.decade && (
-        <Section title={`More from the ${ERA_LABEL[reference.decade]}`}>
+      {groups.map((group) => (
+        <Section key={`${group.kind}:${group.label}`} title={group.label}>
           <ul className={styles.related}>
-            {sameEra.map((related, index) => (
+            {group.references.map((related, index) => (
               <AnimatedItem key={related.id} index={index}>
                 <ReferenceCard reference={related} />
               </AnimatedItem>
             ))}
           </ul>
         </Section>
-      )}
+      ))}
 
       {fromOnline ? (
         <>

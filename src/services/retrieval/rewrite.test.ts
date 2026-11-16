@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMiss, planRewrite, shorterPhrase } from './rewrite';
+import { isMiss, planRewrite, requestTopic, shorterPhrase } from './rewrite';
 import type { RetrievedCandidate } from './types';
 
 function candidate(
@@ -71,9 +71,43 @@ describe('shorterPhrase', () => {
     expect(shorterPhrase('who is the a an so')).toBeUndefined();
   });
 
+  it('never cuts to a phrase made of filler and small words', () => {
+    // "committed the" is all that is left after the question word, and "the" says nothing.
+    expect(shorterPhrase('who committed the worst genocides')).toBeUndefined();
+    expect(shorterPhrase('why do the of and cats purr')).toBeUndefined();
+    expect(shorterPhrase('who did the ferrari fans blame')).toBe('ferrari fans');
+  });
+
+  it('keeps short Hinglish words, which carry meaning', () => {
+    expect(shorterPhrase('ye kya hai bhai')).toBe('ye kya');
+  });
+
   it('only skips words at the start, not inside the query', () => {
     expect(shorterPhrase('babu bhaiya is the best')).toBe('babu bhaiya');
   });
+});
+
+describe('requestTopic', () => {
+  it.each([
+    ['give me history of gundam', 'gundam'],
+    ['Give me the history of Mobile Suit Gundam', 'mobile suit gundam'],
+    ['tell me about the origin of the joker', 'joker'],
+    ['explain the lore of elden ring', 'elden ring'],
+    ['show me naruto', 'naruto'],
+  ])('%s is about "%s"', (query, topic) => {
+    expect(requestTopic(query)).toBe(topic);
+  });
+
+  it('keeps an aspect word that isn\'t followed by "of"', () => {
+    expect(requestTopic('tell me the story so far')).toBe('story so far');
+  });
+
+  it.each([['history of gundam'], ['gundam'], ['give me'], ['tell me about the'], ['']])(
+    '%j is not a request with a topic',
+    (query) => {
+      expect(requestTopic(query)).toBeUndefined();
+    },
+  );
 });
 
 describe('planRewrite', () => {
@@ -102,6 +136,29 @@ describe('planRewrite', () => {
       kind: 'shorter_phrase',
       text: 'babu bhaiya',
     });
+  });
+
+  it('searches the topic of a request first, never its opening words', () => {
+    const query = 'give me history of gundam';
+    const found = [page('Mobile Suit Gundam 00')];
+    expect(
+      planRewrite({ query, candidates: found, suggestion: 'give me history of gundam 00' }),
+    ).toEqual({
+      kind: 'topic',
+      text: 'gundam',
+    });
+  });
+
+  it('leaves a quote that starts like a request alone once its own page is found', () => {
+    expect(
+      planRewrite({ query: 'show me the money', candidates: [page('Show Me the Money')] }),
+    ).toBeUndefined();
+  });
+
+  it('plans no shorter phrase for a question whose cut would be only filler', () => {
+    expect(
+      planRewrite({ query: 'who committed the worst genocides', candidates: missed }),
+    ).toBeUndefined();
   });
 
   it('plans at most one fallback and honours the order and the allowed kinds', () => {

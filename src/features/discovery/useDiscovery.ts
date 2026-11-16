@@ -1,27 +1,36 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { discoverable } from '../../domain/discovery';
 import { summarizeByReference, type CardSummary } from '../../domain/summaries';
-import { isFromOnline, type Reference } from '../../domain/types';
+import type { Reference } from '../../domain/types';
 
 export interface DiscoveryData {
   references: Reference[];
   summaries: Map<string, CardSummary>;
 }
 
+// Search history holds at most a couple of hundred searches; this asks for all of them.
+const ALL_SEARCHES = Number.MAX_SAFE_INTEGER;
+
 /**
- * Discovery reads only the curated local library: cached online results are unexplained evidence,
- * not something to browse. No browsing activity is recorded.
+ * Discovery reads the local library plus the found-online references the reader opened from a
+ * search or favourited (see `discoverable`). Clearing saved online results, history or favourites
+ * changes the list, so this follows live. No browsing activity is recorded.
  */
 export function useDiscovery(): DiscoveryData | undefined {
-  const { references } = useRepositories();
+  const { references, history, favourites } = useRepositories();
   return useLiveQuery(async () => {
-    const [all, interpretations] = await Promise.all([
+    const [all, interpretations, searches, saved] = await Promise.all([
       references.getAll(),
       references.getAllInterpretations(),
+      history.recent(ALL_SEARCHES, Date.now()),
+      favourites.list(),
     ]);
+    const opened = new Set(searches.flatMap((search) => search.referenceIds));
+    const favouriteIds = new Set(saved.map((row) => row.referenceId));
     return {
-      references: all.filter((r) => !isFromOnline(r.editorialState)),
+      references: discoverable(all, opened, favouriteIds),
       summaries: summarizeByReference(interpretations),
     };
-  }, [references]);
+  }, [references, history, favourites]);
 }

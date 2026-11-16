@@ -12,7 +12,9 @@ import { filterOptions, matchesFilter, NO_FILTER, type ResultFilter } from '../.
 import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
 import { isExactMatch } from '../../domain/ranking';
+import { looksLikeQuestion, splitFolded } from '../../services/retrieval/community';
 import { isExactTitle } from '../../services/retrieval/rerank';
+import type { RetrievedCandidate } from '../../services/retrieval/types';
 import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
 import { OnlineResults, SavedOnlineResults } from './OnlineResults';
@@ -108,25 +110,57 @@ export function SearchPage() {
     ...savedOnline.map((m) => m.reference),
   ]);
   const localShown = search.matches.filter((m) => matchesFilter(m.reference, filter));
+  // A page named exactly like the search, or like the topic of a request ("Gundam" for "give me
+  // history of gundam"), is the likely answer.
+  const rewrite =
+    onlineState.status === 'partial' || onlineState.status === 'done'
+      ? onlineState.result.rewrite
+      : undefined;
+  const topic = rewrite?.kind === 'topic' ? rewrite.text : undefined;
+  const isAnswer = (c: RetrievedCandidate) =>
+    isExactTitle(query, c) || (topic !== undefined && isExactTitle(topic, c));
   // Later online answers wait behind "N new results" instead of moving cards already on screen.
-  const fresh = useHeldResults(onlineCandidates, query, (c) => isExactTitle(query, c));
+  const fresh = useHeldResults(onlineCandidates, query, isAnswer);
   const onlineShown = fresh.shown.filter((c) => matchesFilter(c, filter));
   const heldShown = fresh.held.filter((c) => matchesFilter(c, filter));
   const heldCount = heldShown.length;
-  // A late page named exactly like the search is the likely answer: the button says so.
-  const heldLead = heldShown.find((c) => isExactTitle(query, c))?.title;
+  // A late likely answer gets named on the button.
+  const heldLead = heldShown.find(isAnswer)?.title;
   const savedShown = savedOnline.filter((m) => matchesFilter(m.reference, filter));
-  const hasOnlineResults = onlineShown.length > 0 || savedShown.length > 0;
+  const stories = settings.stories === 'on';
+  const isQuestion = looksLikeQuestion(query);
+  // Folded pages (real-world pages for a question) don't count: nothing visible answers the search.
+  const hasOnlineResults =
+    splitFolded(query, onlineShown, stories).shown.length > 0 || savedShown.length > 0;
   const exactCount = search.matches.filter(isExactMatch).length;
-  // Keyed by query: its results live only in its state, so a new search starts it afresh.
-  const widerWeb = search.needsRetrieval && settingsLoaded && (
+  // A question that found only real-world pages online has no pop-culture answer either: the wider
+  // web is offered even when the library settled the lookup (D45).
+  const questionFoundNothing =
+    onlineState.status === 'done' &&
+    isQuestion &&
+    splitFolded(query, onlineCandidates, stories).shown.length === 0;
+  // Wider-web searches that finished here, by lean and query: the block moves into "Not what I meant"
+  // when online results arrive, and that remount must not pay for the same search again.
+  const [webSearched, setWebSearched] = useState<ReadonlySet<string>>(() => new Set());
+  const webKey = `${stories}:${query}`;
+  const lookupSettled = onlineState.status !== 'loading' && onlineState.status !== 'partial';
+  // Keyed by query and lean: its results live only in its state, so either change starts it afresh.
+  const widerWeb = (search.needsRetrieval || questionFoundNothing) && settingsLoaded && (
     <WiderWebSearch
-      key={query}
+      key={webKey}
       query={query}
       isOnline={isOnline}
       preference={settings.webSearch}
       historyOn={settings.history === 'on'}
       onAllow={() => setSetting('webSearch', 'on')}
+      unlocked={settings.webAccess === 'unlocked'}
+      // Best effort: a failed write only means the button shows instead of a search by itself.
+      onAccess={(unlocked) =>
+        void setSetting('webAccess', unlocked ? 'unlocked' : 'unknown').catch(() => {})
+      }
+      stories={stories}
+      mayAutoSearch={lookupSettled && !webSearched.has(webKey)}
+      onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
     />
   );
   const showEmpty =
@@ -178,6 +212,26 @@ export function SearchPage() {
               </strong>{' '}
               Pick the one you meant — we won&rsquo;t guess for you.
             </p>
+          )}
+
+          {isQuestion && settingsLoaded && (
+            <label className={styles.stories}>
+              <input
+                type="checkbox"
+                checked={stories}
+                onChange={(event) =>
+                  setSetting('stories', event.target.checked ? 'on' : 'off').catch(() =>
+                    setConsentError(true),
+                  )
+                }
+              />
+              <span>
+                <strong>Stories &amp; myths</strong>
+                <span className={styles.storiesHint}>
+                  Answer from films, TV, anime, books, games and myths, not real-world history.
+                </span>
+              </span>
+            </label>
           )}
 
           <SearchFilters
@@ -240,6 +294,7 @@ export function SearchPage() {
               onRetry={online.retry}
               onOpen={openResult}
               favouriteOf={favouriteOf}
+              stories={stories}
             />
           )}
 

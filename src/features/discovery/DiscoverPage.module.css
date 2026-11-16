@@ -46,3 +46,13 @@
   display: grid;
   scroll-snap-align: start;
 }
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
