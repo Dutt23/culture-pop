@@ -89,7 +89,10 @@ describe('question-style queries', () => {
     expect(looksLikeQuestion(query)).toBe(false);
   });
 
-  const page = (title: string, overrides: Partial<RetrievedCandidate> = {}): RetrievedCandidate => ({
+  const page = (
+    title: string,
+    overrides: Partial<RetrievedCandidate> = {},
+  ): RetrievedCandidate => ({
     ...candidate('other'),
     id: `wd:${title}`,
     title,
@@ -108,20 +111,24 @@ describe('question-style queries', () => {
     expect(isWeakHit(question, page('Scuderia Ferrari'))).toBe(false);
     expect(isWeakHit(question, page('Pink Floyd', { role: 'work', kind: 'work' }))).toBe(false);
     expect(isWeakHit(question, page('Pink Floyd', { kind: 'meme' }))).toBe(false);
-    expect(isWeakHit(question, page('Pink Floyd', { kind: 'phrase', role: 'definition' }))).toBe(false);
+    expect(isWeakHit(question, page('Pink Floyd', { kind: 'phrase', role: 'definition' }))).toBe(
+      false,
+    );
   });
 
   it('suggests the community sites first unless something online explains the question', () => {
-    expect(suggestCommunityLinks(question, [page('Pink Floyd'), page('Scuderia Ferrari')])).toBe(true);
-    expect(suggestCommunityLinks(question, [page('Ferrari fans', { kind: 'meme' })])).toBe(false);
-    expect(suggestCommunityLinks(question, [page('x', { role: 'definition', kind: 'phrase' })])).toBe(
-      false,
+    expect(suggestCommunityLinks(question, [page('Pink Floyd'), page('Scuderia Ferrari')])).toBe(
+      true,
     );
+    expect(suggestCommunityLinks(question, [page('Ferrari fans', { kind: 'meme' })])).toBe(false);
+    expect(
+      suggestCommunityLinks(question, [page('x', { role: 'definition', kind: 'phrase' })]),
+    ).toBe(false);
   });
 
   it('leaves other queries exactly as they were', () => {
-    expect(suggestCommunityLinks('the matrix', [page('The Matrix', { role: 'work', kind: 'work' })])).toBe(
-      false,
-    );
+    expect(
+      suggestCommunityLinks('the matrix', [page('The Matrix', { role: 'work', kind: 'work' })]),
+    ).toBe(false);
   });
 });

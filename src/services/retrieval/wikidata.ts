@@ -22,6 +22,8 @@ const MAX_CREATORS_READ = 20;
 const MAX_PRESENT_IN_READ = 20;
 /** "Present in work": the work an item (a meme, a phrase, a character) appears in. */
 export const PRESENT_IN_PROPERTY = 'P1441';
+/** "Inspired by": fills the gap P1441 leaves for memes and phrases (the red pill is inspired by The Matrix). */
+export const INSPIRED_BY_PROPERTY = 'P941';
 const CONTROL = /\p{Cc}/u;
 
 export interface WikidataFacts {
@@ -36,6 +38,8 @@ export interface WikidataFacts {
   firstAppearance?: string;
   /** Works it appears in (P1441): item to English label, e.g. Q83495 to "The Matrix". */
   presentIn: Map<string, string>;
+  /** Works it was inspired by (P941): item to English label. */
+  inspiredBy: Map<string, string>;
 }
 
 /** Builds the SPARQL query. Only validated QIDs are interpolated, so input can't alter it. */
@@ -48,7 +52,7 @@ export function wikidataFactsUrl(qids: readonly string[]): string {
   const idProperties = [...ID_PROPERTIES].map((p) => `wdt:${p}`).join(' ');
   // UNION, not separate OPTIONALs: rows add up per fact instead of multiplying across them.
   const query = [
-    'SELECT ?item ?class ?date ?idProperty ?externalId ?creatorLabel ?firstAppearanceLabel ?presentIn ?presentInLabel WHERE {',
+    'SELECT ?item ?class ?date ?idProperty ?externalId ?creatorLabel ?firstAppearanceLabel ?presentIn ?presentInLabel ?inspiredBy ?inspiredByLabel WHERE {',
     `  VALUES ?item { ${items} }`,
     '  OPTIONAL {',
     `    { VALUES ?class { ${classes} } ?item wdt:P31/wdt:P279* ?class }`,
@@ -57,11 +61,14 @@ export function wikidataFactsUrl(qids: readonly string[]): string {
     '    UNION { ?item wdt:P170 ?creator }',
     '    UNION { ?item wdt:P4584 ?firstAppearance }',
     `    UNION { ?item wdt:${PRESENT_IN_PROPERTY} ?presentIn }`,
+    `    UNION { ?item wdt:${INSPIRED_BY_PROPERTY} ?inspiredBy }`,
     '  }',
     // Explicit labels only: a missing English label stays unbound instead of becoming a QID.
-    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "en" .',
+    // "mul" (multilingual) labels: an item whose title is the same in every language, such as a film,
+    // may have no "en" label of its own, and the service would then answer with its Q-number.
+    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul" .',
     '    ?creator rdfs:label ?creatorLabel . ?firstAppearance rdfs:label ?firstAppearanceLabel .',
-    '    ?presentIn rdfs:label ?presentInLabel . }',
+    '    ?presentIn rdfs:label ?presentInLabel . ?inspiredBy rdfs:label ?inspiredByLabel . }',
     '}',
   ].join('\n');
   return `${ENDPOINT}?${new URLSearchParams({ query, format: 'json' })}`;
@@ -78,7 +85,10 @@ function label(binding: Record<string, unknown>, key: string): string | undefine
   const cell = binding[key];
   if (!isRecord(cell) || typeof cell.value !== 'string') return undefined;
   const text = cell.value.trim();
-  return text && text.length <= MAX_LABEL_CHARS && !CONTROL.test(text) ? text : undefined;
+  // A bare Q-number is the label service giving up, not a label.
+  return text && text.length <= MAX_LABEL_CHARS && !CONTROL.test(text) && !QID.test(text)
+    ? text
+    : undefined;
 }
 
 function addExternalId(entry: WikidataFacts, binding: Record<string, unknown>): void {
@@ -108,6 +118,7 @@ export function parseWikidataFacts(json: unknown): Map<string, WikidataFacts> {
       externalIds: new Map(),
       creators: new Set(),
       presentIn: new Map(),
+      inspiredBy: new Map(),
     };
     const cls = entityId(binding, 'class');
     if (cls) entry.classes.add(cls);
@@ -122,6 +133,11 @@ export function parseWikidataFacts(json: unknown): Map<string, WikidataFacts> {
     const workLabel = label(binding, 'presentInLabel');
     if (work && workLabel && entry.presentIn.size < MAX_PRESENT_IN_READ) {
       entry.presentIn.set(work, workLabel);
+    }
+    const inspiration = entityId(binding, 'inspiredBy');
+    const inspirationLabel = label(binding, 'inspiredByLabel');
+    if (inspiration && inspirationLabel && entry.inspiredBy.size < MAX_PRESENT_IN_READ) {
+      entry.inspiredBy.set(inspiration, inspirationLabel);
     }
     // Several first-appearance statements are rare; the alphabetically first keeps it stable.
     const first = label(binding, 'firstAppearanceLabel');

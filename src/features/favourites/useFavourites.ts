@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useMemo, useState } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { requestPersistentStorage } from '../../data/persistentStorage';
 import type { Reference } from '../../domain/types';
 
 const TOGGLE_ERROR = "Couldn't update your favourites. Please try again.";
@@ -21,12 +22,14 @@ export function useFavourites(): FavouritesState {
     async (referenceId: string) => {
       setError(null);
       try {
-        await favourites.toggle(referenceId);
+        const added = await favourites.toggle(referenceId);
+        // The first favourite is the first thing worth keeping: ask the browser not to evict it.
+        if (added && ids.size === 0) void requestPersistentStorage();
       } catch {
         setError(TOGGLE_ERROR);
       }
     },
-    [favourites],
+    [favourites, ids],
   );
 
   return { ids, toggle, error };

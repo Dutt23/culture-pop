@@ -28,16 +28,14 @@ const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 const reranked = (query: string, candidates: RetrievedCandidate[]) =>
   rerankCandidates(query, candidates);
 
-/** The capture also holds `loose_quotes`, a fallback that was tried and dropped (it changed no result). */
-type Kind = RewriteKind | 'loose_quotes';
+type Kind = RewriteKind;
 type Order = readonly Kind[];
 const CONFIGS: [string, Order][] = [
   ['no fallback', []],
   ['suggestion only', ['suggestion']],
   ['shorter phrase only', ['shorter_phrase']],
-  ['loose quotes only', ['loose_quotes']],
-  ['suggestion, shorter, loose', ['suggestion', 'shorter_phrase', 'loose_quotes']],
-  ['shorter, suggestion, loose', ['shorter_phrase', 'suggestion', 'loose_quotes']],
+  ['suggestion, then shorter', ['suggestion', 'shorter_phrase']],
+  ['shorter, then suggestion', ['shorter_phrase', 'suggestion']],
 ];
 
 it('compares the fallbacks on the captured lists', () => {
@@ -115,11 +113,7 @@ it('compares the fallbacks on the captured lists', () => {
   const baseMrr = summaryOf(base).mrrAt10;
   const baseRecall = summaryOf(base).recallAt5;
   const adopted: Kind[] = [];
-  for (const kind of [
-    'suggestion',
-    'shorter_phrase',
-    'loose_quotes',
-  ] as const satisfies readonly Kind[]) {
+  for (const kind of ['suggestion', 'shorter_phrase'] as const satisfies readonly Kind[]) {
     const held = summaryOf(run(heldOut, [kind]));
     const worse = worsened(baseFull, run(cases, [kind])).filter((c) => exact.has(c.id));
     const improves =
@@ -135,7 +129,7 @@ it('compares the fallbacks on the captured lists', () => {
     `Adopted by the rule (held-out improves, no exact-title case worse): ${adopted.join(', ') || 'none'}.`,
   );
 
-  const chosen = (adopted.length > 0 ? CONFIGS[4]?.[1] : []) as Order;
+  const chosen = (adopted.length > 0 ? CONFIGS[3]?.[1] : []) as Order;
   const finalOrder = chosen.filter((k) => adopted.includes(k));
   lines.push(
     '',

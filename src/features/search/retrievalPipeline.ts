@@ -58,7 +58,7 @@ function isCacheable(result: RetrievalResult): boolean {
  */
 export function retrievalStates(
   requests$: Observable<RetrievalRequest | null>,
-  service: RetrievalService,
+  service: Pick<RetrievalService, 'retrieve$' | 'debounceMs'>,
   save: (candidates: readonly RetrievedCandidate[]) => ObservableInput<unknown>,
   scheduler: SchedulerLike = asyncScheduler,
 ): Observable<KeyedRetrievalState> {

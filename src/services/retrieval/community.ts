@@ -51,8 +51,27 @@ export function looksLikePhrase(query: string): boolean {
  * subject, or for the start of a long query.
  */
 export const LEADING_FILLER: ReadonlySet<string> = new Set([
-  'why', 'what', 'who', 'whom', 'whose', 'how', 'when', 'where', 'which',
-  'is', 'are', 'was', 'were', 'do', 'does', 'did', 'can', 'the', 'a', 'an', 'so',
+  'why',
+  'what',
+  'who',
+  'whom',
+  'whose',
+  'how',
+  'when',
+  'where',
+  'which',
+  'is',
+  'are',
+  'was',
+  'were',
+  'do',
+  'does',
+  'did',
+  'can',
+  'the',
+  'a',
+  'an',
+  'so',
 ]);
 const QUESTION_WORDS: ReadonlySet<string> = new Set([
   ...['why', 'what', 'how', 'who', 'whom', 'whose', 'when', 'where', 'which'],
@@ -79,7 +98,8 @@ export function questionSubject(query: string): string | undefined {
   if (!QUESTION_WORDS.has(words[0] ?? '') && !query.trim().endsWith('?')) return undefined;
   const start = words.findIndex((word) => !LEADING_FILLER.has(word));
   const subject = start < 0 ? [] : words.slice(start);
-  if (subject.length < MIN_SUBJECT_WORDS || ADDRESSED_TO.has(subject[0] as string)) return undefined;
+  if (subject.length < MIN_SUBJECT_WORDS || ADDRESSED_TO.has(subject[0] as string))
+    return undefined;
   return subject.join(' ');
 }
 
@@ -110,7 +130,9 @@ export function isWeakHit(query: string, candidate: RetrievedCandidate): boolean
 
 /** True when a candidate explains the phrase itself: a meme, quote, phrase or dictionary entry. */
 export const explainsQuery = (candidate: RetrievedCandidate): boolean =>
-  PHRASE_KINDS.has(candidate.kind) || candidate.role === 'definition' || candidate.role === 'quoted_in';
+  PHRASE_KINDS.has(candidate.kind) ||
+  candidate.role === 'definition' ||
+  candidate.role === 'quoted_in';
 
 /**
  * Owner-approved fallback (D34): with no curated answer, point to where people discuss slang and

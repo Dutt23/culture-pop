@@ -28,7 +28,11 @@ export async function storeCuration(
   // A work a reference appears in can be linked only if it is already stored or saved in this batch.
   const workIds = [
     ...new Set(
-      targets.flatMap((t) => (t.reference.presentIn ?? []).map((w) => referenceId.wikidata(w.qid))),
+      targets.flatMap((t) =>
+        [...(t.reference.presentIn ?? []), ...(t.reference.inspiredBy ?? [])].map((w) =>
+          referenceId.wikidata(w.qid),
+        ),
+      ),
     ),
   ];
   const stored = workIds.length > 0 ? await references.bulkGet(workIds) : [];

@@ -682,7 +682,9 @@ describe('retrieve', () => {
       const { getJson, requests } = recording();
       const result = await retrieve('why are ferrari fans depressed', { getJson, now });
       expect(result.searched).toBe('ferrari fans depressed');
-      const searchedTexts = requests.filter((r) => r.startsWith(WIKIPEDIA)).map((r) => r.slice(WIKIPEDIA.length + 1));
+      const searchedTexts = requests
+        .filter((r) => r.startsWith(WIKIPEDIA))
+        .map((r) => r.slice(WIKIPEDIA.length + 1));
       expect(searchedTexts[0]).toBe('ferrari fans depressed');
       expect(requests.some((r) => r.includes('why are'))).toBe(false);
     });

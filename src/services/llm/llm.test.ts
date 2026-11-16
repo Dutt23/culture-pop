@@ -1,6 +1,6 @@
 import type { Remote } from 'comlink';
 import { firstValueFrom, toArray } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Source } from '../../domain/types';
 import { makeReference } from '../../test/factories';
 import {
@@ -31,6 +31,9 @@ import { explainJob } from './jobs';
 import { MODEL_FAMILIES } from './models';
 
 const NOW = '2026-11-16T12:00:00.000Z';
+
+// The crash guard keeps its marker in localStorage; every test starts without one.
+beforeEach(() => localStorage.clear());
 
 function source(id: string, publisher: string, excerpt?: string): Source {
   return {

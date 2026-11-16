@@ -122,6 +122,33 @@ The model must never run the browser out of memory. In order:
    load and inference time. GPU memory itself has no web API, so on Android it's read with
    `dumpsys meminfo`.
 
+## Storage and crash safeguards
+
+Background: `docs/research/ondevice-llm-practices.md`, "Safeguards people use".
+
+**Keep the site's storage.** Chromium evicts best-effort storage per site, all at once, when the
+disk runs low: the model cache would go together with the user's favourites, history and saved
+results. `requestPersistentStorage()` (`src/data/persistentStorage.ts`) checks
+`navigator.storage.persisted()` first and asks with `persist()` only if needed; it never throws and
+returns `unsupported`, `already`, `granted` or `denied`. It is called only after an explicit user
+action: when a model download the user agreed to finishes (bench page today), and when the user
+saves their first favourite. Never on page load. `storageEstimate()` gives usage and quota: the
+bench shows them, and the download button warns when the model is larger than the space left.
+A refusal changes nothing else; cached weights may still be evicted and downloaded again.
+
+**Remember crashes across reloads.** Running out of memory, or losing the GPU device during
+warm-up (web-llm #836 on Adreno), kills the tab, so no error handler runs. `crashGuard.ts` writes a
+small marker to `localStorage` (model ID, `load` or `run`, time) before each load and each run, and
+clears it when the attempt finishes, fails normally, is cancelled, or the page closes normally
+(`pagehide`). A marker still there on the next visit means the page died during that attempt:
+- the status starts as `unavailable` with reason `crashed_last_time`, and nothing loads by itself;
+- the user may try again only by an explicit action (the bench's "Try again" button);
+- after **2 crashes with the same model** the reason is `disabled_after_crashes`, `load()` refuses,
+  and the page says so plainly until the user presses "Reset this model".
+
+The bench report lists page crashes recorded for the model and counts them in the "no crash"
+criteria. Storage blocked (private mode, policy) only means no crash memory; nothing breaks.
+
 ## Pass criteria (all must pass on a mid-range phone)
 
 "Mid-range phone": Android, 6–8 GB RAM, 2022–2024 mid-range chip (e.g. Snapdragon 7-series,
@@ -268,6 +295,8 @@ file sizes from `https://huggingface.co/api/models/mlc-ai/<model>?blobs=true`, h
 | `src/services/llm/interpretation.ts` | `toInterpretation()`: checked answer → `Interpretation` (`model_suggested`) |
 | `src/services/llm/client.ts` | WebGPU and memory-budget checks, consent-checked load, Comlink client with status stream, cancel, timeouts (run 2 min, load 20 min), crash containment and idle unload |
 | `src/features/llm/useLlmStatus.ts` | React hook for the status (no screen uses it yet) |
+| `src/services/llm/crashGuard.ts` | Crash marker in `localStorage`, crash count per model, reset |
+| `src/data/persistentStorage.ts` | `requestPersistentStorage()`, `storageEstimate()` |
 | `src/workers/llm.worker.ts` | WebLLM engine, exposed with Comlink |
 | `src/features/dev/LlmBenchPage.tsx`, `llmBench.ts`, `llmBenchReport.ts` | `/dev/llm-bench`, dev only |
 | `src/test/llm-eval/cases.ts` | 27 labelled spoiler lines, 10 comics characters |

@@ -146,7 +146,7 @@ describe('reference page: "From" the work it appears in', () => {
     kind: 'meme',
     category: 'meme',
     role: 'topic',
-    presentIn: [{ qid: 'Q83495', label: 'The Matrix' }],
+    inspiredBy: [{ qid: 'Q83495', label: 'The Matrix' }],
     sources: [redPillWikidata],
   });
 
@@ -155,11 +155,11 @@ describe('reference page: "From" the work it appears in', () => {
     const link = await screen.findByRole('link', { name: 'The Matrix' });
     expect(link).toHaveAttribute('href', '/search?q=The%20Matrix');
     expect(screen.getByText(/From:/)).toBeInTheDocument();
-    expect(screen.getByText(/Appears in “The Matrix” \(Wikidata\)\./)).toBeInTheDocument();
+    expect(screen.getByText(/Inspired by “The Matrix” \(Wikidata\)\./)).toBeInTheDocument();
   });
 
   it('links the interpretation to the work when that work is cached too', async () => {
-    const db = await withCached(matrix, { ...redPill, presentIn: [{ qid: 'Q83495', label: 'The Matrix' }] });
+    const db = await withCached(matrix, redPill);
     const stored = await db.interpretations.where('referenceId').equals('wd:Q99').toArray();
     expect(stored.map((i) => i.relatedReferenceId)).toEqual(['wd:Q83495']);
   });

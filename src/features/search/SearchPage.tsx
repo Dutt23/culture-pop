@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { SearchBar } from '../../components/search-bar/SearchBar';
@@ -21,6 +21,7 @@ import { useRetrieval } from './useRetrieval';
 import { useSearch } from './useSearch';
 import { useRecentSearches, useRecordSearch } from './useSearchHistory';
 import { useSearchQuery } from './useSearchQuery';
+import { WiderWebSearch } from './WiderWebSearch';
 
 const EXAMPLE_QUERIES = ['hakuna matata', 'let it go', 'this is fine', 'bazinga', 'all izz well'];
 const RECENT_CHIPS = 8;
@@ -28,10 +29,12 @@ const RECENT_CHIPS = 8;
 interface NotWhatIMeantProps {
   query: string;
   isOnline: boolean;
+  /** The "Search the wider web" button, offered only on a local miss (D45). */
+  widerWeb: ReactNode;
 }
 
 /** Shown under online and saved results: other places to look, only when asked for. */
-function NotWhatIMeant({ query, isOnline }: NotWhatIMeantProps) {
+function NotWhatIMeant({ query, isOnline, widerWeb }: NotWhatIMeantProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -45,8 +48,7 @@ function NotWhatIMeant({ query, isOnline }: NotWhatIMeantProps) {
       </button>
       {open && (
         <>
-          {/* Hook (D37): "Search the wider web" (Brave/Mojeek) goes here, once the owner
-              approves its backend and keys. */}
+          {widerWeb}
           <ExternalSearchLinks query={query} isOnline={isOnline} />
         </>
       )}
@@ -106,6 +108,17 @@ export function SearchPage() {
   const savedShown = savedOnline.filter((m) => matchesFilter(m.reference, filter));
   const hasOnlineResults = onlineShown.length > 0 || savedShown.length > 0;
   const exactCount = search.matches.filter(isExactMatch).length;
+  // Keyed by query: its results live only in its state, so a new search starts it afresh.
+  const widerWeb = search.needsRetrieval && settingsLoaded && (
+    <WiderWebSearch
+      key={query}
+      query={query}
+      isOnline={isOnline}
+      preference={settings.webSearch}
+      historyOn={settings.history === 'on'}
+      onAllow={() => setSetting('webSearch', 'on')}
+    />
+  );
   const showEmpty =
     localShown.length === 0 &&
     onlineShown.length === 0 &&
@@ -228,9 +241,12 @@ export function SearchPage() {
 
           <Section title={search.needsRetrieval ? 'Look it up elsewhere' : 'Not what you meant?'}>
             {hasOnlineResults ? (
-              <NotWhatIMeant key={query} query={query} isOnline={isOnline} />
+              <NotWhatIMeant key={query} query={query} isOnline={isOnline} widerWeb={widerWeb} />
             ) : (
-              <ExternalSearchLinks query={query} isOnline={isOnline} />
+              <>
+                {widerWeb}
+                <ExternalSearchLinks query={query} isOnline={isOnline} />
+              </>
             )}
           </Section>
         </>

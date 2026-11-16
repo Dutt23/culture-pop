@@ -183,6 +183,8 @@ export function criteria(results: BenchResults): Criterion[] {
   const unless = (failed: number, pass: boolean | null) =>
     pass === null ? null : pass && failed === 0;
   const probe = results.responsiveness;
+  // A crash that killed the page shows up only on the next visit (crashGuard.ts).
+  const pageCrashes = results.crashHistory?.crashesForModel ?? 0;
   const smallDevice =
     results.device.deviceMemoryGB !== undefined && results.device.deviceMemoryGB <= 4;
   const explained = best ? share(best.casesExplained, best.cases) : Number.NaN;
@@ -293,15 +295,15 @@ export function criteria(results: BenchResults): Criterion[] {
     },
     {
       name: 'No model errors or crashes',
-      value: String(results.errors.length),
+      value: `${results.errors.length} errors, ${pageCrashes} page crashes`,
       target: '0',
-      pass: results.errors.length === 0,
+      pass: results.errors.length === 0 && pageCrashes === 0,
     },
     {
       name: 'No out-of-memory crash on a 4 GB-class device',
-      value: `device reports ${results.device.deviceMemoryGB ?? '?'} GB, ${results.errors.length} errors`,
+      value: `device reports ${results.device.deviceMemoryGB ?? '?'} GB, ${results.errors.length} errors, ${pageCrashes} page crashes`,
       target: '0 errors on a device reporting ≤ 4 GB',
-      pass: smallDevice ? results.errors.length === 0 : null,
+      pass: smallDevice ? results.errors.length === 0 && pageCrashes === 0 : null,
     },
     {
       name: 'Rewrites: model time, p95',
@@ -351,6 +353,8 @@ export function renderBenchReport(results: BenchResults): string {
     `Download ${formatMegabytes(model.downloadBytes)} (pinned files); storage used before/after load ${mb(model.storageBeforeBytes)} / ${mb(model.storageAfterBytes)}; ${model.fromCache ? 'loaded from cache' : 'downloaded this run'} in ${ms(model.loadMs)}.`,
     `GPU memory (WebLLM estimate at 4096 tokens; this app caps context at 3072) ${model.vramMB} MB. GPU limits: maxBufferSize ${device.support.ok ? mb(device.support.maxBufferSize) : '–'}, maxStorageBufferBindingSize ${device.support.ok ? mb(device.support.maxStorageBufferBindingSize) : '–'}; budget ${device.support.ok ? `${device.support.memoryBudgetMB} MB` : '–'}.`,
     `Peak JS heap while loading: main ${mb(model.loadPeakMainBytes)}, worker ${mb(model.loadPeakWorkerBytes)}. While running: main ${mb(results.runMemory.mainPeakBytes)}, worker ${mb(results.runMemory.workerPeakBytes)}. (Weights live in GPU memory, which no web API reports; use \`adb shell dumpsys meminfo\`.)`,
+    `Storage: quota ${mb(model.quotaBytes)}; persistent storage ${model.persist ?? 'not asked'}.`,
+    `Page crashes before this run (across reloads): ${results.crashHistory ? `${results.crashHistory.crashesForModel} for this model${results.crashHistory.previous ? `; last one during ${results.crashHistory.previous.phase} of ${results.crashHistory.previous.modelId} at ${results.crashHistory.previous.at}` : ''}` : 'not recorded'}.`,
     ...(results.errors.length > 0 ? ['', 'Errors:', ...results.errors.map((e) => `- ${e}`)] : []),
     '',
     ...kinds.flatMap(([title, kind]) => {

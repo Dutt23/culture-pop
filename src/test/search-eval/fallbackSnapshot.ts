@@ -11,7 +11,7 @@ import type { RetrievedCandidate, Rewrite, RewriteKind } from '../../services/re
 
 export interface FallbackRun {
   /** What the fallback searched for. */
-  rewrite: Rewrite | { kind: 'loose_quotes'; text: string } | undefined;
+  rewrite: Rewrite | undefined;
   /** The whole raw list with this fallback allowed (plain search plus fallback, tagged `via`). */
   candidates: RetrievedCandidate[];
   /** HTTP requests this fallback made on top of the plain search (0: it did not apply). */
@@ -23,8 +23,7 @@ export interface FallbackCase {
   /** The plain search, captured in the same session as the fallbacks. */
   primary: RetrievedCandidate[];
   failures: string[];
-  /** Keyed by fallback kind; `loose_quotes` is only in the capture, from the fallback that was tried and dropped. */
-  fallbacks: Partial<Record<RewriteKind | 'loose_quotes', FallbackRun>>;
+  fallbacks: Partial<Record<RewriteKind, FallbackRun>>;
 }
 
 export interface FallbackSnapshot {

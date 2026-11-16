@@ -7,6 +7,7 @@ import {
   type SearchHistoryRepository,
 } from './searchHistoryRepository';
 import { createSettingsRepository, type SettingsRepository } from './settingsRepository';
+import { createWebResultRepository, type WebResultRepository } from './webResultRepository';
 
 export interface Repositories {
   references: ReferenceRepository;
@@ -14,8 +15,11 @@ export interface Repositories {
   settings: SettingsRepository;
   retrieval: RetrievalRepository;
   history: SearchHistoryRepository;
+  /** Wider-web results kept on this device only; never synced or sent anywhere (D45). */
+  webResults: WebResultRepository;
   /**
-   * Clears favourites, settings, search history and cached online results together in one
+   * Clears favourites, settings, search history (with the wider-web results kept for it) and cached
+   * online results together in one
    * transaction. Curated reference content is untouched.
    */
   resetUserData(): Promise<void>;
@@ -30,6 +34,7 @@ export function createRepositories(db: PopCultureDb): Repositories {
     settings: createSettingsRepository(db),
     retrieval,
     history,
+    webResults: createWebResultRepository(db),
     resetUserData: () =>
       db.transaction(
         'rw',
@@ -37,6 +42,7 @@ export function createRepositories(db: PopCultureDb): Repositories {
           db.favourites,
           db.settings,
           db.searchHistory,
+          db.webResults,
           db.references,
           db.interpretations,
           db.sources,

@@ -5,6 +5,8 @@ export type MotionPreference = 'system' | 'reduce' | 'full';
 export type SpoilerPreference = 'hide' | 'show';
 /** Consent to send search text to Wikimedia. `ask` shows the disclosure first. */
 export type RetrievalPreference = 'ask' | 'on' | 'off';
+/** Consent to send search text to the wider-web search (D45). Each search still needs a tap. */
+export type WebSearchPreference = 'ask' | 'on' | 'off';
 /** Search history on this device (D37: on by default, owner decision). */
 export type HistoryPreference = 'on' | 'off';
 
@@ -13,6 +15,7 @@ export interface Settings {
   motion: MotionPreference;
   spoilers: SpoilerPreference;
   retrieval: RetrievalPreference;
+  webSearch: WebSearchPreference;
   history: HistoryPreference;
 }
 
@@ -23,6 +26,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   motion: 'system',
   spoilers: 'hide',
   retrieval: 'ask',
+  webSearch: 'ask',
   history: 'on',
 };
 
@@ -37,6 +41,7 @@ export const SETTING_LABELS: {
   motion: { system: 'Match device', reduce: 'Reduce', full: 'Full' },
   spoilers: { hide: 'Hide until I tap', show: 'Show automatically' },
   retrieval: { ask: 'Ask first', on: 'On', off: 'Off' },
+  webSearch: { ask: 'Ask first', on: 'On', off: 'Off' },
   history: { on: 'On', off: 'Off' },
 };
 

@@ -1,6 +1,6 @@
 import { CATEGORY_ORDER, type EraKey } from './discovery';
 import type { RankedMatch } from './ranking';
-import type { Category, Provenance } from './types';
+import type { Category, PresentIn, Provenance, Reference } from './types';
 
 export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
   cartoon: 'Cartoon',
@@ -63,4 +63,17 @@ export function matchReason(match: RankedMatch): string {
     case 'sound':
       return 'Sounds like your search';
   }
+}
+
+const MAX_FROM_WORKS = 3;
+
+/**
+ * The works shown as "From: …": where Wikidata says a reference appears (P1441), then what it was
+ * inspired by (P941), each work once, at most three.
+ */
+export function fromWorks(reference: Reference): PresentIn[] {
+  const seen = new Set<string>();
+  return [...(reference.presentIn ?? []), ...(reference.inspiredBy ?? [])]
+    .filter((work) => !seen.has(work.qid) && seen.add(work.qid))
+    .slice(0, MAX_FROM_WORKS);
 }

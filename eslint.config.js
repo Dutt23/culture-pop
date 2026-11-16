@@ -65,6 +65,12 @@ export default tseslint.config(
     rules: { 'no-restricted-globals': 'off' },
   },
   {
+    // Vercel Functions run on the server (Node), where calling the search provider is the point.
+    files: ['api/**/*.ts'],
+    languageOptions: { globals: globals.node },
+    rules: { 'no-restricted-globals': 'off' },
+  },
+  {
     files: ['scripts/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: { ecmaVersion: 2022, globals: globals.node },

@@ -8,6 +8,8 @@ import { afterEach } from 'vitest';
 MotionGlobalConfig.skipAnimations = true;
 
 afterEach(() => {
+  // Server tests (api/, `@vitest-environment node`) have no DOM.
+  if (typeof document === 'undefined') return;
   cleanup();
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-motion');

@@ -11,16 +11,35 @@ export interface RetrievalRepository {
    * produced a source-supported interpretation; otherwise it stays `retrieved`, unexplained and
    * never cache-eligible (spec §4). The query is not stored.
    */
-  saveCandidates(candidates: readonly RetrievedCandidate[]): Promise<void>;
+  saveCandidates(candidates: readonly LibraryCandidate<RetrievedCandidate>[]): Promise<void>;
   getSources(ids: readonly string[]): Promise<Source[]>;
   /** Deletes every online result (explained or not) and every source curated content doesn't cite. */
   clear(): Promise<void>;
 }
 
+/**
+ * Compile-time lock (D45): anything carrying a `storage` level, i.e. any wider-web result, can't be
+ * passed to the library save path. Wider-web results have their own device-only store.
+ */
+export type LibraryCandidate<T> = T & { storage?: never };
+
+/**
+ * Run-time lock (D45): only a well-formed candidate (`id`, `sources`) with no `storage` level is
+ * saved to the library. Anything else is skipped silently, never thrown at the reader. Wikimedia
+ * candidates carry no level because their licences allow caching (D31).
+ */
+export function isLibraryCandidate(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  if ('storage' in record) return false;
+  return typeof record.id === 'string' && Array.isArray(record.sources);
+}
+
 export function createRetrievalRepository(db: PopCultureDb): RetrievalRepository {
   return {
-    saveCandidates: (candidates) =>
+    saveCandidates: (input) =>
       db.transaction('rw', db.references, db.sources, db.interpretations, async () => {
+        const candidates = input.filter(isLibraryCandidate);
         const now = new Date().toISOString();
         const existing = await db.references.bulkGet(candidates.map((c) => c.id));
         // Never overwrite editorial content with retrieved metadata.

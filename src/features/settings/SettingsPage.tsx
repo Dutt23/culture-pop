@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { useRetrievalService } from '../../app/RetrievalContext';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
@@ -20,6 +21,7 @@ const THEME_OPTIONS = optionsOf('theme');
 const MOTION_OPTIONS = optionsOf('motion');
 const SPOILER_OPTIONS = optionsOf('spoilers');
 const RETRIEVAL_OPTIONS = optionsOf('retrieval');
+const WEB_SEARCH_OPTIONS = optionsOf('webSearch');
 const HISTORY_OPTIONS = optionsOf('history');
 
 const SAVE_ERROR = "Couldn't save that setting. Please try again.";
@@ -27,6 +29,7 @@ const SAVE_ERROR = "Couldn't save that setting. Please try again.";
 export function SettingsPage() {
   const { settings, setSetting, resetLocalData } = useSettings();
   const { history } = useRepositories();
+  const { webSearch } = useRetrievalService();
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const save = async (action: () => Promise<void>) => {
@@ -60,6 +63,15 @@ export function SettingsPage() {
       setMessage({ tone: 'ok', text: 'Search history was cleared.' });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't clear search history. Please try again." });
+    }
+  };
+
+  const forgetAccessCode = async () => {
+    try {
+      await webSearch.lock();
+      setMessage({ tone: 'ok', text: 'The access code was forgotten on this device.' });
+    } catch {
+      setMessage({ tone: 'error', text: "Couldn't reach the server. Please try again." });
     }
   };
 
@@ -103,6 +115,27 @@ export function SettingsPage() {
         </div>
         <div className={styles.withNote}>
           <SegmentedControl
+            legend="Wider web search"
+            name="webSearch"
+            options={WEB_SEARCH_OPTIONS}
+            value={settings.webSearch}
+            onChange={(value) => save(() => setSetting('webSearch', value))}
+          />
+          <p className={styles.ok}>
+            When nothing explains a search, you can tap &ldquo;Search the wider web&rdquo;. Your
+            search text then goes through our server to a web-search provider (Parallel), which may
+            keep it and use it to improve its service. Nothing else is sent. The links it finds are
+            not checked. Results from the wider web can be kept on this device, for you only, for 30
+            days while search history is on; they are never sent anywhere, and Clear history deletes
+            them. Off hides the button. It needs an access code from the owner; the app never stores
+            the code, only a sign-in cookie from our server.
+          </p>
+          <button type="button" className={styles.reset} onClick={forgetAccessCode}>
+            Forget access code
+          </button>
+        </div>
+        <div className={styles.withNote}>
+          <SegmentedControl
             legend="Search history"
             name="history"
             options={HISTORY_OPTIONS}
@@ -112,7 +145,8 @@ export function SettingsPage() {
           <p className={styles.ok}>
             Searches you submit or open a result from are kept on this device, so recent searches
             and your regulars can be shown. They are never sent anywhere. Turning this off stops
-            saving new searches; Clear history deletes the ones already saved.
+            saving new searches; Clear history deletes the ones already saved, with any wider web
+            results kept for them.
           </p>
           <button type="button" className={styles.reset} onClick={clearHistory}>
             Clear history
@@ -122,7 +156,7 @@ export function SettingsPage() {
 
       <Section
         title="Your data"
-        description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on) or an external search link you tap. Search history and results found online are kept here until you clear them."
+        description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on), a wider web search you tap, or an external search link you tap. Search history and results found online are kept here until you clear them; wider web results are kept for 30 days, only while search history is on."
       >
         <button type="button" className={styles.reset} onClick={reset}>
           Reset favourites, history, settings &amp; saved online results

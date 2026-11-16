@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { CATEGORY_LABEL, ERA_LABEL } from '../../domain/labels';
+import { CATEGORY_LABEL, ERA_LABEL, fromWorks } from '../../domain/labels';
 import type { Reference } from '../../domain/types';
 import { classNames } from '../ui/classNames';
 import styles from './ReferenceCard.module.css';
@@ -29,6 +29,7 @@ export function ReferenceCard({
   pending = false,
   onOpen,
 }: ReferenceCardProps) {
+  const works = fromWorks(reference);
   return (
     <Link
       to={`/references/${encodeURIComponent(reference.id)}`}
@@ -51,11 +52,9 @@ export function ReferenceCard({
       </span>
       <span className={styles.title}>{reference.title}</span>
       {teaser && <span className={styles.teaser}>{teaser}</span>}
-      {reference.presentIn && reference.presentIn.length > 0 && (
+      {works.length > 0 && (
         // Plain text: the whole card is already a link, and links can't nest.
-        <span className={styles.from}>
-          From: {reference.presentIn.map((work) => work.label).join(', ')}
-        </span>
+        <span className={styles.from}>From: {works.map((work) => work.label).join(', ')}</span>
       )}
       <span className={styles.footer}>
         {meaningsCount !== undefined && (

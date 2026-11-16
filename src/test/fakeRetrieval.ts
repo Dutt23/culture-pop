@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import type { RetrievalService } from '../app/RetrievalContext';
 import { retrieve$ } from '../services/retrieval/retrieve';
 import type { GetJson, ProviderId, RetrievalResult } from '../services/retrieval/types';
+import type { WebSearchClient } from '../services/retrieval/webSearch';
 import breakPointTvmaze from '../services/retrieval/fixtures/tvmaze-break-point.json';
 import swatKatsTvmaze from '../services/retrieval/fixtures/tvmaze-swat-kats.json';
 import catchMeOutsideWikidata from '../services/retrieval/fixtures/wikidata-catch-me-outside.json';
@@ -110,6 +111,16 @@ export function fixtureGetJson(
   };
 }
 
+/** The wider-web search must only run when a test asks for it; this one fails loudly if called. */
+export function unusedWebSearch() {
+  const unused = () => Promise.reject(new Error('Wider-web search should not run in this test'));
+  return {
+    search: vi.fn<WebSearchClient['search']>(unused),
+    unlock: vi.fn<WebSearchClient['unlock']>(unused),
+    lock: vi.fn<WebSearchClient['lock']>(unused),
+  } satisfies WebSearchClient;
+}
+
 /** Runs the real orchestrator over fixtures; no debounce so tests stay fast and deterministic. */
 export function fixtureRetrievalService(
   query: FixtureQuery,
@@ -120,6 +131,7 @@ export function fixtureRetrievalService(
       retrieve$(text, { getJson: fixtureGetJson(query, failures), now: () => FIXED_NOW }),
     ),
     debounceMs: 0,
+    webSearch: unusedWebSearch(),
   };
   return service satisfies RetrievalService;
 }
@@ -131,6 +143,7 @@ export function unusedRetrievalService() {
       throwError(() => new Error('Retrieval should not run in this test')),
     ),
     debounceMs: 0,
+    webSearch: unusedWebSearch(),
   };
   return service satisfies RetrievalService;
 }
@@ -147,6 +160,7 @@ export function controllableRetrievalService() {
       return lookup.asObservable();
     }),
     debounceMs: 0,
+    webSearch: unusedWebSearch(),
   } satisfies RetrievalService;
   return {
     service,

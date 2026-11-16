@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable, type InsertType } from 'dexie';
 import type { HistoryEntry } from '../domain/history';
+import type { SavedWebResults } from './repositories/webResultRepository';
 import type { Alias, Favourite, Interpretation, Reference, Setting, Source } from '../domain/types';
 import { storeCuration } from './curationStore';
 import { buildSeed } from './seed';
@@ -14,6 +15,7 @@ export type PopCultureDb = Dexie & {
   favourites: EntityTable<Favourite, 'referenceId'>;
   settings: EntityTable<Setting, 'key'>;
   searchHistory: EntityTable<HistoryEntry, 'id'>;
+  webResults: EntityTable<SavedWebResults, 'key'>;
 };
 
 /** Shipped schema v1. Exported so upgrade tests can create a genuine v1 database. */
@@ -38,6 +40,15 @@ export const SCHEMA_V2_CHANGES = {
  */
 export const SCHEMA_V4_CHANGES = {
   searchHistory: 'id, lastSearchedAt, [tier+score]',
+} as const;
+
+/**
+ * v5 changes: wider-web results kept on this device only (D45), keyed by the normalized query, apart
+ * from the library. `savedAt` serves the 30-day expiry. Never synced or sent anywhere: a future
+ * cross-device sync must skip this table.
+ */
+export const SCHEMA_V5_CHANGES = {
+  webResults: 'key, savedAt',
 } as const;
 
 /**
@@ -96,6 +107,9 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
 
   // v4 (Phase 3): a new, empty search history table. Nothing to move.
   db.version(4).stores(SCHEMA_V4_CHANGES);
+
+  // v5 (backend phase): a new, empty store for wider-web results kept on this device. Nothing to move.
+  db.version(5).stores(SCHEMA_V5_CHANGES);
 
   db.on('populate', (tx) => {
     const seed = buildSeed();

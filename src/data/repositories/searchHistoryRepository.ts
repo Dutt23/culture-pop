@@ -14,7 +14,7 @@ export interface SearchHistoryRepository {
   recent(limit: number, now: number): Promise<HistoryEntry[]>;
   /** Frequent tier only, highest score first. */
   frequent(limit: number, now: number): Promise<HistoryEntry[]>;
-  /** Deletes every stored search. */
+  /** Deletes every stored search, and the wider-web results kept for searches (D45). */
   clear(): Promise<void>;
 }
 
@@ -43,6 +43,10 @@ export function createSearchHistoryRepository(db: PopCultureDb): SearchHistoryRe
         .filter((e) => !isExpired(e, now))
         .limit(limit)
         .toArray(),
-    clear: () => db.searchHistory.clear(),
+    clear: () =>
+      db.transaction('rw', db.searchHistory, db.webResults, async () => {
+        await db.searchHistory.clear();
+        await db.webResults.clear();
+      }),
   };
 }

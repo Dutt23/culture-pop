@@ -1,6 +1,6 @@
 # Search evaluation, 2026-11-16
 
-Generated 2026-11-16T06:05:47.615Z by `src/test/search-eval/live.eval.ts`. Definitions: `docs/SEARCH_RANKING.md` ("Evaluation set").
+Generated 2026-11-16T06:17:58.620Z by `src/test/search-eval/live.eval.ts`. Definitions: `docs/SEARCH_RANKING.md` ("Evaluation set").
 Set: 109 cases, 98 scored. Live runs hit real providers, so numbers drift as Wikipedia changes.
 
 ## Summary
@@ -8,7 +8,7 @@ Set: 109 cases, 98 scored. Live runs hit real providers, so numbers drift as Wik
 | Group | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage (n) | p50 ms | p90 ms | p95 ms | max ms |
 |---|---|---|---|---|---|---|---|---|---|---|
 | local | 42 | 50.0% | 0.500 | 0.0% | 50.0% | 50.0% (6) | 0.04 | 0.05 | 0.07 | 0.15 |
-| live | 98 | 70.4% | 0.622 | 33.7% | 11.2% | 61.9% (21) | 3592 | 21222 | 21704 | 26632 |
+| live | 98 | 80.6% | 0.709 | 31.6% | 5.1% | 81.0% (21) | 2477 | 21266 | 21709 | 26632 |
 
 ## Local ranker (seeded library)
 
@@ -91,37 +91,37 @@ Cases run: **42 of 42**.
 
 Cases run: **98 of 98**.
 
-HTTP requests: **447** over 98 searches (4.56 per search).
+HTTP requests: **474** over 98 searches (4.84 per search).
 
-Degraded cases (a provider failed): **26** of 98. Rerun before recording a baseline if this is not 0.
+Degraded cases (a provider failed): **2** of 98. Rerun before recording a baseline if this is not 0.
 
 ### By category
 
 | Group | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage (n) | p50 ms | p90 ms | p95 ms | max ms |
 |---|---|---|---|---|---|---|---|---|---|---|
-| anime_game | 3 | 33.3% | 0.333 | 33.3% | 33.3% | 0.0% (1) | 3981 | 21149 | 21149 | 21149 |
-| film | 12 | 66.7% | 0.479 | 50.0% | 16.7% | 55.6% (9) | 2616 | 21222 | 22426 | 22426 |
-| meme | 20 | 90.0% | 0.817 | 20.0% | 5.0% | – | 3898 | 21570 | 21583 | 22671 |
-| music | 11 | 90.9% | 0.818 | 18.2% | 9.1% | – | 3812 | 21092 | 21709 | 21709 |
-| quote | 40 | 55.0% | 0.483 | 45.0% | 12.5% | 40.0% (5) | 3047 | 21205 | 21232 | 21704 |
-| slang | 6 | 66.7% | 0.667 | 16.7% | 16.7% | 100.0% (1) | 1945 | 21170 | 21170 | 21170 |
-| tv | 6 | 100.0% | 0.917 | 16.7% | 0.0% | 100.0% (5) | 4445 | 26632 | 26632 | 26632 |
+| anime_game | 3 | 66.7% | 0.667 | 33.3% | 0.0% | 100.0% (1) | 2556 | 3981 | 3981 | 3981 |
+| film | 12 | 91.7% | 0.729 | 41.7% | 0.0% | 88.9% (9) | 1571 | 21977 | 22426 | 22426 |
+| meme | 20 | 90.0% | 0.817 | 20.0% | 5.0% | – | 2975 | 21570 | 21583 | 22671 |
+| music | 11 | 100.0% | 0.909 | 18.2% | 0.0% | – | 3546 | 19665 | 21709 | 21709 |
+| quote | 40 | 65.0% | 0.548 | 42.5% | 10.0% | 40.0% (5) | 2273 | 6449 | 12814 | 21601 |
+| slang | 6 | 83.3% | 0.833 | 16.7% | 0.0% | 100.0% (1) | 1837 | 14301 | 14301 | 14301 |
+| tv | 6 | 100.0% | 0.917 | 16.7% | 0.0% | 100.0% (5) | 3687 | 26632 | 26632 | 26632 |
 
 ### By flag and origin
 
 | Group | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage (n) | p50 ms | p90 ms | p95 ms | max ms |
 |---|---|---|---|---|---|---|---|---|---|---|
-| misremembered: yes | 11 | 27.3% | 0.182 | 81.8% | 9.1% | 100.0% (1) | 2317 | 21704 | 22426 | 22426 |
-| misremembered: no | 87 | 75.9% | 0.677 | 27.6% | 11.5% | 60.0% (20) | 3812 | 21205 | 21570 | 26632 |
-| ambiguous: yes | 22 | 68.2% | 0.591 | 27.3% | 22.7% | 61.9% (21) | 6897 | 21222 | 21263 | 26632 |
-| ambiguous: no | 76 | 71.1% | 0.630 | 35.5% | 7.9% | – | 3118 | 21212 | 21704 | 22671 |
-| indian: yes | 25 | 64.0% | 0.540 | 28.0% | 28.0% | 63.6% (11) | 4155 | 21212 | 21583 | 26632 |
-| indian: no | 73 | 72.6% | 0.650 | 35.6% | 5.5% | 60.0% (10) | 3546 | 21222 | 21704 | 22671 |
-| ambiguous or indian: yes | 36 | 61.1% | 0.514 | 30.6% | 27.8% | 61.9% (21) | 6449 | 21222 | 21583 | 26632 |
-| ambiguous or indian: no | 62 | 75.8% | 0.684 | 35.5% | 1.6% | – | 3047 | 21184 | 21704 | 22671 |
-| origin: coverage | 37 | 62.2% | 0.520 | 37.8% | 18.9% | 57.9% (19) | 3687 | 21222 | 21263 | 26632 |
-| origin: demand | 49 | 83.7% | 0.759 | 28.6% | 2.0% | 100.0% (2) | 3118 | 21184 | 21583 | 22671 |
-| origin: variant | 12 | 41.7% | 0.375 | 41.7% | 25.0% | – | 4155 | 21704 | 22426 | 22426 |
+| misremembered: yes | 11 | 36.4% | 0.273 | 72.7% | 9.1% | 100.0% (1) | 1884 | 21642 | 22426 | 22426 |
+| misremembered: no | 87 | 86.2% | 0.764 | 26.4% | 4.6% | 80.0% (20) | 2699 | 19665 | 21583 | 26632 |
+| ambiguous: yes | 22 | 100.0% | 0.852 | 27.3% | 0.0% | 81.0% (21) | 1991 | 7811 | 21977 | 26632 |
+| ambiguous: no | 76 | 75.0% | 0.668 | 32.9% | 6.6% | – | 2846 | 21266 | 21642 | 22671 |
+| indian: yes | 25 | 80.0% | 0.693 | 28.0% | 12.0% | 81.8% (11) | 2429 | 21583 | 21977 | 26632 |
+| indian: no | 73 | 80.8% | 0.715 | 32.9% | 2.7% | 80.0% (10) | 2556 | 20365 | 21642 | 22671 |
+| ambiguous or indian: yes | 36 | 86.1% | 0.725 | 30.6% | 8.3% | 81.0% (21) | 2023 | 12814 | 21977 | 26632 |
+| ambiguous or indian: no | 62 | 77.4% | 0.700 | 32.3% | 3.2% | – | 2967 | 21266 | 21642 | 22671 |
+| origin: coverage | 37 | 89.2% | 0.757 | 32.4% | 2.7% | 78.9% (19) | 2023 | 21266 | 21977 | 26632 |
+| origin: demand | 49 | 81.6% | 0.735 | 28.6% | 4.1% | 100.0% (2) | 2967 | 21570 | 21642 | 22671 |
+| origin: variant | 12 | 50.0% | 0.458 | 41.7% | 16.7% | – | 2975 | 9094 | 22426 | 22426 |
 
 ### Per case
 
@@ -142,7 +142,7 @@ Degraded cases (a provider failed): **26** of 98. Rerun before recording a basel
 | M13 | epic sax guy | 1 | Sergey Stepanov (musician) (wd:Q12740674) | 1 | 1708 | – |
 | M14 | waltuh breaking bad | 3 | Walter White (Breaking Bad) (wd:Q23554) | 1 | 22671 | – |
 | M15 | its morbin time | 1 | Morbius (film) (wd:Q55405369) | 1 | 4764 | – |
-| M16 | sus among us | 1 | Among Us (wd:Q96417649) | 1 | 8567 | wikidata:timeout |
+| M16 | sus among us | – | – | 0 | 8005 | wikipedia:timeout |
 | S1 | rizz | 1 | Rizz (wd:Q123669845) | 1 | 1473 | – |
 | S2 | no cap | 1 | no cap (enwiktionary:no cap) | 1 | 963 | – |
 | S3 | bussin | – | F9 (film) (wd:Q29466808) | 0 | 1945 | – |
@@ -152,19 +152,19 @@ Degraded cases (a provider failed): **26** of 98. Rerun before recording a basel
 | Q2 | where's the beef | 1 | Where's the beef? (wd:Q1459668) | 1 | 1974 | – |
 | Q2-v | where is the beef | 1 | Where's the beef? (wd:Q1459668) | 1 | 5559 | – |
 | Q3 | i'm kind of a big deal | 3 | Shaniera Akram (wd:Q23092271) | 1 | 2477 | – |
-| Q3-v | im kind of a big deal i have many leather bound books | – | Carl Jung (wd:Q41532) | 0 | 21704 | wikidata:timeout, wiktionary:rate_limited |
-| Q4 | show me the money | 1 | Jerry Maguire (wd:Q329131) | 2/2 | 12998 | wikidata:timeout |
+| Q3-v | im kind of a big deal i have many leather bound books | – | Carl Jung (wd:Q41532) | 0 | 4110 | – |
+| Q4 | show me the money | 1 | Jerry Maguire (wd:Q329131) | 2/2 | 2023 | – |
 | Q5 | the revolution will not be televised | 1 | The Revolution Will Not Be Televised (wd:Q1753999) | 1 | 3118 | – |
 | Q5-v | revolution will not be televised quote | 1 | The Revolution Will Not Be Televised (wd:Q1753999) | 1 | 1995 | – |
 | Q6 | hey baby i hear the news are calling for salads and scrambled eggs | – | Hey! Baby (wd:Q3135074) | 0 | 1747 | – |
-| Q6-v | frasier theme song lyrics | 1 | Frasier (wd:Q209282) | 1 | 21149 | wiktionary:rate_limited |
+| Q6-v | frasier theme song lyrics | 1 | Frasier (wd:Q209282) | 1 | 9094 | – |
 | Q7 | omae wa mou shindeiru | 1 | Kenshiro (wd:Q1185545) | 1 | 2273 | – |
 | Q7-v | oh my yo wa moo shin dae doo hee yun knee | – | Oh My Kadavule (wd:Q85790351) | 0 | 2317 | – |
 | Q8 | yeah i got time incredibles | 1 | The Incredibles (wd:Q213326) | 1 | 2699 | – |
 | Q9 | want a sprite cranberry | – | Sprite (drink) (wd:Q206978) | 0 | 2967 | – |
 | Q10 | that was his mistake big hero 6 | – | To Be Hero X (wd:Q133866311) | 0 | 3978 | – |
 | T1 | baby yoda | 1 | Grogu (wd:Q77001957) | 1 | 8916 | – |
-| F1 | three fingers inglorious bastards | – | List of action films of the 1970s (wd:Q2115050) | 0 | 21184 | wikidata:timeout, wikiquote:rate_limited |
+| F1 | three fingers inglorious bastards | – | Quentin Tarantino (wd:Q3772) | 0 | 21642 | – |
 | F1-v | inglorious bastards | 2 | The Inglorious Bastards (wd:Q338002) | 1 | 22426 | – |
 | A1 | nah id win | – | Global public good (wd:Q8270788) | 0 | 1324 | – |
 | A2 | steal a brainrot | 1 | Steal a Brainrot (wd:Q135921344) | 1 | 3981 | – |
@@ -180,50 +180,50 @@ Degraded cases (a provider failed): **26** of 98. Rerun before recording a basel
 | B10 | everywhere at the end of time | 1 | Everywhere at the End of Time (wd:Q104771220) | 1 | 1525 | – |
 | I1 | mogambo khush hua | 2 | Mogambo (character) (wd:Q136377380) | 1 | 1722 | – |
 | I2 | rasode mein kaun tha | 2 | Rucha Hasabnis (wd:Q7376575) | 1 | 21583 | – |
-| I2-v | kokilaben rap | – | – | 0 | 21166 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| I2-v | kokilaben rap | 1 | Yashraj Mukhate (wd:Q99842759) | 1 | 3718 | – |
 | I3 | paisa hi paisa hoga | – | Bewafa (song) (wd:Q135420995) | 0 | 3004 | – |
 | I3-v | babu bhaiya paisa hi paisa hoga | – | Hemlata (singer) (wd:Q5712227) | 0 | 4155 | – |
-| I4 | utha le re baba | 2 | Myntra (wd:Q6947830) | 1 | 21111 | wikiquote:rate_limited |
-| I4-v | uthale re baba | – | – | 0 | 21184 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| I4 | utha le re baba | 3 | Myntra (wd:Q6947830) | 1 | 2239 | – |
+| I4-v | uthale re baba | – | – | 0 | 1042 | – |
 | I5 | bilkul ricks nahi lene ka | – | – | 0 | 827 | – |
 | I5-v | bilkul risk nahi lene ka | – | – | 0 | 818 | – |
-| I6 | kitne aadmi the | 1 | Gabbar Singh (character) (wd:Q5515286) | 1 | 21070 | wikiquote:rate_limited |
-| X1 | how's the josh | – | – | 0 | 21212 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| I6 | kitne aadmi the | 1 | Gabbar Singh (character) (wd:Q5515286) | 1 | 12814 | – |
+| X1 | how's the josh | 1 | Uri: The Surgical Strike (wd:Q58411644) | 1 | 1249 | – |
 | X2 | mere paas maa hai | 1 | Deewaar (wd:Q787034) | 1 | 6449 | – |
 | X3 | picture abhi baaki hai mere dost | 1 | Om Shanti Om (wd:Q330468) | 1 | 2023 | – |
-| X4 | don ko pakadna mushkil hi nahi namumkin hai | 1 | Don (2006 Hindi film) (wd:Q662436) | 1/2 | 21126 | wiktionary:rate_limited, wikiquote:rate_limited |
-| X5 | hera pheri | – | – | 0/3 | 21107 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| X4 | don ko pakadna mushkil hi nahi namumkin hai | 1 | Don (2006 Hindi film) (wd:Q662436) | 1/2 | 1068 | – |
+| X5 | hera pheri | 1 | Phir Hera Pheri (wd:Q11816211) | 3/3 | 1104 | – |
 | X6 | devdas | 2 | Devdas (wd:Q11169650) | 2/3 | 3053 | – |
 | X7 | agneepath | 1 | Agneepath (2012 film) (wd:Q3595073) | 2/2 | 1125 | – |
-| X8 | simba | 1 | Simba (wd:Q1649583) | 1/2 | 2616 | wikiquote-qid:HTTP 429 after 3 attempts |
-| X9 | bahubali | – | – | 0/2 | 21152 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| X8 | simba | 1 | Simba (wd:Q1649583) | 1/2 | 21977 | – |
+| X9 | bahubali | 1 | Bahubali (wd:Q2397602) | 2/2 | 1571 | – |
 | X10 | taarak mehta | 1 | Taarak Mehta Ka Ooltah Chashmah (wd:Q2719817) | 2/2 | 3687 | – |
 | X11 | mirzapur | 1 | Mirzapur (wd:Q888908) | 2/2 | 1695 | – |
-| X12 | panchayat | 2 | Gram panchayat (wd:Q2732840) | 2/2 | 4445 | wikiquote-qid:HTTP 429 after 3 attempts |
+| X12 | panchayat | 2 | Gram panchayat (wd:Q2732840) | 2/2 | 3084 | – |
 | X13 | sacred games | 1 | Sacred Games (TV series) (wd:Q48727094) | 2/2 | 26632 | – |
 | X14 | pushpa | 1 | Pushpa 2: The Rule (wd:Q112083510) | 2/2 | 2429 | – |
-| X15 | here's johnny | – | Comedy on Wikiquote (enwikiquote:126447) | 0/2 | 21263 | wikipedia:rate_limited, wikiquote-qid:HTTP 429 after 3 attempts |
+| X15 | here's johnny | 4 | Here's Johnny (song) (wd:Q5736714) | 1/2 | 1125 | – |
 | X16 | dune | 2 | Dune (wd:Q25391) | 2/3 | 966 | – |
 | X17 | the office | 1 | The Office (wd:Q43129905) | 3/3 | 7811 | – |
-| X18 | the italian job | – | Top Gear (series 17) on Wikiquote (enwikiquote:248922) | 0/2 | 21222 | wikipedia:rate_limited |
+| X18 | the italian job | 1 | The Italian Job (wd:Q1051032) | 2/2 | 1323 | – |
 | X19 | scarface | 1 | Scarface (1983 film) (wd:Q47075) | 2/2 | 1991 | – |
 | X20 | play it again sam | 2 | Play It Again, Sam (play) (wd:Q17051771) | 2/2 | 1879 | – |
-| X21 | luke i am your father | – | Rove (TV series) on Wikiquote (enwikiquote:48306) | 0 | 21232 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote-qid:HTTP 429 after 3 attempts |
-| X22 | beam me up scotty | 1 | Beam me up, Scotty (wd:Q4876190) | 1 | 3047 | wikiquote:bad_response |
+| X21 | luke i am your father | 1 | The Empire Strikes Back (wd:Q181795) | 1 | 21601 | – |
+| X22 | beam me up scotty | 1 | Beam me up, Scotty (wd:Q4876190) | 1 | 1786 | – |
 | X23 | hello clarice | – | Hannibal (2001 film) (wd:Q722682) | 0 | 1884 | – |
-| L1 | hakuna matata | – | – | 0/2 | 21205 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
-| L2 | let it go | – | – | 0 | 21092 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| L1 | hakuna matata | 2 | Hakuna matata (wd:Q1570072) | 1/2 | 1247 | – |
+| L2 | let it go | 1 | Let It Go (wd:Q15282326) | 1 | 2062 | – |
 | L3 | all izz well | 1 | 3 Idiots (wd:Q229633) | 1 | 2803 | – |
 | L4 | winter is coming | – | Winter Is Coming (wd:Q2614622) | 0 | 2264 | – |
-| L5 | this is fine | 2 | This Is Fine (wd:Q65082311) | 1 | 1488 | wikiquote-qid:HTTP 429 after 3 attempts |
-| L6 | ok boomer | – | – | 0 | 21170 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| L5 | this is fine | 2 | This Is Fine (wd:Q65082311) | 1 | 1829 | – |
+| L6 | ok boomer | 1 | OK boomer (wd:Q74367025) | 1 | 1837 | – |
 | L7 | that's what she said | 2 | Michael Scott (The Office) (wd:Q2346771) | 1 | 3592 | – |
 | L8 | d'oh | 1 | D'oh! (wd:Q1409224) | 1 | 2846 | – |
-| L9 | how you doin | – | Mitch Hedberg on Wikiquote (enwikiquote:4525) | 0 | 21183 | wikipedia:rate_limited, wikiquote-qid:HTTP 429 after 3 attempts |
+| L9 | how you doin | – | – | 0 | 21266 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
 | L10 | bazinga | 1 | Sheldon Cooper (wd:Q629583) | 1 | 3519 | – |
 | L11 | thanos snap | 4 | The Blip (wd:Q106856883) | 1 | 1195 | – |
-| L12 | distracted boyfriend | 1 | Distracted boyfriend (wd:Q55691704) | 1 | 21160 | wiktionary:rate_limited |
-| L13 | i choose you | – | – | 0/2 | 21149 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
+| L12 | distracted boyfriend | 1 | Distracted boyfriend (wd:Q55691704) | 1 | 1886 | – |
+| L13 | i choose you | 1 | Pokémon, I Choose You! (wd:Q7208759) | 2/2 | 2556 | – |
 | L14 | king of the world | – | King of the World (sculpture) (wd:Q138798785) | 0 | 4079 | – |
 
 ## Excluded from scoring

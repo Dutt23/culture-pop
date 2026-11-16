@@ -71,6 +71,8 @@ export interface Reference {
   firstAppearance?: string;
   /** Works Wikidata says it appears in (P1441), e.g. "The Matrix" for the red pill; cited by `src:wd:`. */
   presentIn?: PresentIn[];
+  /** Works Wikidata says it was inspired by (P941), e.g. "The Matrix" for the red pill and blue pill. */
+  inspiredBy?: PresentIn[];
   decade?: Decade;
   /** Citations that describe this reference (not interpretation evidence). */
   sourceIds: string[];

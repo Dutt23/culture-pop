@@ -1,8 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createLlmClient, type WorkerConnection } from '../../services/llm/client';
 import { MODEL_FAMILIES } from '../../services/llm/models';
 import { useLlmStatus } from './useLlmStatus';
+
+// The crash guard keeps its marker in localStorage; every test starts without one.
+beforeEach(() => localStorage.clear());
 
 describe('useLlmStatus', () => {
   it('follows the client status, so a screen can show the AI part only when ready', async () => {

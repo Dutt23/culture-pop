@@ -10,7 +10,7 @@ import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
-import { CATEGORY_LABEL, ERA_LABEL } from '../../domain/labels';
+import { CATEGORY_LABEL, ERA_LABEL, fromWorks } from '../../domain/labels';
 import { isFromOnline } from '../../domain/types';
 import { PUBLISHER } from '../../domain/sources';
 import { useFavourites } from '../favourites/useFavourites';
@@ -51,6 +51,7 @@ export function ReferencePage() {
       ? `${reference.year} (per ${yearSource.publisher})`
       : reference.decade && ERA_LABEL[reference.decade];
   const eyebrow = [CATEGORY_LABEL[reference.category], when].filter(Boolean).join(' · ');
+  const works = fromWorks(reference);
   const fromOnline = isFromOnline(reference.editorialState);
   const explained = interpretations.length > 0;
   const backed = interpretations.some((i) => i.provenance === 'source_supported');
@@ -79,11 +80,10 @@ export function ReferencePage() {
         reference.origin ? (
           <p>From {reference.origin}</p>
         ) : (
-          reference.presentIn &&
-          reference.presentIn.length > 0 && (
+          works.length > 0 && (
             <p>
               From:{' '}
-              {reference.presentIn.map((work, index) => (
+              {works.map((work, index) => (
                 <span key={work.qid}>
                   {index > 0 && ', '}
                   <Link to={`/search?q=${encodeURIComponent(work.label)}`}>{work.label}</Link>

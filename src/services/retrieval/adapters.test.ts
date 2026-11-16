@@ -125,7 +125,9 @@ describe('wikidata', () => {
     const row = (work: string, label: string | undefined) => ({
       item: { type: 'uri', value: redPill },
       presentIn: { type: 'uri', value: work },
-      ...(label === undefined ? {} : { presentInLabel: { 'xml:lang': 'en', type: 'literal', value: label } }),
+      ...(label === undefined
+        ? {}
+        : { presentInLabel: { 'xml:lang': 'en', type: 'literal', value: label } }),
     });
     const facts = parseWikidataFacts({
       results: {
@@ -134,6 +136,8 @@ describe('wikidata', () => {
           row('http://www.wikidata.org/entity/Q83495', 'The Matrix'),
           row('http://www.wikidata.org/entity/Q2', 'line\nbreak'),
           row('http://www.wikidata.org/entity/Q3', 'x'.repeat(121)),
+          // The label service answering with the item's own Q-number is not a label.
+          row('http://www.wikidata.org/entity/Q6', 'Q6'),
           // No English label: unbound, so it is not shown as a bare item number.
           row('http://www.wikidata.org/entity/Q4', undefined),
           row('http://evil.example/entity/Q5', 'Not Wikidata'),
@@ -144,17 +148,39 @@ describe('wikidata', () => {
     expect([...(facts?.presentIn ?? [])]).toEqual([['Q83495', 'The Matrix']]);
   });
 
-  it('asks for the works an item appears in, in the same single request', () => {
+  it('reads the works an item was inspired by (P941), with the same label rules', () => {
+    const redPill = 'http://www.wikidata.org/entity/Q7305365';
+    const row = (work: string, label: string) => ({
+      item: { type: 'uri', value: redPill },
+      inspiredBy: { type: 'uri', value: work },
+      inspiredByLabel: { 'xml:lang': 'en', type: 'literal', value: label },
+    });
+    const facts = parseWikidataFacts({
+      results: {
+        bindings: [
+          row('http://www.wikidata.org/entity/Q83495', 'The Matrix'),
+          row('http://www.wikidata.org/entity/Q2', 'line\nbreak'),
+          row('http://evil.example/entity/Q3', 'Not Wikidata'),
+        ],
+      },
+    }).get('Q7305365');
+    expect([...(facts?.inspiredBy ?? [])]).toEqual([['Q83495', 'The Matrix']]);
+    expect(facts?.presentIn.size).toBe(0);
+  });
+
+  it('asks for the works an item appears in or was inspired by, in the same single request', () => {
     const query = new URL(wikidataFactsUrl(['Q1'])).searchParams.get('query') ?? '';
     expect(query).toContain('?item wdt:P1441 ?presentIn');
     expect(query).toContain('?presentIn rdfs:label ?presentInLabel');
+    expect(query).toContain('?item wdt:P941 ?inspiredBy');
+    expect(query).toContain('?inspiredBy rdfs:label ?inspiredByLabel');
   });
 
   it('asks for creators and first appearance with English labels only', () => {
     const query = new URL(wikidataFactsUrl(['Q430178'])).searchParams.get('query') ?? '';
     expect(query).toContain('?item wdt:P170 ?creator');
     expect(query).toContain('?item wdt:P4584 ?firstAppearance');
-    expect(query).toContain('wikibase:language "en"');
+    expect(query).toContain('wikibase:language "en,mul"');
   });
 
   it('collects classes and the earliest sourced year per item', () => {

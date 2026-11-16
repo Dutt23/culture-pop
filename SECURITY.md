@@ -28,11 +28,23 @@ down why, set an expiry of at most about three months, and plan the upgrade. Nev
 - **Content Security Policy** (production builds): same-origin scripts, styles, images, workers
   and connections; no plugins. The one inline exception is the hash of an *empty* `<style>`, which
   Motion's `popLayout` creates before inserting its rule through the CSSOM; inline CSS with content
-  is still blocked. An e2e test fails on any CSP violation. `connect-src` lists only the three
-  verified Wikimedia hosts (Wikipedia, Wikidata Query Service, Wiktionary).
+  is still blocked. An e2e test fails on any CSP violation. `connect-src` lists only `'self'` and the
+  retrieval hosts in `hosts.ts`; the wider-web search is our own `/api/web-search`, so `'self'`
+  covers it.
 - **Untrusted provider data:** every Wikimedia response is validated field by field; links are kept
   only if they are `https` on the expected host; Wikidata IDs are checked before going into SPARQL;
   excerpts are capped and rendered as plain text.
+- **Wider-web search (D45):** Vercel Functions (`api/web-search.ts`, `api/unlock.ts`,
+  `api/lock.ts`) hold the Parallel key and the access-code settings in server-only environment
+  variables (never `VITE_`). Search needs a signed, HttpOnly access cookie; the code is compared in
+  constant time and never stored on the device. The functions validate input, log nothing, return
+  text only (no media), cap sizes (256 KB in, 16 KB out) and answer with `Cache-Control: no-store`.
+  Results carry a storage level from a per-provider table; Parallel's is `device`: kept only in this
+  device's own IndexedDB store (30 days, only while search history is on, deleted by Clear history
+  and Reset), never in the library, never sent to any server or sync (type, run-time and source
+  checks). Two local-testing switches (`WEB_SEARCH_FAKE`, `ACCESS_COOKIE_INSECURE_DEV`) are ignored
+  whenever `VERCEL_ENV` is `production` or `preview` (tested).
+  See `docs/BACKEND_PLAN.md`.
 - **Privacy:** nothing leaves the device until the user agrees to online search (tests check this).
   Requests send no cookies or referrer. Search history (on by default, D37) stays on the device
   and is never sent. External links open only on
@@ -47,6 +59,10 @@ down why, set an expiry of at most about three months, and plan the upgrade. Nev
 | Redirect to another host, or a redirect loop | `redirect: 'error'`: redirects are never followed | `http.ts` |
 | Recursive crawling / link-following | None exists: a fixed, bounded set per search. Wikipedia, Wiktionary and Wikiquote first, then one Wikidata query, then at most 2 TVmaze title lookups for series Wikidata identified. Lookups use article titles, never URLs. URLs found in responses are never fetched; external pages are only ever linked | `retrieve.ts` |
 | Huge or endless response exhausts memory | Body read with a 1 MB cap (declared length checked first, then streamed bytes); per-request timeout; ≤2 retries with capped back-off | `http.ts` |
+| Someone else spends the paid search key | Access code → signed HttpOnly cookie (HMAC, expiry, code version) checked before anything else; constant-time code check, code at least 12 characters, 1 s delay on a wrong code, 429 after 10 wrong codes a minute (per instance), Firewall limit of 5 unlock attempts per 10 minutes per IP; per-day cap of 150; Parallel's own spend limit; `Sec-Fetch-Site` other than `same-origin` refused; missing settings answer 503, never open | `api/_lib/access.ts`, `api/unlock.ts`, `api/web-search.ts`, Vercel and Parallel dashboards |
+| Search text, the code, the cookie or the key leaks | The functions never log; secrets are read only from the server environment and never returned; the client never stores the code (unit-tested) | `api/`, `WiderWebSearch.tsx` |
+| Results kept against the provider's terms | Storage level (`none`/`device`/`shared`) set per provider on the server; missing or unknown → `none`. Wider-web results can't be passed to `saveCandidates` (type) and are skipped there at run time; `device` results go only to the device store, which no network code may import (tested) | `api/web-search.ts`, `webSearch.ts`, `retrievalRepository.ts`, `webResultRepository.ts` |
+| Media or huge answers from the provider | Text only (three fields rebuilt, images and HTML stripped), 256 KB read cap, 16 KB answer cap; result URLs are only links | `api/web-search.ts`, `WiderWebSearch.tsx` |
 | Injected script or HTML from provider text | Text only, never HTML. Wikiquote snippets and TVmaze summaries arrive as HTML: tags are stripped and entities decoded into plain text, which React renders as text. Lint bans HTML sinks and `eval`; CSP `script-src 'self'`, no inline scripts | `validate.ts` (`htmlToText`), lint config, CSP |
 | `javascript:`/`data:`/non-https link from provider data or a tampered cache | Validated on the way in (`safeUrl`, per-site ID patterns) **and** again at render (`safeHref`); unsafe links are not rendered | `validate.ts`, `externalLinks.ts`, `components/ui/safeHref.ts` |
 | SPARQL injection via IDs | Only `Q<digits>` IDs are interpolated | `wikidata.ts` |

@@ -383,30 +383,47 @@ reranker. Report: `docs/eval/rewrite-offline.md`.
 
 | Offline, reranked | n | Recall@5 | MRR@10 | Incorrect top | No results |
 |---|---|---|---|---|---|
-| Tuning half, no fallback | 50 | 80.0% | 0.745 | 26.0% | 4.0% |
-| Tuning half, suggestion then shorter | 50 | 82.0% | 0.752 | 28.0% | 2.0% |
+| Tuning half, no fallback | 50 | 80.0% | 0.742 | 26.0% | 4.0% |
+| Tuning half, suggestion then shorter | 50 | 80.0% | 0.739 | 28.0% | 2.0% |
 | Held-out half, no fallback | 47 | 80.9% | 0.697 | 31.9% | 8.5% |
-| Held-out half, suggestion then shorter | 47 | 83.0% | 0.707 | 36.2% | 4.3% |
-| Full set, no fallback | 97 | 80.4% | 0.722 | 28.9% | 6.2% |
-| Full set, suggestion then shorter | 97 | 82.5% | 0.730 | 32.0% | 3.1% |
+| Held-out half, suggestion then shorter | 47 | 83.0% | 0.704 | 36.2% | 4.3% |
+| Full set, no fallback | 97 | 80.4% | 0.720 | 28.9% | 6.2% |
+| Full set, suggestion then shorter | 97 | 81.4% | 0.722 | 32.0% | 3.1% |
 
 | Each fallback alone, held-out half | Recall@5 | MRR@10 | Exact-title cases worse | Extra requests (97 searches) | Adopted |
 |---|---|---|---|---|---|
-| Suggestion | 80.9% to 83.0% | 0.697 to 0.707 | 0 of 36 | 25 | yes |
-| Shorter phrase | 80.9% to 83.0% | 0.697 to 0.704 | 0 of 36 | 52 | yes |
+| Suggestion | 80.9% to 83.0% | 0.697 to 0.704 | 0 of 36 | 23 | yes |
+| Shorter phrase | 80.9% to 83.0% | 0.697 to 0.704 | 0 of 36 | 50 | yes |
 | Loose Wikiquote | no change | no change | 0 of 36 | 40 | no |
 
-LIVE_REWRITE_PENDING
+**Live confirmation (real fallbacks, 2026-11-16, `docs/eval/search-eval-2026-11-16-rewritten.md`).**
+98 searches, 474 HTTP requests (4.84 per search, retries inside one request not counted). Two cases
+were still degraded after the built-in re-run passes (M16: a Wikipedia timeout; L9: all three
+providers throttled), so treat the row as close to clean, not clean.
+
+| Live | n | Recall@5 | MRR@10 | Incorrect top | No results | Ambiguity coverage |
+|---|---|---|---|---|---|---|
+| Reranker only (earlier the same day) | 98 | 80.6% | 0.719 | 29.6% | 6.1% | 81.0% (21) |
+| With the two fallbacks | 98 | 80.6% | 0.709 | 31.6% | 5.1% | 81.0% (21) |
+
+The live run does not show the offline gain: Recall@5 is unchanged and MRR@10 is a little lower. What
+it does show is the same shape as offline: fewer empty lists (6.1% to 5.1%) and more wrong first
+results (29.6% to 31.6%). Live numbers drift (the two runs are hours apart, with different
+throttling), so a gain of 2 cases in 100 is inside the noise either way. The honest reading is that
+the fallbacks rescue very few searches and make more of them show something.
 
 What it did, in plain words:
-- **A small gain for a real cost.** About 2 more cases in 100 now have the right answer in the top 5
-  (80.4% to 82.5%; in the other order, shorter phrase first, 83.5%, which the held-out half
-  preferred but was not used to choose). The price is 59 extra requests over 97 searches (0.61 per
-  search, 1.16 per missed search) for those 2 to 3 rescued cases.
+- **A very small gain for a real cost.** About 1 more case in 100 now has the right answer in the
+  top 5 (80.4% to 81.4%; in the other order, shorter phrase first, 82.5%, which the held-out half
+  preferred but was not used to choose). The price is 55 extra requests over 97 searches (0.57 per
+  search, 1.08 per missed search) for 1 to 2 rescued cases. These offline numbers were captured
+  again on 2026-11-16 under the final rules (question words skipped before cutting), so they differ
+  slightly from the first capture, which showed 82.5%.
 - **Fixed:** "waltuh breaking bad" returned nothing; Wikipedia's suggestion "walter breaking bad" now
-  finds Walter White and Breaking Bad. "neutral milk hotel meme" first showed "In the Aeroplane Over
-  the Sea" and "4chan"; searching "neutral milk" now brings up the band Neutral Milk Hotel. "hakuna
-  matatta" is rescued by its suggestion "hakuna matata" (and by typo matching locally).
+  finds Walter White and Breaking Bad (the one rescued case in the final capture). In the first
+  capture "neutral milk hotel meme" was also rescued (searching "neutral milk" brought up the band
+  Neutral Milk Hotel); it was not in the second, which shows how thin the gain is. "hakuna matatta"
+  is handled by its suggestion "hakuna matata" (and by typo matching in local search).
 - **Not fixed: misremembered queries.** The group that motivated this stays at 36.4% Recall@5, and
   its wrong-first-result rate goes from 54.5% to 72.7%, because two searches that returned nothing
   now return something wrong. "bilkul ricks nahi lene ka" still finds nothing ("bilkul risk" brings
@@ -414,11 +431,12 @@ What it did, in plain words:
   Hera Pheri, which the owner's live check suggested, but the labelled answer is still not in the
   list. "catch me outside" is not a miss by the rule (a page called "Catch Me Outside" exists), so
   no fallback runs and Bhad Bhabie still does not appear.
-- **A bad suggestion or cut can add noise.** "utha le re baba" got worse (2nd to 3rd) because
+- **A bad suggestion or cut can add noise.** "utha le re baba" got worse (3rd to 5th) because
   Wikipedia suggested "utah le re baba" and the results are about Utah. Cutting a line to its first
-  two words picks generic openings for "that was his mistake big hero 6" ("that was") and "oh my yo
-  wa moo shin dae doo hee yun knee" ("oh my"). Skipping leading small words before cutting is an
-  idea that was not tried.
+  two words still picks generic openings for "that was his mistake big hero 6" ("that was") and "oh
+  my yo wa moo shin dae doo hee yun knee" ("oh my"). Question and filler words (why, what, who, is,
+  are, the...) are now skipped before cutting ("why are ferrari fans depressed" cuts to "ferrari
+  fans"); other small words such as "that" and "oh" are not.
 - **Rule used to adopt:** a fallback stays only if the held-out half improves and no exact-title
   case gets worse. Suggestion and shorter phrase pass; the gain is about one held-out case each,
   so treat it as small.

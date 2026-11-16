@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "npx --yes vercel@65.9.0 dev --local --listen 3000",
+    "dev:phone": "npx --yes vercel@65.9.0 dev --local --listen 0.0.0.0:3000",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

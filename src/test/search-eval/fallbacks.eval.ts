@@ -25,6 +25,8 @@ const KINDS: readonly RewriteKind[] = DEFAULT_REWRITE_OPTIONS.order;
 
 /** `FALLBACK_REDO=1` re-captures only the cases a provider failed on (e.g. HTTP 429), slower. */
 const REDO = process.env.FALLBACK_REDO === '1';
+/** `FALLBACK_ONLY=Q2-v,B6` re-captures just those cases (e.g. after the fallback rules changed). */
+const ONLY = process.env.FALLBACK_ONLY?.split(',').filter(Boolean);
 const REDO_PAUSE_MS = 10_000;
 const REDO_COOLDOWN_MS = 120_000;
 const REDO_PASSES = 3;
@@ -36,7 +38,7 @@ it(
     const missed = capturedCases(snapshot).filter((c) =>
       isMiss(c.query, snapshot.cases[c.id]?.candidates ?? []),
     );
-    const out: Record<string, FallbackCase> = REDO ? loadFallbackSnapshot().cases : {};
+    const out: Record<string, FallbackCase> = REDO || ONLY ? loadFallbackSnapshot().cases : {};
     const http = cachedCounting(createEvalGetJson());
     const now = () => new Date().toISOString();
 
@@ -81,13 +83,13 @@ it(
       return entry;
     }
 
-    const passes = REDO ? REDO_PASSES : 1;
+    const passes = REDO && !ONLY ? REDO_PASSES : 1;
     for (let pass = 0; pass < passes; pass++) {
       const todo = missed.filter(
         (c) => !REDO || out[c.id] === undefined || out[c.id]?.failures.length,
       );
       if (todo.length === 0) break;
-      if (REDO) await sleep(REDO_COOLDOWN_MS);
+      if (REDO && !ONLY) await sleep(REDO_COOLDOWN_MS);
       for (const [index, evalCase] of todo.entries()) {
         if (index > 0) await sleep(REDO ? REDO_PAUSE_MS : PAUSE_BETWEEN_CASES_MS);
         out[evalCase.id] = await capture(evalCase);

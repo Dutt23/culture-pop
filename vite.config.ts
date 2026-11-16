@@ -53,6 +53,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Behind Vercel Authentication the manifest needs the login cookie (docs/BACKEND_PLAN.md §6).
+      useCredentials: true,
       includeAssets: ['icon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Pop Culture Decoder',
@@ -79,6 +81,8 @@ export default defineConfig({
         // The on-device model's worker bundles WebLLM (~7 MB): fetched only after consent, never precached.
         globIgnores: ['**/llm.worker-*.js'],
         navigateFallback: '/index.html',
+        // The wider-web search function answers itself; never with the app shell.
+        navigateFallbackDenylist: [/^\/api\//],
         skipWaiting: true,
         clientsClaim: true,
       },
@@ -89,6 +93,6 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.js'],
+    include: ['src/**/*.test.{ts,tsx}', 'api/**/*.test.ts', 'scripts/**/*.test.js'],
   },
 });

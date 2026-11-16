@@ -128,6 +128,7 @@ function fromWikipedia(
       facts.year !== undefined ||
       facts.creators.size > 0 ||
       facts.presentIn.size > 0 ||
+      facts.inspiredBy.size > 0 ||
       facts.firstAppearance !== undefined);
   const dataSource =
     hit.qid && contributed ? wikidataSource(hit.qid, hit.title, retrievedAt) : undefined;
@@ -152,6 +153,9 @@ function fromWikipedia(
       : {}),
     ...(facts && dataSource && facts.presentIn.size > 0
       ? { presentIn: presentInOf(facts.presentIn) }
+      : {}),
+    ...(facts && dataSource && facts.inspiredBy.size > 0
+      ? { inspiredBy: presentInOf(facts.inspiredBy) }
       : {}),
     classifying: classifying && hit.qid !== undefined,
     sources,

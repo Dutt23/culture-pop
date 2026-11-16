@@ -4,6 +4,7 @@ import { browserHttpDependencies, createGetJson } from '../services/retrieval/ht
 import { retrieve$ } from '../services/retrieval/retrieve';
 import { withSessionCache } from '../services/retrieval/sessionCache';
 import type { RetrievalResult } from '../services/retrieval/types';
+import { createWebSearch, type WebSearchClient } from '../services/retrieval/webSearch';
 
 export interface RetrievalService {
   /**
@@ -13,6 +14,8 @@ export interface RetrievalService {
   retrieve$: (query: string) => Observable<RetrievalResult>;
   /** Wait after the last keystroke before contacting providers. */
   debounceMs: number;
+  /** The wider-web search (D45): only after a tap and consent; results are never stored. */
+  webSearch: WebSearchClient;
 }
 
 const SEARCH_DEBOUNCE_MS = 500;
@@ -24,6 +27,7 @@ export function createRetrievalService(): RetrievalService {
       retrieve$(query, { getJson, now: () => new Date().toISOString() }),
     ),
     debounceMs: SEARCH_DEBOUNCE_MS,
+    webSearch: createWebSearch(browserHttpDependencies),
   };
 }
 

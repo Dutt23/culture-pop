@@ -19,6 +19,7 @@ export function candidateToReference(
     creators: candidate.creators,
     firstAppearance: candidate.firstAppearance,
     presentIn: candidate.presentIn,
+    inspiredBy: candidate.inspiredBy,
     sourceIds: candidate.sources.map((s) => s.id),
     externalLinks: candidate.externalLinks,
     tags: [],

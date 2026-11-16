@@ -101,6 +101,14 @@ record in `SOURCE_INVENTORY.md`, then build replaceable adapters with consent di
   links and quoted text as pointers, verified against permitted sources. Pricing, rate limits,
   storage/display terms and Reddit/Hinglish coverage are unread; compare with Brave/Mojeek on the
   eval's misremembered and Indian cases before choosing.
+- **Backend step 1 built, not run (agent, 2026-11-16):** wider-web search through Parallel (D45,
+  `docs/BACKEND_PLAN.md`). `api/web-search.ts` + tests, `services/retrieval/webSearch.ts` + tests,
+  "Search the wider web" on a local miss with a consent card, the Wider web search setting, an
+  access code (`api/unlock.ts`, `api/lock.ts`, signed HttpOnly cookie) and storage levels
+  (`none`/`device`/`shared`; Parallel is `device`): results are text only, kept in their own
+  device-only store (Dexie v5, 30 days, only with history on), never in the library or sent anywhere.
+  Needs the owner's Parallel key, `ACCESS_CODE`, `ACCESS_COOKIE_SECRET` and the Firewall rule before
+  it works; no checks have been run.
 
 
 ## Current phase: 2 — permitted multi-source retrieval (started 2026-11-15, owner approved)
@@ -389,8 +397,8 @@ Checks run by the agent: `npm test`, typecheck (clean in these files), lint (0 e
 ### Phase 3 step 3: query rewriting without AI (agent, 2026-11-16, at the owner's request)
 Built and measured (D43): Wikipedia's "did you mean" (free, from the plain search's request) and a
 first-two-words search for long queries, each only on a miss, at most one per search (at most 2 extra
-requests). An unquoted Wikiquote search was tried and dropped (no effect). Small gain (Recall@5 80.4% to
-82.5% offline), misremembered queries unchanged; a one-line note on screen says what was searched.
+requests). An unquoted Wikiquote search was tried and dropped (no effect). Very small gain (Recall@5 80.4% to
+81.4% offline, none live), misremembered queries unchanged; a one-line note on screen says what was searched.
 Same pass: the three leftover duplicates from the duplication review (H1 `stripDisambiguator`, H3 `safeUrl`
 built on `safeHref`, M1 one `src/domain/sources.ts` for publisher names and source-ID helpers).
 Checks run by the agent: `npm test`, typecheck, lint, e2e (24 of 24) and `check:dist`, all passing.

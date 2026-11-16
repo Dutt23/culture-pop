@@ -806,11 +806,11 @@ describe('search UX (D37)', () => {
         'ferrari fans depressed',
       );
       const heading = await screen.findByRole('heading', { name: 'Where people talk about it' });
-      expect(
-        screen.getByText(/This sounds like a running joke or a question/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/This sounds like a running joke or a question/)).toBeInTheDocument();
       // The community block comes before the online results.
-      expect(heading.compareDocumentPosition(found) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        heading.compareDocumentPosition(found) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
       expect(
         within(found).getByText(/Searched for \u201cferrari fans depressed\u201d/),
       ).toBeInTheDocument();
@@ -818,7 +818,11 @@ describe('search UX (D37)', () => {
 
     it('folds away related pages that share nothing with the question, but keeps Scuderia Ferrari', async () => {
       const found = await open(
-        [topic('wd:Q1', 'Pink Floyd'), topic('wd:Q2', 'Scuderia Ferrari'), topic('wd:Q3', 'Lando Norris')],
+        [
+          topic('wd:Q1', 'Pink Floyd'),
+          topic('wd:Q2', 'Scuderia Ferrari'),
+          topic('wd:Q3', 'Lando Norris'),
+        ],
         'ferrari fans depressed',
       );
       const folded = within(found).getByText('Other pages found (2)').closest('details');
@@ -828,7 +832,9 @@ describe('search UX (D37)', () => {
       const visible = within(found)
         .getAllByRole('link')
         .filter((link) => !(folded as HTMLElement).contains(link));
-      expect(visible.map((link) => link.textContent)).toEqual([expect.stringContaining('Scuderia Ferrari')]);
+      expect(visible.map((link) => link.textContent)).toEqual([
+        expect.stringContaining('Scuderia Ferrari'),
+      ]);
     });
 
     it('shows no community block or folded section when a candidate explains the question', async () => {

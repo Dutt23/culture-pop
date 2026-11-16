@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeAlias, makeInterpretation, makeReference } from '../test/factories';
 import { formatDate } from './dates';
+import { fromWorks } from './labels';
 import {
   eraOf,
   filterByCategory,
@@ -191,5 +192,23 @@ describe('listOf', () => {
     expect(listOf(['Stan Lee'])).toBe('Stan Lee');
     expect(listOf(['Jack Kirby', 'Stan Lee'])).toBe('Jack Kirby and Stan Lee');
     expect(listOf(['A', 'B', 'C'])).toBe('A, B and C');
+  });
+});
+
+describe('fromWorks', () => {
+  const work = (qid: string) => ({ qid, label: `Work ${qid}` });
+  const base = makeReference('r', 'Red pill');
+
+  it('lists where it appears, then what inspired it, each work once, at most three', () => {
+    const reference = {
+      ...base,
+      presentIn: [work('Q1'), work('Q2')],
+      inspiredBy: [work('Q2'), work('Q3'), work('Q4')],
+    };
+    expect(fromWorks(reference).map((w) => w.qid)).toEqual(['Q1', 'Q2', 'Q3']);
+  });
+
+  it('is empty when Wikidata names no work', () => {
+    expect(fromWorks(base)).toEqual([]);
   });
 });

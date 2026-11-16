@@ -1,0 +1,2 @@
+# Tests live next to the functions but must not deploy as functions.
+api/**/*.test.ts

@@ -5,6 +5,7 @@ import type {
   Category,
   EditorialState,
   Interpretation,
+  PresentIn,
   Reference,
   ReferenceKind,
   Relation,
@@ -124,6 +125,9 @@ function typeClaims(reference: Reference, sources: readonly Source[]): Claim[] {
   ];
 }
 
+const quotedTitles = (works: readonly PresentIn[]) =>
+  listOf(works.map((work) => `“${work.label}”`));
+
 /** "Created by Jack Kirby and Stan Lee." "First appeared in “Fantastic Four #5”." "Appears in “The Matrix”." Wikidata only. */
 function factClaims(reference: Reference): Claim[] {
   const source = wikidataSourceId(reference);
@@ -136,12 +140,10 @@ function factClaims(reference: Reference): Claim[] {
       ? [{ text: `First appeared in “${reference.firstAppearance}”`, sourceIds: [source] }]
       : []),
     ...(reference.presentIn?.length
-      ? [
-          {
-            text: `Appears in ${listOf(reference.presentIn.map((work) => `“${work.label}”`))}`,
-            sourceIds: [source],
-          },
-        ]
+      ? [{ text: `Appears in ${quotedTitles(reference.presentIn)}`, sourceIds: [source] }]
+      : []),
+    ...(reference.inspiredBy?.length
+      ? [{ text: `Inspired by ${quotedTitles(reference.inspiredBy)}`, sourceIds: [source] }]
       : []),
   ];
 }
@@ -218,8 +220,13 @@ function relatedLink(
   draft: Draft,
   known: ReadonlySet<string>,
 ): { relatedReferenceId?: string } {
-  if (!draft.claims.some((claim) => claim.text.startsWith('Appears in '))) return {};
-  const work = reference.presentIn?.find((w) => known.has(referenceId.wikidata(w.qid)));
+  const stated = draft.claims.some(
+    (claim) => claim.text.startsWith('Appears in ') || claim.text.startsWith('Inspired by '),
+  );
+  if (!stated) return {};
+  const work = [...(reference.presentIn ?? []), ...(reference.inspiredBy ?? [])].find((w) =>
+    known.has(referenceId.wikidata(w.qid)),
+  );
   return work ? { relatedReferenceId: referenceId.wikidata(work.qid) } : {};
 }
 

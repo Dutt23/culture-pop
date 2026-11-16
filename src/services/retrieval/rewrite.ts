@@ -37,7 +37,9 @@ export function shorterPhrase(query: string, words = SHORTER_PHRASE_WORDS): stri
   if (all.length < MIN_WORDS_FOR_SHORTER) return undefined;
   const start = all.findIndex((word) => !LEADING_FILLER.has(word));
   const meaningful = start < 0 ? [] : all.slice(start);
-  return meaningful.length >= SHORTER_PHRASE_WORDS ? meaningful.slice(0, words).join(' ') : undefined;
+  return meaningful.length >= SHORTER_PHRASE_WORDS
+    ? meaningful.slice(0, words).join(' ')
+    : undefined;
 }
 
 export interface RewriteOptions {

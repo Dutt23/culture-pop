@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import {
+  requestPersistentStorage,
+  storageEstimate,
+  type StorageEstimate,
+} from '../../data/persistentStorage';
+import { MAX_CRASHES } from '../../services/llm/crashGuard';
+import { useLlmStatus } from '../llm/useLlmStatus';
+import {
   createLlmClient,
   detectSupport,
   errorMessage,
@@ -47,9 +54,12 @@ export default function LlmBenchPage() {
   const [loading, setLoading] = useState(false);
   const busy = running || loading;
   const stop = useRef<AbortController>(undefined);
+  const status = useLlmStatus(client);
+  const [estimate, setEstimate] = useState<StorageEstimate>();
 
   useEffect(() => {
     detectSupport().then(setSupport);
+    storageEstimate().then(setEstimate);
     // Leaving the page stops the run (no more model calls or Wikimedia lookups) and frees the model.
     return () => {
       stop.current?.abort();
@@ -59,6 +69,11 @@ export default function LlmBenchPage() {
 
   const family = MODEL_FAMILIES.find((f) => f.key === familyKey);
   const variant = family && support?.ok ? pickVariant(family, support) : undefined;
+  const disabled = variant !== undefined && client.crashes(variant.modelId) >= MAX_CRASHES;
+  const wontFit =
+    variant !== undefined &&
+    estimate !== undefined &&
+    variant.downloadBytes > estimate.quota - estimate.usage;
   const addLog = (line: string) => setLog((lines) => [...lines.slice(-200), line]);
 
   async function load() {
@@ -79,12 +94,18 @@ export default function LlmBenchPage() {
           const peaks = stopMemory();
           setLoading(false);
           setProgress('Loaded');
+          // After the download the user agreed to: ask the browser not to evict it (or the user's data).
+          const persist = await requestPersistentStorage();
+          const after = await storageEstimate();
+          setEstimate(after);
           setModel({
             ...modelSummary(family, variant),
             fromCache: event.fromCache,
             loadMs: event.ms,
             storageBeforeBytes: before,
             storageAfterBytes: await storageUsage(),
+            quotaBytes: after?.quota,
+            persist,
             loadPeakMainBytes: peaks.mainPeakBytes,
             loadPeakWorkerBytes: peaks.workerPeakBytes,
           });
@@ -119,7 +140,16 @@ export default function LlmBenchPage() {
         jobs,
         explainLimit,
       );
-      setResults({ startedAt, device: deviceInfo(support), model, ...measured });
+      setResults({
+        startedAt,
+        device: deviceInfo(support),
+        model,
+        crashHistory: {
+          previous: client.previousCrash,
+          crashesForModel: client.crashes(model.modelId),
+        },
+        ...measured,
+      });
     } catch (error) {
       addLog(`Run failed: ${errorMessage(error)}`);
     } finally {
@@ -202,11 +232,45 @@ export default function LlmBenchPage() {
                 })}
               </select>
             </label>
-            {variant ? (
+            {status.state === 'unavailable' && (
+              <p role="alert">
+                {status.reason === 'crashed_last_time'
+                  ? `The page stopped while the model was ${client.previousCrash?.phase === 'run' ? 'answering' : 'loading'} last time. It won't start again by itself; try again only if you want to.`
+                  : status.reason === 'disabled_after_crashes'
+                    ? 'The page stopped twice with this model, so it stays off until you reset it.'
+                    : `The model stopped: ${status.reason}.`}
+              </p>
+            )}
+            {wontFit && variant && estimate && (
+              <p role="alert">
+                This download ({formatMegabytes(variant.downloadBytes)}) is larger than the space
+                this browser has left for the site (
+                {formatMegabytes(estimate.quota - estimate.usage)}).
+              </p>
+            )}
+            {variant && disabled ? (
+              <div className={styles.row}>
+                <p>
+                  {variant.modelId} stopped the page {MAX_CRASHES} times on this device, so it is
+                  off.
+                </p>
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() => {
+                    client.resetCrashes(variant.modelId);
+                    setProgress(`Reset ${variant.modelId}: it may be tried again.`);
+                  }}
+                >
+                  Reset this model
+                </button>
+              </div>
+            ) : variant ? (
               <div className={styles.row}>
                 <button type="button" className={styles.button} onClick={load} disabled={busy}>
-                  Download {formatMegabytes(variant.downloadBytes)} from Hugging Face and load (uses
-                  about {variant.vramMB} MB of memory)
+                  {status.state === 'unavailable' ? 'Try again: download ' : 'Download '}
+                  {formatMegabytes(variant.downloadBytes)} from Hugging Face and load (uses about{' '}
+                  {variant.vramMB} MB of memory)
                 </button>
                 <button
                   type="button"

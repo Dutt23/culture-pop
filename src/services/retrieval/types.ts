@@ -46,6 +46,8 @@ export interface RetrievedCandidate {
   firstAppearance?: string;
   /** Works Wikidata says it appears in (P1441), at most three; present only when Wikidata is cited. */
   presentIn?: PresentIn[];
+  /** Works Wikidata says it was inspired by (P941), at most three; present only when Wikidata is cited. */
+  inspiredBy?: PresentIn[];
   /** True while Wikidata hasn't answered yet: type and year may still change. */
   classifying: boolean;
   role: CandidateRole;

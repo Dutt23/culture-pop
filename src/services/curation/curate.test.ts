@@ -157,13 +157,39 @@ describe('templates', () => {
       const [linked] = curateReference(redPill(), [wikidata('Q99')], NOW, known).interpretations;
       expect(linked.relatedReferenceId).toBe('wd:Q83495');
       // A known ID that is not one of the works it appears in is never linked.
-      const [other] = curateReference(redPill(), [wikidata('Q99')], NOW, new Set(['wd:Q1'])).interpretations;
+      const [other] = curateReference(
+        redPill(),
+        [wikidata('Q99')],
+        NOW,
+        new Set(['wd:Q1']),
+      ).interpretations;
       expect(other.relatedReferenceId).toBeUndefined();
     });
 
+    it('states what it was inspired by when Wikidata says so, and links a known work', () => {
+      const reference = redPill({
+        presentIn: undefined,
+        inspiredBy: [{ qid: 'Q83495', label: 'The Matrix' }],
+      });
+      const [plain] = curateReference(reference, [wikidata('Q99')], NOW).interpretations;
+      expect(plain.summary).toContain('Inspired by “The Matrix” (Wikidata).');
+      expect(plain.summary).not.toContain('Appears in');
+      expect(plain.relatedReferenceId).toBeUndefined();
+      const [linked] = curateReference(
+        reference,
+        [wikidata('Q99')],
+        NOW,
+        new Set(['wd:Q83495']),
+      ).interpretations;
+      expect(linked.relatedReferenceId).toBe('wd:Q83495');
+    });
+
     it('says nothing when Wikidata gave no work', () => {
-      const [interpretation] = curateReference(redPill({ presentIn: undefined }), [wikidata('Q99')], NOW)
-        .interpretations;
+      const [interpretation] = curateReference(
+        redPill({ presentIn: undefined }),
+        [wikidata('Q99')],
+        NOW,
+      ).interpretations;
       expect(interpretation.summary).not.toContain('Appears in');
     });
   });

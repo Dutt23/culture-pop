@@ -1,4 +1,6 @@
 import { firstValueFrom } from 'rxjs';
+import type { PersistOutcome } from '../../data/persistentStorage';
+import type { PreviousCrash } from '../../services/llm/crashGuard';
 import { stripDisambiguator } from '../../domain/normalize';
 import type { Reference, Source } from '../../domain/types';
 import {
@@ -77,6 +79,9 @@ export interface ModelInfo {
    */
   loadPeakMainBytes?: number;
   loadPeakWorkerBytes?: number;
+  /** Storage quota for the site after the load, and the answer to `navigator.storage.persist()`. */
+  quotaBytes?: number;
+  persist?: PersistOutcome;
 }
 
 export interface MemoryPeaks {
@@ -144,6 +149,8 @@ export interface BenchResults {
   runMemory: MemoryPeaks;
   /** Every failed model call or lookup; after a worker failure the model is unloaded, not retried. */
   errors: string[];
+  /** Page crashes recorded across reloads (`crashGuard.ts`): the last one, and this model's count. */
+  crashHistory?: { previous?: PreviousCrash; crashesForModel: number };
 }
 
 export interface BenchJobs {

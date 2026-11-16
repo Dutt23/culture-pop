@@ -1,6 +1,7 @@
 import type { ModelRecord } from '@mlc-ai/web-llm';
 import { proxy, wrap, type Remote } from 'comlink';
 import { BehaviorSubject, defer, finalize, Observable, throwError } from 'rxjs';
+import { createCrashGuard, type CrashGuard, type PreviousCrash } from './crashGuard';
 import type { ChatJob } from './jobs';
 import type { ModelFamily, ModelVariant } from './models';
 
@@ -154,8 +155,10 @@ export type LoadEvent = ({ type: 'progress' } & LoadProgress) | ({ type: 'loaded
 
 /**
  * What screens read. Nothing waits on the model: a caller uses it only when `ready` and otherwise
- * carries on with the curator. `unavailable` is sticky: `start` won't try again; only an explicit
- * `load` (a user action) does, so a failing device never loops.
+ * carries on with the curator. `unavailable` is sticky: `start` won't try again and `dispose`
+ * doesn't clear it; only an explicit `load` (a user action) does, so a failing device never loops.
+ * Reasons include `crashed_last_time` (the page died during the last attempt) and
+ * `disabled_after_crashes` (it died twice with this model: `load` refuses until `resetCrashes`).
  */
 export type LlmStatus =
   | { state: 'off' }
@@ -183,6 +186,11 @@ export function errorMessage(error: unknown): string {
 
 export interface LlmClient {
   readonly status$: Observable<LlmStatus>;
+  /** The attempt the last visit died during, if any (see `crashGuard.ts`). */
+  readonly previousCrash: PreviousCrash | undefined;
+  crashes(modelId: string): number;
+  /** The user's explicit "let this model try again" after two crashes. */
+  resetCrashes(modelId: string): void;
   status(): LlmStatus;
   /** First need: starts loading in the background if the model is off; never waits, never retries. */
   start(family: ModelFamily, variant: ModelVariant, consent: DownloadConsent): void;
@@ -209,10 +217,23 @@ export interface LlmClient {
 export function createLlmClient(
   connect: () => WorkerConnection = connectWorker,
   idleMs = IDLE_MS,
+  guard: CrashGuard = createCrashGuard(),
 ): LlmClient {
   let connection: WorkerConnection | undefined;
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
-  const status$ = new BehaviorSubject<LlmStatus>({ state: 'off' });
+  const previousCrash = guard.takePreviousCrash();
+  const status$ = new BehaviorSubject<LlmStatus>(
+    previousCrash
+      ? {
+          state: 'unavailable',
+          reason: guard.isDisabled(previousCrash.modelId)
+            ? 'disabled_after_crashes'
+            : 'crashed_last_time',
+        }
+      : { state: 'off' },
+  );
+  // Closing or leaving the page normally is not a crash.
+  globalThis.addEventListener?.('pagehide', () => guard.end());
   /** Calls in flight: a terminated worker never answers them, so `dispose` ends them. */
   const pending = new Set<(error: Error, byDispose: boolean) => void>();
 
@@ -220,7 +241,8 @@ export function createLlmClient(
     clearTimeout(idleTimer);
     connection?.terminate();
     connection = undefined;
-    if (status$.value.state !== 'off') status$.next({ state: 'off' });
+    const { state } = status$.value;
+    if (state === 'loading' || state === 'ready') status$.next({ state: 'off' });
     for (const fail of [...pending]) fail(new Error('The on-device model was unloaded'), true);
   };
   const restartIdleTimer = () => {
@@ -280,8 +302,14 @@ export function createLlmClient(
     if (consent.modelId !== variant.modelId || consent.bytes !== variant.downloadBytes) {
       return throwError(() => new Error('No consent for this download'));
     }
+    if (guard.isDisabled(variant.modelId)) {
+      return throwError(
+        () => new Error('This model stopped the page twice on this device; reset it to try again'),
+      );
+    }
     return new Observable<LoadEvent>((subscriber) => {
       dispose(); // one model at a time
+      guard.begin(variant.modelId, 'load');
       connection = connect();
       status$.next({ state: 'loading', progress: 0 });
       const onProgress = proxy((p: LoadProgress) => {
@@ -293,21 +321,26 @@ export function createLlmClient(
         (api) => api.load(variant.record, family.thinking, onProgress),
         LOAD_TIMEOUT_MS,
         dispose,
-      ).subscribe({
-        next: (result) => {
-          status$.next({ state: 'ready', modelId: variant.modelId });
-          restartIdleTimer();
-          subscriber.next({ type: 'loaded', ...result });
-          subscriber.complete();
-        },
-        error: (error: unknown) => subscriber.error(error),
-      });
+      )
+        .pipe(finalize(() => guard.end()))
+        .subscribe({
+          next: (result) => {
+            status$.next({ state: 'ready', modelId: variant.modelId });
+            restartIdleTimer();
+            subscriber.next({ type: 'loaded', ...result });
+            subscriber.complete();
+          },
+          error: (error: unknown) => subscriber.error(error),
+        });
     });
   }
 
   return {
     status$: status$.asObservable(),
     status: () => status$.value,
+    previousCrash,
+    crashes: (modelId) => guard.crashes(modelId),
+    resetCrashes: (modelId) => guard.reset(modelId),
     start(family, variant, consent) {
       if (status$.value.state !== 'off') return;
       // Failures land in `status$`; nothing else needs the error.
@@ -316,13 +349,15 @@ export function createLlmClient(
     load,
     run(job) {
       return defer(() => {
-        if (status$.value.state !== 'ready') return throwError(() => new Error('Model not ready'));
+        const status = status$.value;
+        if (status.state !== 'ready') return throwError(() => new Error('Model not ready'));
         clearTimeout(idleTimer);
+        guard.begin(status.modelId, 'run');
         return call(
           (api) => api.run(job),
           RUN_TIMEOUT_MS,
           (api) => void api.interrupt().catch(() => undefined),
-        );
+        ).pipe(finalize(() => guard.end()));
       }).pipe(
         finalize(() => {
           if (status$.value.state === 'ready') restartIdleTimer();
