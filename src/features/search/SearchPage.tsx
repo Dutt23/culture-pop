@@ -12,6 +12,7 @@ import { filterOptions, matchesFilter, NO_FILTER, type ResultFilter } from '../.
 import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
 import { isExactMatch } from '../../domain/ranking';
+import { isExactTitle } from '../../services/retrieval/rerank';
 import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
 import { OnlineResults, SavedOnlineResults } from './OnlineResults';
@@ -108,9 +109,12 @@ export function SearchPage() {
   ]);
   const localShown = search.matches.filter((m) => matchesFilter(m.reference, filter));
   // Later online answers wait behind "N new results" instead of moving cards already on screen.
-  const fresh = useHeldResults(onlineCandidates, query);
+  const fresh = useHeldResults(onlineCandidates, query, (c) => isExactTitle(query, c));
   const onlineShown = fresh.shown.filter((c) => matchesFilter(c, filter));
-  const heldCount = fresh.held.filter((c) => matchesFilter(c, filter)).length;
+  const heldShown = fresh.held.filter((c) => matchesFilter(c, filter));
+  const heldCount = heldShown.length;
+  // A late page named exactly like the search is the likely answer: the button says so.
+  const heldLead = heldShown.find((c) => isExactTitle(query, c))?.title;
   const savedShown = savedOnline.filter((m) => matchesFilter(m.reference, filter));
   const hasOnlineResults = onlineShown.length > 0 || savedShown.length > 0;
   const exactCount = search.matches.filter(isExactMatch).length;
@@ -226,6 +230,7 @@ export function SearchPage() {
               candidates={onlineShown}
               saved={savedShown}
               newCount={heldCount}
+              newLead={heldLead}
               onShowNew={fresh.showHeld}
               onAllow={() => {
                 setConsentError(false);

@@ -11,11 +11,14 @@ export interface HeldResults<T> {
 /**
  * Keeps a streamed list still once something is on screen (D37): the first non-empty batch shows,
  * later arrivals wait until `showHeld`, so cards never move under the reader's finger. Shown items
- * still update in place. Starts over when `key` (the query) changes.
+ * still update in place. On the reader's tap, held items that `isLead` marks (the page named by the
+ * search) go to the top, above quote pages that happened to arrive first; the rest go below the
+ * cards already shown, in arrival order. Starts over when `key` (the query) changes.
  */
 export function useHeldResults<T extends { id: string }>(
   items: readonly T[],
   key: string,
+  isLead: (item: T) => boolean = () => false,
 ): HeldResults<T> {
   const [state, setState] = useState<{ key: string; ids: string[] }>({ key, ids: [] });
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -27,9 +30,18 @@ export function useHeldResults<T extends { id: string }>(
 
   const shownIds = new Set(ids);
   const held = items.filter((item) => !shownIds.has(item.id));
+  const idsOf = (list: readonly T[]) => list.map((item) => item.id);
   return {
     shown: ids.flatMap((id) => byId.get(id) ?? []),
     held,
-    showHeld: () => setState({ key, ids: [...ids, ...held.map((item) => item.id)] }),
+    showHeld: () =>
+      setState({
+        key,
+        ids: [
+          ...idsOf(held.filter(isLead)),
+          ...ids,
+          ...idsOf(held.filter((item) => !isLead(item))),
+        ],
+      }),
   };
 }

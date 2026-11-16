@@ -150,6 +150,18 @@ describe('templates', () => {
       );
     });
 
+    it('names a work once when different works share the name', () => {
+      const reference = redPill({
+        presentIn: [
+          { qid: 'Q1', label: 'Fantastic Four' },
+          { qid: 'Q2', label: 'Fantastic Four' },
+          { qid: 'Q3', label: 'Fantastic Four' },
+        ],
+      });
+      const [interpretation] = curateReference(reference, [wikidata('Q99')], NOW).interpretations;
+      expect(interpretation.summary).toContain('Appears in “Fantastic Four” (Wikidata).');
+    });
+
     it('links the interpretation only to a work that is already a reference', () => {
       const [alone] = curateReference(redPill(), [wikidata('Q99')], NOW).interpretations;
       expect(alone.relatedReferenceId).toBeUndefined();

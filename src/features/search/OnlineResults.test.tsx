@@ -12,7 +12,7 @@ const RESULT: RetrievalResult = {
   outcomes: [{ provider: 'wikipedia', status: 'ok' }],
 };
 
-function show(state: RetrievalState) {
+function show(state: RetrievalState, held: { newCount?: number; newLead?: string } = {}) {
   render(
     <MemoryRouter>
       <OnlineResults
@@ -23,7 +23,8 @@ function show(state: RetrievalState) {
         state={state}
         candidates={[CANDIDATE]}
         saved={[]}
-        newCount={0}
+        newCount={held.newCount ?? 0}
+        newLead={held.newLead}
         onShowNew={() => {}}
         onAllow={() => {}}
         onSkip={() => {}}
@@ -53,5 +54,19 @@ describe('hearts on fresh online results', () => {
   it('appear once the results are saved to the library', () => {
     show({ status: 'done', result: RESULT, cached: true });
     expect(heart()).toBeInTheDocument();
+  });
+});
+
+describe('the new results button', () => {
+  it('names a held page called exactly like the search', () => {
+    show({ status: 'partial', result: RESULT }, { newCount: 5, newLead: 'Doctor Doom' });
+    expect(
+      screen.getByRole('button', { name: '5 new results, including “Doctor Doom”, tap to show' }),
+    ).toBeInTheDocument();
+  });
+
+  it('just counts when none is', () => {
+    show({ status: 'partial', result: RESULT }, { newCount: 1 });
+    expect(screen.getByRole('button', { name: '1 new result, tap to show' })).toBeInTheDocument();
   });
 });

@@ -67,6 +67,8 @@ interface OnlineResultsProps {
   saved: readonly SavedOnlineMatch[];
   /** Fresh candidates that arrived after the first ones were shown, held back until tapped. */
   newCount: number;
+  /** The title of a held result named exactly like the search, so the button says the answer came. */
+  newLead?: string;
   onShowNew: () => void;
   onAllow: () => void;
   onSkip: () => void;
@@ -328,8 +330,8 @@ export function OnlineResults(props: OnlineResultsProps) {
           <div aria-live="polite">
             {props.newCount > 0 && (
               <button type="button" className={styles.secondary} onClick={props.onShowNew}>
-                {props.newCount === 1 ? '1 new result' : `${props.newCount} new results`}, tap to
-                show
+                {props.newCount === 1 ? '1 new result' : `${props.newCount} new results`}
+                {props.newLead && <>, including &ldquo;{props.newLead}&rdquo;</>}, tap to show
               </button>
             )}
           </div>

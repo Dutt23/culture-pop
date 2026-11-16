@@ -208,6 +208,19 @@ describe('fromWorks', () => {
     expect(fromWorks(reference).map((w) => w.qid)).toEqual(['Q1', 'Q2', 'Q3']);
   });
 
+  it('shows a name once when different works share it (the comic and the film)', () => {
+    const reference = {
+      ...base,
+      presentIn: [
+        { qid: 'Q1', label: 'Fantastic Four' },
+        { qid: 'Q2', label: 'Fantastic Four' },
+        { qid: 'Q3', label: 'fantastic four' },
+        { qid: 'Q4', label: 'Avengers' },
+      ],
+    };
+    expect(fromWorks(reference).map((w) => w.label)).toEqual(['Fantastic Four', 'Avengers']);
+  });
+
   it('is empty when Wikidata names no work', () => {
     expect(fromWorks(base)).toEqual([]);
   });

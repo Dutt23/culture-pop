@@ -1,3 +1,4 @@
+import { distinctWorks } from '../../domain/labels';
 import { stripDisambiguator } from '../../domain/normalize';
 import { PUBLISHER, referenceId } from '../../domain/sources';
 import { listOf } from '../../domain/text';
@@ -126,7 +127,7 @@ function typeClaims(reference: Reference, sources: readonly Source[]): Claim[] {
 }
 
 const quotedTitles = (works: readonly PresentIn[]) =>
-  listOf(works.map((work) => `“${work.label}”`));
+  listOf(distinctWorks(works).map((work) => `“${work.label}”`));
 
 /** "Created by Jack Kirby and Stan Lee." "First appeared in “Fantastic Four #5”." "Appears in “The Matrix”." Wikidata only. */
 function factClaims(reference: Reference): Claim[] {

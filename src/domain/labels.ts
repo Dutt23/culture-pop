@@ -68,12 +68,24 @@ export function matchReason(match: RankedMatch): string {
 const MAX_FROM_WORKS = 3;
 
 /**
+ * Each name once: Wikidata gives the comic and its films as different works with the same name
+ * ("Fantastic Four" three times), which reads as a repeat. The first of each name is kept.
+ */
+export function distinctWorks(works: readonly PresentIn[]): PresentIn[] {
+  const seen = new Set<string>();
+  return works.filter((work) => {
+    const name = work.label.toLowerCase();
+    return !seen.has(name) && seen.add(name);
+  });
+}
+
+/**
  * The works shown as "From: …": where Wikidata says a reference appears (P1441), then what it was
- * inspired by (P941), each work once, at most three.
+ * inspired by (P941), each name once, at most three.
  */
 export function fromWorks(reference: Reference): PresentIn[] {
-  const seen = new Set<string>();
-  return [...(reference.presentIn ?? []), ...(reference.inspiredBy ?? [])]
-    .filter((work) => !seen.has(work.qid) && seen.add(work.qid))
-    .slice(0, MAX_FROM_WORKS);
+  return distinctWorks([...(reference.presentIn ?? []), ...(reference.inspiredBy ?? [])]).slice(
+    0,
+    MAX_FROM_WORKS,
+  );
 }

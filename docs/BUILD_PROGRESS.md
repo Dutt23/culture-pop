@@ -410,3 +410,14 @@ share no word with the question into a collapsed "Other pages found". Detection 
 `looksLikePhrase`; quotes like "what's up doc" and addressed phrases like "how you doin" are not questions.
 Four unscored question rows (Z1 to Z4) added to the eval set. Tests: detection (positive and negative),
 community-first rendering, folded vs visible hits, the searched-subject note.
+
+### Wider web, favourites and the model decision (agent, 2026-11-16, at the owner's request)
+
+- Wider web: Parallel is asked for the meaning and origin, copies of a page are dropped, and each snippet
+  starts at the sentence that best answers the search (`api/_lib/snippet.ts`, no AI). Live-tested with a
+  real key: "why are ferrari fans depressed" now returns explaining snippets.
+- Favourites from cards and saved web links (title + URL only), D46. Live-tested.
+- On-device model: Mac smoke run and research, then **not achieved** (D47). A real loader bug was fixed
+  on the way. `vercel dev` reads `.env`, not `.env.local`; the SPA rewrite skips Vite's `/@` dev paths.
+- Gate: `docs/PHASE3_GATE.md` (commands, 360/390 px walkthrough, unresolved issues). **STOP FOR OWNER
+  REVIEW.**

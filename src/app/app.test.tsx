@@ -769,7 +769,7 @@ describe('search UX (D37)', () => {
     expect(screen.queryByRole('button', { name: /new result/ })).not.toBeInTheDocument();
   });
 
-  it('holds a slow Wikipedia batch behind "N new results" after a dictionary-first paint, then appends it in reranked order', async () => {
+  it('holds a slow Wikipedia batch behind "N new results" after a dictionary-first paint, then puts pages named like the search on top', async () => {
     const { service, emit } = controllableRetrievalService();
     const { user } = renderApp('/search?q=dune', await withConsent(), service);
     await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
@@ -804,15 +804,18 @@ describe('search UX (D37)', () => {
         ],
       }),
     );
-    const note = await screen.findByRole('button', { name: '2 new results, tap to show' });
+    const note = await screen.findByRole('button', {
+      name: '2 new results, including “Dune (novel)”, tap to show',
+    });
     expect(within(found).getAllByRole('link')).toHaveLength(1);
 
     await user.click(note);
     const titles = within(found)
       .getAllByRole('link')
       .map((link) => link.querySelector('span:nth-child(2)')?.textContent);
-    // The card already on screen keeps its place; the new ones follow in the reranker's order.
-    expect(titles).toEqual(['dune', 'Dune (novel)', 'Dune (2021 film)']);
+    // Pages named like the search (disambiguator aside) go above the dictionary entry, in the
+    // reranker's order; nothing moved until the tap.
+    expect(titles).toEqual(['Dune (novel)', 'Dune (2021 film)', 'dune']);
   });
 
   it.each([

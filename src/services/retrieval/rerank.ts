@@ -18,6 +18,10 @@ import type { RetrievedCandidate } from './types';
  *    plus the exact-title nudge, which puts it first (ahead of "Chad (slang)" for "gigachad"). When
  *    a Wikipedia page is named exactly like the query ("Dune (2021 film)" for "dune"), the dictionary
  *    entry gets no bonus and keeps its arrival place after the hits.
+ * 4. Spelling: when Wikipedia's own "did you mean" search ran (`via: 'suggestion'`), its hits win
+ *    ties with the typed search's hits at the same place, because Wikipedia said the spelling was
+ *    wrong ("Harley Quinn" before "Harlequin" for "harley quin joker"). A shorter-phrase fallback
+ *    gets no such preference.
  *
  * Word order, word closeness and "kind fit" (phrase or work kinds) were tried and left out: on the
  * tuning half they made results worse or no better (see the Reranker section of the doc).
@@ -96,13 +100,18 @@ export function scoreCandidates(
   });
 }
 
-/** A new list, best first; equal scores keep their arrival order. The input is not changed. */
+const fromSuggestion = ({ candidate }: ScoredCandidate) => (candidate.via === 'suggestion' ? 1 : 0);
+
+/**
+ * A new list, best first; equal scores put a spelling suggestion's hits first (rule 4), then keep
+ * arrival order. The input is not changed.
+ */
 export function rerankCandidates(
   query: string,
   candidates: readonly RetrievedCandidate[],
   weights: RerankWeights = DEFAULT_WEIGHTS,
 ): RetrievedCandidate[] {
   return scoreCandidates(query, candidates, weights)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .sort((a, b) => b.score - a.score || fromSuggestion(b) - fromSuggestion(a) || a.index - b.index)
     .map(({ candidate }) => candidate);
 }

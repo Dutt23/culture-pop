@@ -118,4 +118,29 @@ describe('rerankCandidates', () => {
   it('returns an empty list for no candidates', () => {
     expect(rerankCandidates('anything', [])).toEqual([]);
   });
+
+  // Wikipedia's own "did you mean" says the typed spelling is wrong, so its hits outrank the
+  // misspelled search's hits at the same place.
+  it('puts a spelling suggestion first among hits at the same place', () => {
+    const list = [
+      candidate('wd:1', 'Harlequin'),
+      candidate('wd:2', 'DC Omnibus'),
+      candidate('wd:3', 'Harley Quinn', { via: 'suggestion' }),
+      candidate('wd:4', 'Birds of Prey (2020 film)', { via: 'suggestion' }),
+    ];
+    expect(titles('harley quin joker', list)).toEqual([
+      'Harley Quinn',
+      'Harlequin',
+      'Birds of Prey (2020 film)',
+      'DC Omnibus',
+    ]);
+  });
+
+  it('keeps the typed search first when the fallback is only a shorter phrase', () => {
+    const list = [
+      candidate('wd:1', 'Ferrari fans'),
+      candidate('wd:2', 'Scuderia Ferrari', { via: 'shorter_phrase' }),
+    ];
+    expect(titles('ferrari fans depressed', list)).toEqual(['Ferrari fans', 'Scuderia Ferrari']);
+  });
 });
