@@ -1,23 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { BehaviorSubject } from 'rxjs';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/RetrievalContext';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { normalizePhrase } from '../../domain/normalize';
 import {
-  RetrievalError,
-  type RetrievalFailure,
-  type RetrievalResult,
-} from '../../services/retrieval/types';
+  retrievalStates,
+  type KeyedRetrievalState,
+  type RetrievalRequest,
+  type RetrievalState,
+} from './retrievalPipeline';
+
+export type { RetrievalState } from './retrievalPipeline';
 
 const MIN_QUERY_CHARS = 2;
-
-export type RetrievalState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  /** Some providers have answered; the rest are still `pending` in `result.outcomes`. */
-  | { status: 'partial'; result: RetrievalResult }
-  | { status: 'done'; result: RetrievalResult; cached: boolean }
-  | { status: 'error'; failure: RetrievalFailure };
 
 const IDLE: RetrievalState = { status: 'idle' };
 const LOADING: RetrievalState = { status: 'loading' };
@@ -25,9 +21,12 @@ const LOADING: RetrievalState = { status: 'loading' };
 /**
  * Looks a query up online once the caller has decided it may (consent given, local cache miss).
  * Debounced, cancelled when the query changes, streamed as providers answer, and only the final
- * result is cached for offline reuse.
+ * result is cached for offline reuse. The pipeline itself is `retrievalStates`.
  */
-export function useRetrieval(query: string, enabled: boolean): {
+export function useRetrieval(
+  query: string,
+  enabled: boolean,
+): {
   state: RetrievalState;
   retry: () => void;
 } {
@@ -40,50 +39,22 @@ export function useRetrieval(query: string, enabled: boolean): {
   // State is tagged with the request it belongs to, so a new query reads as loading at once
   // instead of showing the previous query's results during the debounce.
   const requestKey = active ? `${attempt}\n${text}` : null;
-  const [entry, setEntry] = useState<{ key: string; state: RetrievalState } | null>(null);
+  const [entry, setEntry] = useState<KeyedRetrievalState | null>(null);
+  // A BehaviorSubject, so a resubscription (new service or cache) picks up the current request.
+  const [requests$] = useState(() => new BehaviorSubject<RetrievalRequest | null>(null));
 
   useEffect(() => {
-    if (requestKey === null) return;
-    const controller = new AbortController();
-    const update = (state: RetrievalState) => {
-      if (!controller.signal.aborted) setEntry({ key: requestKey, state });
-    };
-    const timer = setTimeout(async () => {
-      let result: RetrievalResult;
-      try {
-        result = await service.retrieve(text, controller.signal, (snapshot) =>
-          update({ status: 'partial', result: snapshot }),
-        );
-      } catch (error) {
-        update({
-          status: 'error',
-          failure: error instanceof RetrievalError ? error.failure : 'bad_response',
-        });
-        return;
-      }
-      if (controller.signal.aborted) return;
-      // Without Wikidata, types and years are missing: caching would overwrite a good earlier copy.
-      const wikidataFailed = result.outcomes.some(
-        (o) => o.provider === 'wikidata' && o.status === 'failed',
-      );
-      let cached = !wikidataFailed;
-      if (cached) {
-        try {
-          await cache.saveCandidates(result.candidates);
-        } catch {
-          cached = false;
-        }
-      }
-      update({ status: 'done', result, cached });
-    }, service.debounceMs);
+    const subscription = retrievalStates(requests$, service, (candidates) =>
+      cache.saveCandidates(candidates),
+    ).subscribe(setEntry);
+    return () => subscription.unsubscribe();
+  }, [requests$, service, cache]);
 
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-      // The same key can come back (offline and online again); it must start from loading.
-      setEntry(null);
-    };
-  }, [requestKey, text, service, cache]);
+  useEffect(() => {
+    requests$.next(requestKey === null ? null : { key: requestKey, text });
+    // The same key can come back (offline and online again); it must start from loading.
+    return () => setEntry(null);
+  }, [requests$, requestKey, text]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const state = requestKey === null ? IDLE : entry?.key === requestKey ? entry.state : LOADING;

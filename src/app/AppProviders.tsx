@@ -2,7 +2,11 @@ import { useState, type ReactNode } from 'react';
 import type { PopCultureDb } from '../data/db';
 import { SettingsProvider } from '../features/settings/SettingsContext';
 import { RepositoriesProvider } from './RepositoriesContext';
-import { createRetrievalService, RetrievalProvider, type RetrievalService } from './RetrievalContext';
+import {
+  createRetrievalService,
+  RetrievalProvider,
+  type RetrievalService,
+} from './RetrievalContext';
 import { StorageGate } from './StorageGate';
 
 interface AppProvidersProps {

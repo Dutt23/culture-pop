@@ -1,4 +1,4 @@
-import { MATCH_RANK, type RankedMatch } from './ranking';
+import { isFuzzyMatch, MATCH_RANK, type RankedMatch } from './ranking';
 import type { Interpretation } from './types';
 
 /**
@@ -21,13 +21,15 @@ export function isCacheEligible(
 /**
  * Spec §6 step 1–2: retrieval is needed unless a top-ranked match has at least one eligible
  * interpretation. Lower-ranked, ineligible candidates never trigger retrieval on their own.
- * Phase 1 only reports this; it never contacts the network.
+ * Typo and sound-alike matches are guesses, so they never count: a query matched only that way
+ * still goes online.
  */
 export function needsRetrieval(
-  matches: readonly RankedMatch[],
+  allMatches: readonly RankedMatch[],
   interpretationsByReference: ReadonlyMap<string, readonly Interpretation[]>,
   validSourceIds: ReadonlySet<string>,
 ): boolean {
+  const matches = allMatches.filter((m) => !isFuzzyMatch(m));
   if (matches.length === 0) return true;
   const bestRank = MATCH_RANK[matches[0].kind];
   return !matches

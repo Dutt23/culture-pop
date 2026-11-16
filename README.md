@@ -53,14 +53,15 @@ npm run check:dist # after a build: proves no tests, fixtures or source maps shi
 | Domain | `src/domain/` | Types, normalization, ranking, cache eligibility, pure helpers |
 | Persistence | `src/data/` | Dexie schema (`db.ts`), seed, repositories (only layer touching IndexedDB) |
 
-Persisted stores: `references`, `interpretations`, `aliases`, `sources`, `favourites`, `settings`.
-No search or browsing history is ever stored.
+Persisted stores: `references`, `interpretations`, `aliases`, `sources`, `favourites`, `settings`,
+`searchHistory`. Search history is on by default, stays on the device, and can be switched off or
+cleared in Settings (D37). No browsing history is stored.
 
 ## Privacy
 
 When a search isn't answered by what's saved on the device, the app can look it up on Wikipedia,
 Wikidata, Wiktionary and Wikiquote (TVmaze is asked only about TV series they find, never your
 search text), but only after you agree (Settings → Online search: Ask first / On / Off).
-Only the search text is sent, with no cookies or referrer, and searches are never stored. Results
+Only the search text is sent, with no cookies or referrer. Search history stays on the device. Results
 and their citations are cached on the device for offline use. External search links open only when
 you tap them. Sources and their terms: `docs/SOURCE_INVENTORY.md`.

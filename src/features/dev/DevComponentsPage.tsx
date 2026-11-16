@@ -41,13 +41,21 @@ export default function DevComponentsPage() {
             teaser={plainInterpretation.summary}
             meaningsCount={1}
           />
-          <ReferenceCard reference={SAMPLE.references[2]} variant="feature" teaser="Feature variant" />
+          <ReferenceCard
+            reference={SAMPLE.references[2]}
+            variant="feature"
+            teaser="Feature variant"
+          />
         </div>
       </Section>
 
       <Section title="InterpretationCard — plain / spoiler">
         <div className={styles.stack}>
-          <InterpretationCard interpretation={plainInterpretation} index={0} revealSpoilers={false} />
+          <InterpretationCard
+            interpretation={plainInterpretation}
+            index={0}
+            revealSpoilers={false}
+          />
           {spoilerInterpretation && (
             <InterpretationCard
               interpretation={spoilerInterpretation}

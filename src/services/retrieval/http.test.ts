@@ -95,7 +95,9 @@ describe('createGetJson', () => {
   });
 
   it('reports a failed connection (DNS, CORS, dropped) as network', async () => {
-    const d = deps({ fetch: vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch')) });
+    const d = deps({
+      fetch: vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch')),
+    });
     expect(await failureOf(createGetJson(d)(URL_))).toBe('network');
   });
 
@@ -104,7 +106,9 @@ describe('createGetJson', () => {
     const fetchMock = vi.fn<typeof fetch>(
       (_url, init) =>
         new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
         }),
     );
     const pending = createGetJson(deps({ fetch: fetchMock }))(URL_, controller.signal);
@@ -117,7 +121,9 @@ describe('createGetJson', () => {
     const fetchMock = vi.fn<typeof fetch>(
       (_url, init) =>
         new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
         }),
     );
     const pending = failureOf(createGetJson(deps({ fetch: fetchMock, timeoutMs: 1000 }))(URL_));
@@ -214,7 +220,9 @@ describe('browserHttpDependencies.sleep', () => {
 /** A 200 whose body only settles when the request is aborted, like a stalled stream. */
 async function stalledBody(_url: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const body = new Promise<never>((_resolve, reject) => {
-    init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    init?.signal?.addEventListener('abort', () =>
+      reject(new DOMException('aborted', 'AbortError')),
+    );
   });
   return {
     ok: true,

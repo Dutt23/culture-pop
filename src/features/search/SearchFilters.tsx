@@ -17,11 +17,18 @@ export function SearchFilters({ categories, eras, value, onChange }: SearchFilte
     <div className={styles.filters}>
       {categories.length > 1 && (
         <div className={styles.filterRow} role="group" aria-label="Filter by category">
-          <Chip selected={value.category === 'all'} onClick={() => onChange({ ...value, category: 'all' })}>
+          <Chip
+            selected={value.category === 'all'}
+            onClick={() => onChange({ ...value, category: 'all' })}
+          >
             All types
           </Chip>
           {categories.map((c) => (
-            <Chip key={c} selected={value.category === c} onClick={() => onChange({ ...value, category: c })}>
+            <Chip
+              key={c}
+              selected={value.category === c}
+              onClick={() => onChange({ ...value, category: c })}
+            >
               {CATEGORY_PLURAL_LABEL[c]}
             </Chip>
           ))}

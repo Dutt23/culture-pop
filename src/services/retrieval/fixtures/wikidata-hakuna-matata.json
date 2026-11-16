@@ -1,132 +1,126 @@
 {
- "head": {
-  "vars": [
-   "item",
-   "class",
-   "date",
-   "idProperty",
-   "externalId"
-  ]
- },
- "results": {
-  "bindings": [
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q223217"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "no.norske-dubber:Løvenes_konge_3_–_Hakuna_Matata_(Film)"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q223217"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6839"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "Disney/TheLionKingOneAndAHalf"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q223217"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2004-01-13T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q223217"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2004-01-21T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q1646614"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "1994-01-01T00:00:00Z"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q11424"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q223217"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q202866"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q223217"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q187931"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q1570072"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q105543609"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q1646614"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13406463"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2640658"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q5640632"
-    }
-   }
-  ]
- }
+  "head": {
+    "vars": ["item", "class", "date", "idProperty", "externalId"]
+  },
+  "results": {
+    "bindings": [
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q223217"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "no.norske-dubber:Løvenes_konge_3_–_Hakuna_Matata_(Film)"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q223217"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6839"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "Disney/TheLionKingOneAndAHalf"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q223217"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2004-01-13T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q223217"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2004-01-21T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1646614"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "1994-01-01T00:00:00Z"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q11424"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q223217"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q202866"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q223217"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q187931"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1570072"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q105543609"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1646614"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13406463"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2640658"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5640632"
+        }
+      }
+    ]
+  }
 }

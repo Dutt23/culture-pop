@@ -18,15 +18,22 @@
     "check:dist": "node scripts/check-dist.js"
   },
   "dependencies": {
+    "@mlc-ai/web-llm": "0.2.88",
+    "@toon-format/toon": "^4.4.0",
+    "comlink": "^4.4.2",
     "dexie": "^4.0.10",
     "dexie-react-hooks": "^1.1.7",
+    "double-metaphone": "^2.0.1",
+    "minisearch": "^7.2.0",
     "motion": "^11.15.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router": "^7.18.5"
+    "react-router": "^7.18.5",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@huggingface/transformers": "^4.3.2",
     "@playwright/test": "^1.49.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

@@ -12,6 +12,9 @@ import { AppShell } from './AppShell';
 const DevComponentsPage = import.meta.env.DEV
   ? lazy(() => import('../features/dev/DevComponentsPage'))
   : null;
+const LlmBenchPage = import.meta.env.DEV
+  ? lazy(() => import('../features/dev/LlmBenchPage'))
+  : null;
 
 export function AppRoutes() {
   return (
@@ -29,6 +32,16 @@ export function AppRoutes() {
             element={
               <Suspense fallback={null}>
                 <DevComponentsPage />
+              </Suspense>
+            }
+          />
+        )}
+        {LlmBenchPage && (
+          <Route
+            path="/dev/llm-bench"
+            element={
+              <Suspense fallback={null}>
+                <LlmBenchPage />
               </Suspense>
             }
           />

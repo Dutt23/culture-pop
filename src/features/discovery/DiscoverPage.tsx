@@ -16,8 +16,11 @@ import {
 } from '../../domain/discovery';
 import { CATEGORIES, CATEGORY_PLURAL_LABEL, ERA_LABEL } from '../../domain/labels';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useRecordSearch, useRegulars } from '../search/useSearchHistory';
 import styles from './DiscoverPage.module.css';
 import { useDiscovery } from './useDiscovery';
+
+const REGULARS = 12;
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 2 ** 32);
@@ -26,6 +29,8 @@ function randomSeed(): number {
 export function DiscoverPage() {
   const navigate = useNavigate();
   const data = useDiscovery();
+  const regulars = useRegulars(REGULARS);
+  const recordSearch = useRecordSearch();
   const { reveal } = useMotionPresets();
   const [draft, setDraft] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
@@ -50,11 +55,31 @@ export function DiscoverPage() {
         value={draft}
         onChange={setDraft}
         onSubmit={(value) => {
-          if (value.trim()) navigate(`/search?q=${encodeURIComponent(value.trim())}`);
+          if (!value.trim()) return;
+          recordSearch(value);
+          navigate(`/search?q=${encodeURIComponent(value.trim())}`);
         }}
       />
 
-      <Section title="Surprise me" description="A random pick from this app's library — not a trend.">
+      {regulars.length > 0 && (
+        <Section
+          title="Your regulars"
+          description="Searches you keep coming back to, kept on this device."
+        >
+          <div className={styles.filters}>
+            {regulars.map((entry) => (
+              <Chip key={entry.id} to={`/search?q=${encodeURIComponent(entry.label)}`}>
+                {entry.label}
+              </Chip>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      <Section
+        title="Surprise me"
+        description="A random pick from this app's library — not a trend."
+      >
         <div className={styles.surprise}>
           <div className={styles.stage}>
             <AnimatePresence mode="popLayout" initial={false}>

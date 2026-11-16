@@ -38,3 +38,13 @@
   font-size: var(--text-sm);
   color: var(--color-danger);
 }
+
+.toggle {
+  justify-self: start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-weight: var(--weight-bold);
+}

@@ -1,15 +1,16 @@
 import { createContext, useContext, type ReactNode } from 'react';
+import type { Observable } from 'rxjs';
 import { browserHttpDependencies, createGetJson } from '../services/retrieval/http';
-import { retrieve, type OnRetrievalUpdate } from '../services/retrieval/retrieve';
+import { retrieve$ } from '../services/retrieval/retrieve';
+import { withSessionCache } from '../services/retrieval/sessionCache';
 import type { RetrievalResult } from '../services/retrieval/types';
 
 export interface RetrievalService {
-  /** Resolves with the final result; `onUpdate` receives a snapshot each time a provider answers. */
-  retrieve: (
-    query: string,
-    signal: AbortSignal,
-    onUpdate?: OnRetrievalUpdate,
-  ) => Promise<RetrievalResult>;
+  /**
+   * A snapshot each time a provider answers, completing after the last one. Unsubscribing
+   * cancels every request still running.
+   */
+  retrieve$: (query: string) => Observable<RetrievalResult>;
   /** Wait after the last keystroke before contacting providers. */
   debounceMs: number;
 }
@@ -19,8 +20,9 @@ const SEARCH_DEBOUNCE_MS = 500;
 export function createRetrievalService(): RetrievalService {
   const getJson = createGetJson(browserHttpDependencies);
   return {
-    retrieve: (query, signal, onUpdate) =>
-      retrieve(query, { getJson, now: () => new Date().toISOString() }, signal, onUpdate),
+    retrieve$: withSessionCache((query) =>
+      retrieve$(query, { getJson, now: () => new Date().toISOString() }),
+    ),
     debounceMs: SEARCH_DEBOUNCE_MS,
   };
 }

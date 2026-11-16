@@ -5,12 +5,15 @@ export type MotionPreference = 'system' | 'reduce' | 'full';
 export type SpoilerPreference = 'hide' | 'show';
 /** Consent to send search text to Wikimedia. `ask` shows the disclosure first. */
 export type RetrievalPreference = 'ask' | 'on' | 'off';
+/** Search history on this device (D37: on by default, owner decision). */
+export type HistoryPreference = 'on' | 'off';
 
 export interface Settings {
   theme: ThemePreference;
   motion: MotionPreference;
   spoilers: SpoilerPreference;
   retrieval: RetrievalPreference;
+  history: HistoryPreference;
 }
 
 export type SettingKey = keyof Settings;
@@ -20,17 +23,25 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   motion: 'system',
   spoilers: 'hide',
   retrieval: 'ask',
+  history: 'on',
 };
 
-const ALLOWED_VALUES: { readonly [K in SettingKey]: readonly Settings[K][] } = {
-  theme: ['system', 'light', 'dark'],
-  motion: ['system', 'reduce', 'full'],
-  spoilers: ['hide', 'show'],
-  retrieval: ['ask', 'on', 'off'],
+/**
+ * Each setting's allowed values, in display order, with their Settings-page labels. The only list
+ * of values: `parseSettings` and the page both read it, and a missing value is a type error.
+ */
+export const SETTING_LABELS: {
+  readonly [K in SettingKey]: Readonly<Record<Settings[K], string>>;
+} = {
+  theme: { system: 'System', light: 'Light', dark: 'Dark' },
+  motion: { system: 'Match device', reduce: 'Reduce', full: 'Full' },
+  spoilers: { hide: 'Hide until I tap', show: 'Show automatically' },
+  retrieval: { ask: 'Ask first', on: 'On', off: 'Off' },
+  history: { on: 'On', off: 'Off' },
 };
 
 function isSettingKey(key: string): key is SettingKey {
-  return Object.hasOwn(ALLOWED_VALUES, key);
+  return Object.hasOwn(SETTING_LABELS, key);
 }
 
 /** Stored rows are untrusted: unknown keys and invalid values fall back to defaults. */
@@ -38,8 +49,9 @@ export function parseSettings(rows: readonly Setting[]): Settings {
   return rows.reduce<Settings>(
     (settings, row) => {
       if (!isSettingKey(row.key)) return settings;
-      const allowed: readonly string[] = ALLOWED_VALUES[row.key];
-      return allowed.includes(row.value) ? { ...settings, [row.key]: row.value } : settings;
+      return Object.hasOwn(SETTING_LABELS[row.key], row.value)
+        ? { ...settings, [row.key]: row.value }
+        : settings;
     },
     { ...DEFAULT_SETTINGS },
   );

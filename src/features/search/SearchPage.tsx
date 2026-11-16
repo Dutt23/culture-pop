@@ -13,14 +13,46 @@ import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
 import { isExactMatch } from '../../domain/ranking';
 import { useSettings } from '../settings/SettingsContext';
-import { OnlineResults } from './OnlineResults';
+import { OnlineResults, SavedOnlineResults } from './OnlineResults';
 import { SearchFilters } from './SearchFilters';
 import styles from './SearchPage.module.css';
+import { useHeldResults } from './useHeldResults';
 import { useRetrieval } from './useRetrieval';
 import { useSearch } from './useSearch';
+import { useRecentSearches, useRecordSearch } from './useSearchHistory';
 import { useSearchQuery } from './useSearchQuery';
 
 const EXAMPLE_QUERIES = ['hakuna matata', 'let it go', 'this is fine', 'bazinga', 'all izz well'];
+const RECENT_CHIPS = 8;
+
+interface NotWhatIMeantProps {
+  query: string;
+  isOnline: boolean;
+}
+
+/** Shown under online and saved results: other places to look, only when asked for. */
+function NotWhatIMeant({ query, isOnline }: NotWhatIMeantProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.toggle}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        Not what I meant
+      </button>
+      {open && (
+        <>
+          {/* Hook (D37): "Search the wider web" (Brave/Mojeek) goes here, once the owner
+              approves its backend and keys. */}
+          <ExternalSearchLinks query={query} isOnline={isOnline} />
+        </>
+      )}
+    </>
+  );
+}
 
 export function SearchPage() {
   const [query, setQuery] = useSearchQuery();
@@ -30,9 +62,16 @@ export function SearchPage() {
   const { settings, settingsLoaded, setSetting, onlineSearchSkipped, skipOnlineSearch } =
     useSettings();
   const [consentError, setConsentError] = useState(false);
+  const recordSearch = useRecordSearch();
+  const recent = useRecentSearches(RECENT_CHIPS);
+  const openResult = (referenceId: string) => recordSearch(query, referenceId);
 
-  // Spec §6: go online only on a local miss (no eligible top match) and with consent.
-  const wantsOnline = hasQuery && !search.loading && search.needsRetrieval;
+  // Spec §6: go online only on a local miss (no eligible top match) and with consent. Latched per
+  // query: saving explains the results, which would otherwise end the lookup and move its cards.
+  const missesLocally = hasQuery && !search.loading && search.needsRetrieval;
+  const [onlineQuery, setOnlineQuery] = useState<string | null>(null);
+  if (missesLocally && onlineQuery !== query) setOnlineQuery(query);
+  const wantsOnline = missesLocally || onlineQuery === query;
   const online = useRetrieval(query, wantsOnline && settings.retrieval === 'on');
 
   // Filters reset whenever the query changes (state adjusted during render, React's documented pattern).
@@ -51,17 +90,21 @@ export function SearchPage() {
       : [];
   // Cached online results belong to the online section only, never to the curated list.
   const freshIds = new Set(onlineCandidates.map((c) => c.id));
-  const savedOnline = wantsOnline
-    ? search.savedOnline.filter((m) => !freshIds.has(m.reference.id))
-    : [];
+  // Saved online results show either way: below a running lookup, or alone when one of them
+  // (already explained from sources) resolves the query without going online.
+  const savedOnline = search.savedOnline.filter((m) => !freshIds.has(m.reference.id));
   const options = filterOptions([
     ...search.matches.map((m) => m.reference),
     ...onlineCandidates,
     ...savedOnline.map((m) => m.reference),
   ]);
   const localShown = search.matches.filter((m) => matchesFilter(m.reference, filter));
-  const onlineShown = onlineCandidates.filter((c) => matchesFilter(c, filter));
+  // Later online answers wait behind "N new results" instead of moving cards already on screen.
+  const fresh = useHeldResults(onlineCandidates, query);
+  const onlineShown = fresh.shown.filter((c) => matchesFilter(c, filter));
+  const heldCount = fresh.held.filter((c) => matchesFilter(c, filter)).length;
   const savedShown = savedOnline.filter((m) => matchesFilter(m.reference, filter));
+  const hasOnlineResults = onlineShown.length > 0 || savedShown.length > 0;
   const exactCount = search.matches.filter(isExactMatch).length;
   const showEmpty =
     localShown.length === 0 &&
@@ -72,7 +115,19 @@ export function SearchPage() {
 
   return (
     <Page title="Search" eyebrow="Decode a reference">
-      <SearchBar value={query} autoFocus={!hasQuery} onChange={setQuery} />
+      <SearchBar value={query} autoFocus={!hasQuery} onChange={setQuery} onSubmit={recordSearch} />
+
+      {!hasQuery && recent.length > 0 && (
+        <Section title="Recent searches">
+          <ul className={styles.examples}>
+            {recent.map((entry) => (
+              <li key={entry.id}>
+                <Chip to={`/search?q=${encodeURIComponent(entry.label)}`}>{entry.label}</Chip>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       {!hasQuery && (
         <Section title="Try one of these">
@@ -95,7 +150,9 @@ export function SearchPage() {
 
           {search.isAmbiguous && (
             <p className={styles.disambiguation}>
-              <strong>&ldquo;{query.trim()}&rdquo; can mean {exactCount} different things.</strong>{' '}
+              <strong>
+                &ldquo;{query.trim()}&rdquo; can mean {exactCount} different things.
+              </strong>{' '}
               Pick the one you meant — we won&rsquo;t guess for you.
             </p>
           )}
@@ -118,6 +175,7 @@ export function SearchPage() {
                       teaser={summary?.teaser}
                       meaningsCount={summary?.meaningsCount}
                       matchNote={matchReason(match)}
+                      onOpen={() => openResult(match.reference.id)}
                     />
                   </AnimatedItem>
                 );
@@ -141,12 +199,24 @@ export function SearchPage() {
               state={onlineState}
               candidates={onlineShown}
               saved={savedShown}
+              newCount={heldCount}
+              onShowNew={fresh.showHeld}
               onAllow={() => {
                 setConsentError(false);
                 setSetting('retrieval', 'on').catch(() => setConsentError(true));
               }}
               onSkip={skipOnlineSearch}
               onRetry={online.retry}
+              onOpen={openResult}
+            />
+          )}
+
+          {!wantsOnline && (
+            <SavedOnlineResults
+              saved={savedShown}
+              onOpen={openResult}
+              // Reruns the lookup through the same per-query latch; it saves again when done.
+              onRefresh={() => setOnlineQuery(query)}
             />
           )}
 
@@ -157,7 +227,11 @@ export function SearchPage() {
           )}
 
           <Section title={search.needsRetrieval ? 'Look it up elsewhere' : 'Not what you meant?'}>
-            <ExternalSearchLinks query={query} isOnline={isOnline} />
+            {hasOnlineResults ? (
+              <NotWhatIMeant key={query} query={query} isOnline={isOnline} />
+            ) : (
+              <ExternalSearchLinks query={query} isOnline={isOnline} />
+            )}
           </Section>
         </>
       )}

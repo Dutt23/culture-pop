@@ -98,6 +98,65 @@ describe('wikidata', () => {
     expect(facts.get('Q1')?.externalIds.size).toBe(0);
   });
 
+  it('reads creator and first-appearance labels, refusing unsafe ones', () => {
+    const doom = 'http://www.wikidata.org/entity/Q430178';
+    const row = (key: string, value: string) => ({
+      item: { type: 'uri', value: doom },
+      [key]: { 'xml:lang': 'en', type: 'literal', value },
+    });
+    const facts = parseWikidataFacts({
+      results: {
+        bindings: [
+          row('creatorLabel', 'Stan Lee'),
+          row('creatorLabel', 'Jack Kirby'),
+          row('creatorLabel', 'Stan Lee'),
+          row('creatorLabel', 'line\nbreak'),
+          row('creatorLabel', 'x'.repeat(121)),
+          row('firstAppearanceLabel', 'Fantastic Four #5'),
+        ],
+      },
+    }).get('Q430178');
+    expect([...(facts?.creators ?? [])]).toEqual(['Stan Lee', 'Jack Kirby']);
+    expect(facts?.firstAppearance).toBe('Fantastic Four #5');
+  });
+
+  it('reads the works an item appears in (P1441), refusing unsafe items and labels', () => {
+    const redPill = 'http://www.wikidata.org/entity/Q1';
+    const row = (work: string, label: string | undefined) => ({
+      item: { type: 'uri', value: redPill },
+      presentIn: { type: 'uri', value: work },
+      ...(label === undefined ? {} : { presentInLabel: { 'xml:lang': 'en', type: 'literal', value: label } }),
+    });
+    const facts = parseWikidataFacts({
+      results: {
+        bindings: [
+          row('http://www.wikidata.org/entity/Q83495', 'The Matrix'),
+          row('http://www.wikidata.org/entity/Q83495', 'The Matrix'),
+          row('http://www.wikidata.org/entity/Q2', 'line\nbreak'),
+          row('http://www.wikidata.org/entity/Q3', 'x'.repeat(121)),
+          // No English label: unbound, so it is not shown as a bare item number.
+          row('http://www.wikidata.org/entity/Q4', undefined),
+          row('http://evil.example/entity/Q5', 'Not Wikidata'),
+          row('http://www.wikidata.org/entity/Qabc', 'Not an item'),
+        ],
+      },
+    }).get('Q1');
+    expect([...(facts?.presentIn ?? [])]).toEqual([['Q83495', 'The Matrix']]);
+  });
+
+  it('asks for the works an item appears in, in the same single request', () => {
+    const query = new URL(wikidataFactsUrl(['Q1'])).searchParams.get('query') ?? '';
+    expect(query).toContain('?item wdt:P1441 ?presentIn');
+    expect(query).toContain('?presentIn rdfs:label ?presentInLabel');
+  });
+
+  it('asks for creators and first appearance with English labels only', () => {
+    const query = new URL(wikidataFactsUrl(['Q430178'])).searchParams.get('query') ?? '';
+    expect(query).toContain('?item wdt:P170 ?creator');
+    expect(query).toContain('?item wdt:P4584 ?firstAppearance');
+    expect(query).toContain('wikibase:language "en"');
+  });
+
   it('collects classes and the earliest sourced year per item', () => {
     const facts = parseWikidataFacts(matrixWikidata);
     expect(facts.get('Q83495')).toMatchObject({ year: 1999 });
@@ -105,13 +164,27 @@ describe('wikidata', () => {
     // The franchise matches no queried class and has no date, but still has external IDs.
     expect(facts.get('Q13014087')?.classes.size).toBe(0);
     expect(facts.get('Q13014087')?.year).toBeUndefined();
-    expect(parseWikidataFacts(swatKatsWikidata).get('Q6596209')?.classes.has('Q13406463')).toBe(true);
+    expect(parseWikidataFacts(swatKatsWikidata).get('Q6596209')?.classes.has('Q13406463')).toBe(
+      true,
+    );
   });
 
   it('classifies an animated series as a cartoon, not plain TV', () => {
     const facts = parseWikidataFacts(swatKatsWikidata).get('Q2077112');
     expect(facts?.year).toBe(1993);
     expect(classify(facts?.classes ?? new Set())).toEqual({ category: 'cartoon', kind: 'work' });
+  });
+
+  // Classes as the SPARQL query returns them for these items (checked live 2026-11-15).
+  it.each([
+    ['Doctor Doom', ['Q1114461', 'Q95074'], { category: 'comics', kind: 'character' }],
+    ['Watchmen', ['Q1004'], { category: 'comics', kind: 'work' }],
+    ['Mario', ['Q1569167', 'Q95074'], { category: 'games', kind: 'character' }],
+    ['Minecraft', ['Q7889'], { category: 'games', kind: 'work' }],
+    ['The Legend of Zelda', ['Q7058673'], { category: 'games', kind: 'work' }],
+    ['a fictional character outside comics', ['Q95074'], { category: 'other', kind: 'character' }],
+  ])('classes %s', (_name, classes, expected) => {
+    expect(classify(new Set(classes))).toEqual(expected);
   });
 
   it('falls back to other for unknown classes', () => {
@@ -123,11 +196,33 @@ describe('external links', () => {
   it.each([
     ['P13484', 'ok-boomer', 'Know Your Meme', 'https://knowyourmeme.com/memes/ok-boomer'],
     ['P6760', '458', 'Know Your Meme', 'https://knowyourmeme.com/memes/458'],
-    ['P6839', 'JustForFun/Rickroll', 'TV Tropes', 'https://tvtropes.org/pmwiki/pmwiki.php/JustForFun/Rickroll'],
-    ['P13553', 'ok boomer', 'Urban Dictionary', 'https://www.urbandictionary.com/define.php?term=ok%20boomer'],
+    [
+      'P6839',
+      'JustForFun/Rickroll',
+      'TV Tropes',
+      'https://tvtropes.org/pmwiki/pmwiki.php/JustForFun/Rickroll',
+    ],
+    [
+      'P13553',
+      'ok boomer',
+      'Urban Dictionary',
+      'https://www.urbandictionary.com/define.php?term=ok%20boomer',
+    ],
     ['P4086', '5114', 'MyAnimeList', 'https://myanimelist.net/anime/5114'],
     ['P8729', '5114', 'AniList', 'https://anilist.co/anime/5114'],
-    ['P6262', 'muppet:Kermit_the_Frog', 'Fandom', 'https://community.fandom.com/wiki/w:c:muppet:Kermit_the_Frog'],
+    [
+      'P6262',
+      'muppet:Kermit_the_Frog',
+      'Fandom',
+      'https://community.fandom.com/wiki/w:c:muppet:Kermit_the_Frog',
+    ],
+    ['P5905', '4005-1234', 'Comic Vine', 'https://comicvine.gamespot.com/wd/4005-1234/'],
+    ['P5621', '1009281', 'Marvel.com', 'https://www.marvel.com/comics/characters/1009281/wd'],
+    ['P9851', 'harley-quinn', 'DC', 'https://www.dccomics.com/characters/harley-quinn'],
+    ['P14738', '2321', 'Grand Comics Database', 'https://www.comics.org/character/2321/'],
+    ['P3589', '1234', 'Grand Comics Database', 'https://www.comics.org/series/1234/'],
+    ['P4087', '2', 'MyAnimeList', 'https://myanimelist.net/manga/2'],
+    ['P8731', '30002', 'AniList', 'https://anilist.co/manga/30002'],
   ])('builds the %s link for %s', (property, id, label, url) => {
     expect(externalLink(property, id)).toEqual({ label, url });
   });
@@ -147,6 +242,10 @@ describe('external links', () => {
     ['P6262', 'matrix:a/../../../x'],
     ['P6262', 'es.sherlockholmes:James_Moriarty'],
     ['P6262', 'matrix:The Matrix'],
+    ['P5905', '4099-1'],
+    ['P5905', '4005-1/../x'],
+    ['P9851', 'Harley-Quinn'],
+    ['P14738', '0'],
     ['P9999', '1'],
   ])('rejects %s ID %j', (property, id) => {
     expect(externalLink(property, id)).toBeUndefined();
@@ -273,7 +372,11 @@ describe('wikiquote', () => {
     const hostile = {
       query: {
         search: [
-          { pageid: 1, title: 'Villains', snippet: 'Hi. So evil <img src=x onerror=alert(1)> &lt;b&gt;!' },
+          {
+            pageid: 1,
+            title: 'Villains',
+            snippet: 'Hi. So evil <img src=x onerror=alert(1)> &lt;b&gt;!',
+          },
           { pageid: 2, title: 'Evil', snippet: 'evil' },
           { pageid: 3, title: 'List of villains', snippet: 'evil' },
           { pageid: '4', title: 'Villains', snippet: 'evil' },
@@ -296,7 +399,9 @@ describe('wikiquote', () => {
 
 describe('tvmaze', () => {
   it('builds a search URL with the query encoded', () => {
-    expect(tvmazeSearchUrl('rock & roll')).toBe('https://api.tvmaze.com/search/shows?q=rock+%26+roll');
+    expect(tvmazeSearchUrl('rock & roll')).toBe(
+      'https://api.tvmaze.com/search/shows?q=rock+%26+roll',
+    );
   });
 
   it('reads type, premiere year and network from recorded results', () => {
@@ -325,15 +430,18 @@ describe('tvmaze', () => {
       score: 0.9,
       show: { id: 1, name: 'Show', url: 'https://www.tvmaze.com/shows/1/show', ...overrides },
     });
-    const parsed = parseTvmazeSearch([
-      show({ url: 'javascript:alert(1)' }),
-      show({ url: 'https://evil.example/shows/1' }),
-      show({ id: '1' }),
-      show({ id: 1.5 }),
-      { score: 0.1, show: show({}).show },
-      show({ name: 'Another' }),
-      show({ premiered: '93-09-11', summary: '<script>x</script>Fine' }),
-    ], 'show');
+    const parsed = parseTvmazeSearch(
+      [
+        show({ url: 'javascript:alert(1)' }),
+        show({ url: 'https://evil.example/shows/1' }),
+        show({ id: '1' }),
+        show({ id: 1.5 }),
+        { score: 0.1, show: show({}).show },
+        show({ name: 'Another' }),
+        show({ premiered: '93-09-11', summary: '<script>x</script>Fine' }),
+      ],
+      'show',
+    );
     expect(parsed).toHaveLength(1);
     expect(parsed[0].year).toBeUndefined();
     expect(parsed[0].summary).toBe('xFine');
@@ -358,6 +466,12 @@ describe('validate', () => {
     );
     expect(safeUrl('http://en.wikipedia.org/wiki/A', 'en.wikipedia.org')).toBeUndefined();
     expect(safeUrl('not a url', 'en.wikipedia.org')).toBeUndefined();
+    expect(safeUrl('https://other.org/wiki/A', 'en.wikipedia.org')).toBeUndefined();
+  });
+
+  it('refuses a link with a username or password, as the page would at render time', () => {
+    expect(safeUrl('https://user:pw@en.wikipedia.org/wiki/A', 'en.wikipedia.org')).toBeUndefined();
+    expect(safeUrl('https://user@en.wikipedia.org/wiki/A', 'en.wikipedia.org')).toBeUndefined();
   });
 
   it('caps long text at a word boundary', () => {

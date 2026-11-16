@@ -76,12 +76,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // The on-device model's worker bundles WebLLM (~7 MB): fetched only after consent, never precached.
+        globIgnores: ['**/llm.worker-*.js'],
         navigateFallback: '/index.html',
         skipWaiting: true,
         clientsClaim: true,
       },
     }),
   ],
+  // Matches `new Worker(…, { type: 'module' })` in src/services/llm/client.ts.
+  worker: { format: 'es' },
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],

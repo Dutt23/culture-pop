@@ -1,134 +1,116 @@
 [
- {
-  "score": 0.7991222,
-  "show": {
-   "id": 18303,
-   "url": "https://www.tvmaze.com/shows/18303/taarak-mehta-ka-ooltah-chashmah",
-   "name": "Taarak Mehta Ka Ooltah Chashmah",
-   "type": "Scripted",
-   "language": "Hindi",
-   "genres": [
-    "Comedy"
-   ],
-   "status": "Running",
-   "runtime": 30,
-   "averageRuntime": 30,
-   "premiered": "2008-07-28",
-   "ended": null,
-   "officialSite": null,
-   "schedule": {
-    "time": "20:30",
-    "days": [
-     "Monday",
-     "Tuesday",
-     "Wednesday",
-     "Thursday",
-     "Friday",
-     "Saturday"
-    ]
-   },
-   "rating": {
-    "average": null
-   },
-   "weight": 72,
-   "network": {
-    "id": 1725,
-    "name": "Sony SAB",
-    "country": {
-     "name": "India",
-     "code": "IN",
-     "timezone": "Asia/Kolkata"
-    },
-    "officialSite": null
-   },
-   "webChannel": null,
-   "dvdCountry": null,
-   "externals": {
-    "tvrage": null,
-    "thetvdb": 265599,
-    "imdb": "tt1708446"
-   },
-   "image": {
-    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/518/1295584.jpg",
-    "original": "https://static.tvmaze.com/uploads/images/original_untouched/518/1295584.jpg"
-   },
-   "summary": "<p><b>Taarak Mehta Ka Ooltah Chashmah</b> is a story of Gokuldham Society where families from different cultures live in harmony, getting into the occasional trouble. And not to forget - all of these happen with a dash of humour. All the families stay united and remain together in happiness as well as in times when a family is in trouble.</p>",
-   "updated": 1740063308,
-   "_links": {
-    "self": {
-     "href": "https://api.tvmaze.com/shows/18303"
-    },
-    "previousepisode": {
-     "href": "https://api.tvmaze.com/episodes/3153826",
-     "name": "Episode 4327"
+  {
+    "score": 0.7991222,
+    "show": {
+      "id": 18303,
+      "url": "https://www.tvmaze.com/shows/18303/taarak-mehta-ka-ooltah-chashmah",
+      "name": "Taarak Mehta Ka Ooltah Chashmah",
+      "type": "Scripted",
+      "language": "Hindi",
+      "genres": ["Comedy"],
+      "status": "Running",
+      "runtime": 30,
+      "averageRuntime": 30,
+      "premiered": "2008-07-28",
+      "ended": null,
+      "officialSite": null,
+      "schedule": {
+        "time": "20:30",
+        "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      },
+      "rating": {
+        "average": null
+      },
+      "weight": 72,
+      "network": {
+        "id": 1725,
+        "name": "Sony SAB",
+        "country": {
+          "name": "India",
+          "code": "IN",
+          "timezone": "Asia/Kolkata"
+        },
+        "officialSite": null
+      },
+      "webChannel": null,
+      "dvdCountry": null,
+      "externals": {
+        "tvrage": null,
+        "thetvdb": 265599,
+        "imdb": "tt1708446"
+      },
+      "image": {
+        "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/518/1295584.jpg",
+        "original": "https://static.tvmaze.com/uploads/images/original_untouched/518/1295584.jpg"
+      },
+      "summary": "<p><b>Taarak Mehta Ka Ooltah Chashmah</b> is a story of Gokuldham Society where families from different cultures live in harmony, getting into the occasional trouble. And not to forget - all of these happen with a dash of humour. All the families stay united and remain together in happiness as well as in times when a family is in trouble.</p>",
+      "updated": 1740063308,
+      "_links": {
+        "self": {
+          "href": "https://api.tvmaze.com/shows/18303"
+        },
+        "previousepisode": {
+          "href": "https://api.tvmaze.com/episodes/3153826",
+          "name": "Episode 4327"
+        }
+      }
     }
-   }
-  }
- },
- {
-  "score": 0.736259,
-  "show": {
-   "id": 71117,
-   "url": "https://www.tvmaze.com/shows/71117/taarak-mehta-kka-chhota-chashmah",
-   "name": "Taarak Mehta Kka Chhota Chashmah",
-   "type": "Scripted",
-   "language": "Hindi",
-   "genres": [
-    "Comedy",
-    "Children"
-   ],
-   "status": "To Be Determined",
-   "runtime": 30,
-   "averageRuntime": 30,
-   "premiered": "2021-04-19",
-   "ended": null,
-   "officialSite": null,
-   "schedule": {
-    "time": "12:00",
-    "days": [
-     "Monday",
-     "Tuesday",
-     "Wednesday",
-     "Thursday",
-     "Friday"
-    ]
-   },
-   "rating": {
-    "average": null
-   },
-   "weight": 26,
-   "network": {
-    "id": 1984,
-    "name": "Sony YAY!",
-    "country": {
-     "name": "India",
-     "code": "IN",
-     "timezone": "Asia/Kolkata"
-    },
-    "officialSite": null
-   },
-   "webChannel": null,
-   "dvdCountry": null,
-   "externals": {
-    "tvrage": null,
-    "thetvdb": 417664,
-    "imdb": "tt14438518"
-   },
-   "image": {
-    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/476/1190866.jpg",
-    "original": "https://static.tvmaze.com/uploads/images/original_untouched/476/1190866.jpg"
-   },
-   "summary": "<p>This animated adaptation of a beloved sitcom follows the spirited residents of a Mumbai housing complex as they comically navigate life's challenges.</p>",
-   "updated": 1782946700,
-   "_links": {
-    "self": {
-     "href": "https://api.tvmaze.com/shows/71117"
-    },
-    "previousepisode": {
-     "href": "https://api.tvmaze.com/episodes/2871695",
-     "name": "Episode 1"
+  },
+  {
+    "score": 0.736259,
+    "show": {
+      "id": 71117,
+      "url": "https://www.tvmaze.com/shows/71117/taarak-mehta-kka-chhota-chashmah",
+      "name": "Taarak Mehta Kka Chhota Chashmah",
+      "type": "Scripted",
+      "language": "Hindi",
+      "genres": ["Comedy", "Children"],
+      "status": "To Be Determined",
+      "runtime": 30,
+      "averageRuntime": 30,
+      "premiered": "2021-04-19",
+      "ended": null,
+      "officialSite": null,
+      "schedule": {
+        "time": "12:00",
+        "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      },
+      "rating": {
+        "average": null
+      },
+      "weight": 26,
+      "network": {
+        "id": 1984,
+        "name": "Sony YAY!",
+        "country": {
+          "name": "India",
+          "code": "IN",
+          "timezone": "Asia/Kolkata"
+        },
+        "officialSite": null
+      },
+      "webChannel": null,
+      "dvdCountry": null,
+      "externals": {
+        "tvrage": null,
+        "thetvdb": 417664,
+        "imdb": "tt14438518"
+      },
+      "image": {
+        "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/476/1190866.jpg",
+        "original": "https://static.tvmaze.com/uploads/images/original_untouched/476/1190866.jpg"
+      },
+      "summary": "<p>This animated adaptation of a beloved sitcom follows the spirited residents of a Mumbai housing complex as they comically navigate life's challenges.</p>",
+      "updated": 1782946700,
+      "_links": {
+        "self": {
+          "href": "https://api.tvmaze.com/shows/71117"
+        },
+        "previousepisode": {
+          "href": "https://api.tvmaze.com/episodes/2871695",
+          "name": "Episode 1"
+        }
+      }
     }
-   }
   }
- }
 ]

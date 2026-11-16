@@ -1,3 +1,4 @@
+import { safeHref } from '../../components/ui/safeHref';
 import { normalizePhrase } from '../../domain/normalize';
 import { RetrievalError } from './types';
 
@@ -22,15 +23,15 @@ export function throwIfMediaWikiError(json: unknown): void {
   throw new RetrievalError(failure, `MediaWiki error: ${code ?? 'unknown'}`);
 }
 
-/** Only https links on the expected host survive, so provider data can't inject other URLs. */
+/**
+ * Only https links on the expected host survive, so provider data can't inject other URLs. It is
+ * the render-time check (`safeHref`: https, no username or password) plus the host check, so a
+ * link stored here is never one the page would later refuse.
+ */
 export function safeUrl(value: unknown, host: string): string | undefined {
   if (typeof value !== 'string') return undefined;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname === host ? url.href : undefined;
-  } catch {
-    return undefined;
-  }
+  const href = safeHref(value);
+  return href !== undefined && new URL(href).hostname === host ? href : undefined;
 }
 
 const NAMED_ENTITIES: Record<string, string> = {

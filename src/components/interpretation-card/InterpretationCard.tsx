@@ -1,8 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PROVENANCE_LABEL } from '../../domain/labels';
-import type { Interpretation } from '../../domain/types';
+import type { Interpretation, Source } from '../../domain/types';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { ExternalAnchor } from '../ui/ExternalAnchor';
+import { safeHref } from '../ui/safeHref';
 import styles from './InterpretationCard.module.css';
 
 // Real labels can give the plot away, so veiled cards show a neutral one.
@@ -13,12 +15,15 @@ interface InterpretationCardProps {
   index: number;
   /** User setting; spoiler-free is the default. */
   revealSpoilers: boolean;
+  /** The sources this interpretation cites, shown as links under it. */
+  citations?: readonly Source[];
 }
 
 export function InterpretationCard({
   interpretation,
   index,
   revealSpoilers,
+  citations = [],
 }: InterpretationCardProps) {
   const { reveal, expand } = useMotionPresets();
   const [revealedHere, setRevealedHere] = useState(false);
@@ -73,32 +78,58 @@ export function InterpretationCard({
             <p ref={summaryRef} tabIndex={-1} className={styles.summary}>
               {interpretation.summary}
             </p>
-            <p className={styles.example}>
-              <span className={styles.exampleLabel}>How people use it</span>
-              {interpretation.usageExample}
-            </p>
-            <button
-              type="button"
-              className={styles.toggle}
-              aria-expanded={contextOpen}
-              aria-controls={contextId}
-              onClick={() => setContextOpen((open) => !open)}
-            >
-              {contextOpen ? 'Less context' : 'More context'}
-            </button>
-            <div id={contextId} className={styles.contextRegion}>
-              <AnimatePresence initial={false}>
-                {contextOpen && (
-                  <motion.div key="context" className={styles.contextPanel} {...expand}>
-                    <p className={styles.context}>{interpretation.context}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* Curated-from-source meanings have no example or context unless a source gives one. */}
+            {interpretation.usageExample && (
+              <p className={styles.example}>
+                <span className={styles.exampleLabel}>How people use it</span>
+                {interpretation.usageExample}
+              </p>
+            )}
+            {interpretation.context && (
+              <>
+                <button
+                  type="button"
+                  className={styles.toggle}
+                  aria-expanded={contextOpen}
+                  aria-controls={contextId}
+                  onClick={() => setContextOpen((open) => !open)}
+                >
+                  {contextOpen ? 'Less context' : 'More context'}
+                </button>
+                <div id={contextId} className={styles.contextRegion}>
+                  <AnimatePresence initial={false}>
+                    {contextOpen && (
+                      <motion.div key="context" className={styles.contextPanel} {...expand}>
+                        <p className={styles.context}>{interpretation.context}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
+      {citations.length > 0 && (
+        <p className={styles.citations}>
+          Cites:{' '}
+          {citations.map((source, i) => {
+            const name = `${source.publisher}: ${source.title}`;
+            return (
+              <span key={source.id}>
+                {i > 0 && ', '}
+                {/* An unsafe URL keeps the citation as plain text. */}
+                {safeHref(source.url) ? (
+                  <ExternalAnchor href={source.url}>{name}</ExternalAnchor>
+                ) : (
+                  name
+                )}
+              </span>
+            );
+          })}
+        </p>
+      )}
       <p className={styles.provenance}>{PROVENANCE_LABEL[interpretation.provenance]}</p>
     </article>
   );

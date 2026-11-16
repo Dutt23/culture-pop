@@ -1,9 +1,11 @@
-import type { EraKey } from './discovery';
+import { CATEGORY_ORDER, type EraKey } from './discovery';
 import type { RankedMatch } from './ranking';
 import type { Category, Provenance } from './types';
 
 export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
   cartoon: 'Cartoon',
+  comics: 'Comics',
+  games: 'Games',
   film: 'Film',
   tv: 'TV',
   meme: 'Meme',
@@ -15,6 +17,8 @@ export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
 
 export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
   cartoon: 'Cartoons',
+  comics: 'Comics',
+  games: 'Games',
   film: 'Film',
   tv: 'TV',
   meme: 'Memes',
@@ -24,15 +28,8 @@ export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
   other: 'Other',
 };
 
-export const CATEGORIES: readonly Category[] = [
-  'cartoon',
-  'film',
-  'tv',
-  'meme',
-  'catchphrase',
-  'music',
-  'saying',
-];
+/** Browsable categories: the canonical order, without the catch-all "other". */
+export const CATEGORIES: readonly Category[] = CATEGORY_ORDER.filter((c) => c !== 'other');
 
 export const ERA_LABEL: Readonly<Record<EraKey, string>> = {
   earlier: 'Before 1990',
@@ -61,5 +58,9 @@ export function matchReason(match: RankedMatch): string {
       return 'Starts with your search';
     case 'partial':
       return 'Possible match';
+    case 'typo':
+      return 'Similar spelling';
+    case 'sound':
+      return 'Sounds like your search';
   }
 }

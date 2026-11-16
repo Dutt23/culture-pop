@@ -1,7 +1,10 @@
 import type { Category, Decade, Reference } from './types';
 
-const CATEGORY_ORDER: readonly Category[] = [
+/** Canonical category order for every screen; `labels.ts` derives `CATEGORIES` from it. */
+export const CATEGORY_ORDER: readonly Category[] = [
   'cartoon',
+  'comics',
+  'games',
   'film',
   'tv',
   'meme',

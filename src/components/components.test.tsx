@@ -59,7 +59,11 @@ describe('InterpretationCard', () => {
 
   it('labels demo provenance honestly', () => {
     render(
-      <InterpretationCard interpretation={makeInterpretation('p', 'r')} index={0} revealSpoilers={false} />,
+      <InterpretationCard
+        interpretation={makeInterpretation('p', 'r')}
+        index={0}
+        revealSpoilers={false}
+      />,
     );
     expect(screen.getByText(/not externally verified/)).toBeInTheDocument();
   });
@@ -86,7 +90,10 @@ describe('FavouriteButton', () => {
     await user.click(button);
     expect(onToggle).toHaveBeenCalledOnce();
     rerender(<FavouriteButton isFavourite onToggle={onToggle} />);
-    expect(screen.getByRole('button', { name: 'Favourite' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Favourite' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });
 
@@ -118,4 +125,3 @@ describe('external link safety', () => {
     expect(link).toHaveAttribute('target', '_blank');
   });
 });
-

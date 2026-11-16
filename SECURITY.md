@@ -34,7 +34,8 @@ down why, set an expiry of at most about three months, and plan the upgrade. Nev
   only if they are `https` on the expected host; Wikidata IDs are checked before going into SPARQL;
   excerpts are capped and rendered as plain text.
 - **Privacy:** nothing leaves the device until the user agrees to online search (tests check this).
-  Requests send no cookies or referrer. Search text is never stored. External links open only on
+  Requests send no cookies or referrer. Search history (on by default, D37) stays on the device
+  and is never sent. External links open only on
   tap with `noopener noreferrer`, and stored settings are validated before use.
 
 ## External data and links (threat model)

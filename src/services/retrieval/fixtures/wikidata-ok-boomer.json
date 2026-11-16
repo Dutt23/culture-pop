@@ -1,137 +1,131 @@
 {
- "head": {
-  "vars": [
-   "item",
-   "class",
-   "date",
-   "idProperty",
-   "externalId"
-  ]
- },
- "results": {
-  "bindings": [
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q74367025"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P13484"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "ok-boomer"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q88496083"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "the-youtooz:Neekolul"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q88496083"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "youtube:Neekolul"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q88496083"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P13484"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "neekolul-ok-boomer-girl"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q187931"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q74367025"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q206287"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q74367025"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2708515"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q74367025"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2927074"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q74367025"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13406463"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83544919"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13406463"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q115776225"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q28137192"
-    }
-   }
-  ]
- }
+  "head": {
+    "vars": ["item", "class", "date", "idProperty", "externalId"]
+  },
+  "results": {
+    "bindings": [
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q74367025"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P13484"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "ok-boomer"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q88496083"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "the-youtooz:Neekolul"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q88496083"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "youtube:Neekolul"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q88496083"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P13484"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "neekolul-ok-boomer-girl"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q187931"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q74367025"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q206287"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q74367025"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2708515"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q74367025"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2927074"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q74367025"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13406463"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83544919"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13406463"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q115776225"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q28137192"
+        }
+      }
+    ]
+  }
 }

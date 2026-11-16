@@ -1,59 +1,59 @@
 [
- {
-  "score": 1.7550877,
-  "show": {
-   "id": 15796,
-   "url": "https://www.tvmaze.com/shows/15796/swat-kats-the-radical-squadron",
-   "name": "Swat Kats: The Radical Squadron",
-   "type": "Animation",
-   "language": "English",
-   "genres": [],
-   "status": "Ended",
-   "runtime": 30,
-   "averageRuntime": 30,
-   "premiered": "1993-09-11",
-   "ended": "1995-01-04",
-   "officialSite": null,
-   "schedule": {
-    "time": "",
-    "days": []
-   },
-   "rating": {
-    "average": 5.6
-   },
-   "weight": 83,
-   "network": {
-    "id": 32,
-    "name": "TBS",
-    "country": {
-     "name": "United States",
-     "code": "US",
-     "timezone": "America/New_York"
-    },
-    "officialSite": "https://www.tbs.com/"
-   },
-   "webChannel": null,
-   "dvdCountry": null,
-   "externals": {
-    "tvrage": null,
-    "thetvdb": 70545,
-    "imdb": "tt0126173"
-   },
-   "image": {
-    "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/53/133092.jpg",
-    "original": "https://static.tvmaze.com/uploads/images/original_untouched/53/133092.jpg"
-   },
-   "summary": "<p>Swat Kats: The Radical Squadron was a short-lived cartoon show produced by Hanna-Barbera that first aired in September 1993. It revolved around the feline characters of Megakat City, and its two main characters were Jake Clawson and Chance Furlong, two pilots who were thrown out of the enforcers due to a mishap and forced to work as junkyard auto mechanics to repay the damages they caused. They decided they had to do more to make amends, and therefore, Jake Clawson designed the Turbokat and became the vigilantes known was the SWAT Kats. Jake, a.k.a Razor, was the weapons system officer and Chance, a.k.a T-bone, was the pilot. Together they protected Megakat City from many foes, such as Dark Kat, Dr. Viper, The Pastmaster, Mac and Molly, a.k.a. The Metallikats, and Hard Drive.</p>",
-   "updated": 1704794094,
-   "_links": {
-    "self": {
-     "href": "https://api.tvmaze.com/shows/15796"
-    },
-    "previousepisode": {
-     "href": "https://api.tvmaze.com/episodes/716517",
-     "name": "Kat's Eye News Report"
+  {
+    "score": 1.7550877,
+    "show": {
+      "id": 15796,
+      "url": "https://www.tvmaze.com/shows/15796/swat-kats-the-radical-squadron",
+      "name": "Swat Kats: The Radical Squadron",
+      "type": "Animation",
+      "language": "English",
+      "genres": [],
+      "status": "Ended",
+      "runtime": 30,
+      "averageRuntime": 30,
+      "premiered": "1993-09-11",
+      "ended": "1995-01-04",
+      "officialSite": null,
+      "schedule": {
+        "time": "",
+        "days": []
+      },
+      "rating": {
+        "average": 5.6
+      },
+      "weight": 83,
+      "network": {
+        "id": 32,
+        "name": "TBS",
+        "country": {
+          "name": "United States",
+          "code": "US",
+          "timezone": "America/New_York"
+        },
+        "officialSite": "https://www.tbs.com/"
+      },
+      "webChannel": null,
+      "dvdCountry": null,
+      "externals": {
+        "tvrage": null,
+        "thetvdb": 70545,
+        "imdb": "tt0126173"
+      },
+      "image": {
+        "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/53/133092.jpg",
+        "original": "https://static.tvmaze.com/uploads/images/original_untouched/53/133092.jpg"
+      },
+      "summary": "<p>Swat Kats: The Radical Squadron was a short-lived cartoon show produced by Hanna-Barbera that first aired in September 1993. It revolved around the feline characters of Megakat City, and its two main characters were Jake Clawson and Chance Furlong, two pilots who were thrown out of the enforcers due to a mishap and forced to work as junkyard auto mechanics to repay the damages they caused. They decided they had to do more to make amends, and therefore, Jake Clawson designed the Turbokat and became the vigilantes known was the SWAT Kats. Jake, a.k.a Razor, was the weapons system officer and Chance, a.k.a T-bone, was the pilot. Together they protected Megakat City from many foes, such as Dark Kat, Dr. Viper, The Pastmaster, Mac and Molly, a.k.a. The Metallikats, and Hard Drive.</p>",
+      "updated": 1704794094,
+      "_links": {
+        "self": {
+          "href": "https://api.tvmaze.com/shows/15796"
+        },
+        "previousepisode": {
+          "href": "https://api.tvmaze.com/episodes/716517",
+          "name": "Kat's Eye News Report"
+        }
+      }
     }
-   }
   }
- }
 ]

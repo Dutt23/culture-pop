@@ -36,7 +36,9 @@ export function evaluate({ prodAudit, fullAudit, allowlist, today }) {
 
   for (const entry of allowlist) {
     if (entry.expires < today) {
-      failures.push(`allowlist entry ${entry.id} (${entry.package}) expired ${entry.expires}: upgrade or re-review`);
+      failures.push(
+        `allowlist entry ${entry.id} (${entry.package}) expired ${entry.expires}: upgrade or re-review`,
+      );
     } else if (!presentIds.has(entry.id)) {
       warnings.push(`allowlist entry ${entry.id} (${entry.package}) no longer applies: remove it`);
     }
@@ -64,7 +66,8 @@ function runAudit(extraArgs) {
   }
   const report = JSON.parse(output);
   // A registry/network failure must fail the gate, never pass it with an empty report.
-  if (report.error) throw new Error(`npm audit failed: ${report.error.summary ?? report.error.code}`);
+  if (report.error)
+    throw new Error(`npm audit failed: ${report.error.summary ?? report.error.code}`);
   return report;
 }
 

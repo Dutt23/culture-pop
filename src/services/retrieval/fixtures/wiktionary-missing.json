@@ -1,12 +1,12 @@
 {
- "batchcomplete": true,
- "query": {
-  "pages": [
-   {
-    "ns": 0,
-    "title": "zzqx not a word",
-    "missing": true
-   }
-  ]
- }
+  "batchcomplete": true,
+  "query": {
+    "pages": [
+      {
+        "ns": 0,
+        "title": "zzqx not a word",
+        "missing": true
+      }
+    ]
+  }
 }

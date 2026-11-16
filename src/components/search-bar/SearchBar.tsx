@@ -22,7 +22,7 @@ export function SearchBar({ value, onChange, onSubmit, autoFocus = false }: Sear
         onSubmit?.(value);
       }}
     >
-      <label htmlFor={inputId} className={styles.label}>
+      <label htmlFor={inputId} className="sr-only">
         {SEARCH_LABEL}
       </label>
       <div className={styles.field}>

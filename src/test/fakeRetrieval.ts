@@ -1,6 +1,7 @@
+import { Subject, throwError, type Observable } from 'rxjs';
 import { vi } from 'vitest';
 import type { RetrievalService } from '../app/RetrievalContext';
-import { retrieve, type OnRetrievalUpdate } from '../services/retrieval/retrieve';
+import { retrieve$ } from '../services/retrieval/retrieve';
 import type { GetJson, ProviderId, RetrievalResult } from '../services/retrieval/types';
 import breakPointTvmaze from '../services/retrieval/fixtures/tvmaze-break-point.json';
 import swatKatsTvmaze from '../services/retrieval/fixtures/tvmaze-swat-kats.json';
@@ -24,7 +25,9 @@ import pointBreakWikipedia from '../services/retrieval/fixtures/wikipedia-point-
 import pointBreakWikiquote from '../services/retrieval/fixtures/wikiquote-point-break.json';
 import pointBreakWiktionary from '../services/retrieval/fixtures/wiktionary-point-break.json';
 
-export const FIXED_NOW = '2026-11-15T12:00:00.000Z';
+import { FIXED_NOW } from './factories';
+
+export { FIXED_NOW };
 
 /** TVmaze is only asked about show titles Wikidata found, so its answers are keyed by that title. */
 type FixtureSet = Partial<Record<Exclude<ProviderId, 'tvmaze'>, unknown>> & {
@@ -39,15 +42,27 @@ const NOTHING_FOUND: Partial<Record<ProviderId, unknown>> = {
 
 /** Real responses recorded 2026-11-15 (see docs/SOURCE_INVENTORY.md). */
 export const FIXTURES = {
-  'the matrix': { wikipedia: matrixWikipedia, wikidata: matrixWikidata, wiktionary: missingWiktionary },
+  'the matrix': {
+    wikipedia: matrixWikipedia,
+    wikidata: matrixWikidata,
+    wiktionary: missingWiktionary,
+  },
   'swat kats': {
     wikipedia: swatKatsWikipedia,
     wikidata: swatKatsWikidata,
     wiktionary: missingWiktionary,
     tvmaze: { 'SWAT Kats: The Radical Squadron': swatKatsTvmaze },
   },
-  'hakuna matata': { wikipedia: hakunaWikipedia, wikidata: hakunaWikidata, wiktionary: hakunaWiktionary },
-  'ok boomer': { wikipedia: okBoomerWikipedia, wikidata: okBoomerWikidata, wiktionary: okBoomerWiktionary },
+  'hakuna matata': {
+    wikipedia: hakunaWikipedia,
+    wikidata: hakunaWikidata,
+    wiktionary: hakunaWiktionary,
+  },
+  'ok boomer': {
+    wikipedia: okBoomerWikipedia,
+    wikidata: okBoomerWikidata,
+    wiktionary: okBoomerWiktionary,
+  },
   'point break': {
     wikipedia: pointBreakWikipedia,
     wikidata: pointBreakWikidata,
@@ -101,13 +116,8 @@ export function fixtureRetrievalService(
   failures: Partial<Record<ProviderId, Error>> = {},
 ) {
   const service = {
-    retrieve: vi.fn((text: string, signal: AbortSignal, onUpdate?: OnRetrievalUpdate) =>
-      retrieve(
-        text,
-        { getJson: fixtureGetJson(query, failures), now: () => FIXED_NOW },
-        signal,
-        onUpdate,
-      ),
+    retrieve$: vi.fn((text: string) =>
+      retrieve$(text, { getJson: fixtureGetJson(query, failures), now: () => FIXED_NOW }),
     ),
     debounceMs: 0,
   };
@@ -117,10 +127,8 @@ export function fixtureRetrievalService(
 /** Default for tests that must never go online. */
 export function unusedRetrievalService() {
   const service = {
-    retrieve: vi.fn<
-      (query: string, signal: AbortSignal, onUpdate?: OnRetrievalUpdate) => Promise<RetrievalResult>
-    >(() =>
-      Promise.reject(new Error('Retrieval should not run in this test')),
+    retrieve$: vi.fn<(query: string) => Observable<RetrievalResult>>(() =>
+      throwError(() => new Error('Retrieval should not run in this test')),
     ),
     debounceMs: 0,
   };
@@ -128,24 +136,24 @@ export function unusedRetrievalService() {
 }
 
 /**
- * A service the test drives by hand: `emit` streams a snapshot, `finish` resolves the lookup.
- * Lets tests assert exactly what a partial result looks like, with no timing involved.
+ * A service the test drives by hand: `emit` streams a snapshot, `finish` sends the last one and
+ * completes. Lets tests assert exactly what a partial result looks like, with no timing involved.
  */
 export function controllableRetrievalService() {
-  let onUpdate: OnRetrievalUpdate | undefined;
-  let resolve: ((result: RetrievalResult) => void) | undefined;
+  let lookup: Subject<RetrievalResult> | undefined;
   const service = {
-    retrieve: vi.fn((_query: string, _signal: AbortSignal, update?: OnRetrievalUpdate) => {
-      onUpdate = update;
-      return new Promise<RetrievalResult>((done) => {
-        resolve = done;
-      });
+    retrieve$: vi.fn<(query: string) => Observable<RetrievalResult>>(() => {
+      lookup = new Subject<RetrievalResult>();
+      return lookup.asObservable();
     }),
     debounceMs: 0,
   } satisfies RetrievalService;
   return {
     service,
-    emit: (snapshot: RetrievalResult) => onUpdate?.(snapshot),
-    finish: (result: RetrievalResult) => resolve?.(result),
+    emit: (snapshot: RetrievalResult) => lookup?.next(snapshot),
+    finish: (result: RetrievalResult) => {
+      lookup?.next(result);
+      lookup?.complete();
+    },
   };
 }

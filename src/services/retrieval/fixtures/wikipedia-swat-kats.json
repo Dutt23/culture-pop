@@ -1,111 +1,111 @@
 {
- "batchcomplete": true,
- "continue": {
-  "gsroffset": 5,
-  "continue": "gsroffset||"
- },
- "query": {
-  "pages": [
-   {
-    "pageid": 868723,
-    "ns": 0,
-    "title": "SWAT Kats: The Radical Squadron",
-    "index": 1,
-    "pageprops": {
-     "wikibase_item": "Q2077112"
-    },
-    "extract": "SWAT Kats: The Radical Squadron is an American animated television series created by Christian and Yvon Tremblay and produced by Hanna-Barbera. The series takes place in the fictional metropolis of Megakat City populated by anthropomorphic felines, known as \"kats\", and follows two vigilante pilots who possess a futuristic fighter jet with an array of weaponry.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-14T07:04:10Z",
-    "lastrevid": 1373744072,
-    "length": 22328,
-    "fullurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=SWAT_Kats:_The_Radical_Squadron&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron"
-   },
-   {
-    "pageid": 1702410,
-    "ns": 0,
-    "title": "Perry King",
-    "index": 5,
-    "pageprops": {
-     "wikibase_item": "Q1334740"
-    },
-    "extract": "Perry Firestone King (born April 30, 1948) is an American actor. He is best known for his roles on television and in films.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-14T07:05:07Z",
-    "lastrevid": 1378923899,
-    "length": 12312,
-    "fullurl": "https://en.wikipedia.org/wiki/Perry_King",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=Perry_King&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/Perry_King"
-   },
-   {
-    "pageid": 17810099,
-    "ns": 0,
-    "title": "List of SWAT Kats: The Radical Squadron episodes",
-    "index": 2,
-    "pageprops": {
-     "wikibase_item": "Q6596209"
-    },
-    "extract": "The following is a complete list of episodes for SWAT Kats: The Radical Squadron, a television cartoon series created by Christian and Yvon Tremblay. SWAT Kats: The Radical Squadron premiered on TBS Superstation's The Funtastic World of Hanna-Barbera block in the United States on September 11, 1993 and ended on January 6, 1995.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-10T14:41:18Z",
-    "lastrevid": 1364214075,
-    "length": 41533,
-    "fullurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_episodes",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=List_of_SWAT_Kats:_The_Radical_Squadron_episodes&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_episodes"
-   },
-   {
-    "pageid": 39627968,
-    "ns": 0,
-    "title": "List of SWAT Kats: The Radical Squadron characters",
-    "index": 3,
-    "pageprops": {
-     "wikibase_item": "Q17018255"
-    },
-    "extract": "SWAT Kats: The Radical Squadron is an animated series for television created by Christian Tremblay and Yvon Tremblay and produced by Hanna-Barbera and Turner Program Services. The following is a list of characters appearing in the series.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-13T07:27:50Z",
-    "lastrevid": 1365487791,
-    "length": 17414,
-    "fullurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_characters",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=List_of_SWAT_Kats:_The_Radical_Squadron_characters&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_characters"
-   },
-   {
-    "pageid": 57954301,
-    "ns": 0,
-    "title": "SWAT Kats: The Radical Squadron (video game)",
-    "index": 4,
-    "pageprops": {
-     "wikibase_item": "Q18674887"
-    },
-    "extract": "SWAT Kats: The Radical Squadron is a side-scrolling action video game developed by AIM and published by Hudson Soft for the Super NES. It is based on the animated series of the same name, and was released in North America in August 1995.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-14T07:29:49Z",
-    "lastrevid": 1371638153,
-    "length": 7030,
-    "fullurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron_(video_game)",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=SWAT_Kats:_The_Radical_Squadron_(video_game)&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron_(video_game)"
-   }
-  ]
- }
+  "batchcomplete": true,
+  "continue": {
+    "gsroffset": 5,
+    "continue": "gsroffset||"
+  },
+  "query": {
+    "pages": [
+      {
+        "pageid": 868723,
+        "ns": 0,
+        "title": "SWAT Kats: The Radical Squadron",
+        "index": 1,
+        "pageprops": {
+          "wikibase_item": "Q2077112"
+        },
+        "extract": "SWAT Kats: The Radical Squadron is an American animated television series created by Christian and Yvon Tremblay and produced by Hanna-Barbera. The series takes place in the fictional metropolis of Megakat City populated by anthropomorphic felines, known as \"kats\", and follows two vigilante pilots who possess a futuristic fighter jet with an array of weaponry.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-14T07:04:10Z",
+        "lastrevid": 1373744072,
+        "length": 22328,
+        "fullurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=SWAT_Kats:_The_Radical_Squadron&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron"
+      },
+      {
+        "pageid": 1702410,
+        "ns": 0,
+        "title": "Perry King",
+        "index": 5,
+        "pageprops": {
+          "wikibase_item": "Q1334740"
+        },
+        "extract": "Perry Firestone King (born April 30, 1948) is an American actor. He is best known for his roles on television and in films.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-14T07:05:07Z",
+        "lastrevid": 1378923899,
+        "length": 12312,
+        "fullurl": "https://en.wikipedia.org/wiki/Perry_King",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=Perry_King&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/Perry_King"
+      },
+      {
+        "pageid": 17810099,
+        "ns": 0,
+        "title": "List of SWAT Kats: The Radical Squadron episodes",
+        "index": 2,
+        "pageprops": {
+          "wikibase_item": "Q6596209"
+        },
+        "extract": "The following is a complete list of episodes for SWAT Kats: The Radical Squadron, a television cartoon series created by Christian and Yvon Tremblay. SWAT Kats: The Radical Squadron premiered on TBS Superstation's The Funtastic World of Hanna-Barbera block in the United States on September 11, 1993 and ended on January 6, 1995.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-10T14:41:18Z",
+        "lastrevid": 1364214075,
+        "length": 41533,
+        "fullurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_episodes",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=List_of_SWAT_Kats:_The_Radical_Squadron_episodes&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_episodes"
+      },
+      {
+        "pageid": 39627968,
+        "ns": 0,
+        "title": "List of SWAT Kats: The Radical Squadron characters",
+        "index": 3,
+        "pageprops": {
+          "wikibase_item": "Q17018255"
+        },
+        "extract": "SWAT Kats: The Radical Squadron is an animated series for television created by Christian Tremblay and Yvon Tremblay and produced by Hanna-Barbera and Turner Program Services. The following is a list of characters appearing in the series.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-13T07:27:50Z",
+        "lastrevid": 1365487791,
+        "length": 17414,
+        "fullurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_characters",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=List_of_SWAT_Kats:_The_Radical_Squadron_characters&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/List_of_SWAT_Kats:_The_Radical_Squadron_characters"
+      },
+      {
+        "pageid": 57954301,
+        "ns": 0,
+        "title": "SWAT Kats: The Radical Squadron (video game)",
+        "index": 4,
+        "pageprops": {
+          "wikibase_item": "Q18674887"
+        },
+        "extract": "SWAT Kats: The Radical Squadron is a side-scrolling action video game developed by AIM and published by Hudson Soft for the Super NES. It is based on the animated series of the same name, and was released in North America in August 1995.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-14T07:29:49Z",
+        "lastrevid": 1371638153,
+        "length": 7030,
+        "fullurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron_(video_game)",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=SWAT_Kats:_The_Radical_Squadron_(video_game)&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/SWAT_Kats:_The_Radical_Squadron_(video_game)"
+      }
+    ]
+  }
 }

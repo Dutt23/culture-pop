@@ -15,11 +15,14 @@ export function useReference(id: string): ReferenceDetail | null | undefined {
   return useLiveQuery(async () => {
     const reference = await references.getById(id);
     if (!reference) return null;
-    const [interpretations, all, aliases, sources] = await Promise.all([
+    const [interpretations, all, aliases] = await Promise.all([
       references.getInterpretations(id),
       references.getAll(),
       references.getAllAliases(),
-      retrieval.getSources(reference.sourceIds),
+    ]);
+    // The reference's citations plus any an interpretation cites on its own.
+    const sources = await retrieval.getSources([
+      ...new Set([...reference.sourceIds, ...interpretations.flatMap((i) => i.sourceIds)]),
     ]);
     return { reference, interpretations, sources, ...relatedReferences(reference, all, aliases) };
   }, [references, retrieval, id]);

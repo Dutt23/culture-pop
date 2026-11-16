@@ -148,7 +148,12 @@ export function createGetJson(deps: HttpDependencies): GetJson {
           try {
             body = await readCapped(response);
           } catch (error) {
-            throw interrupted() ?? (error instanceof RetrievalError ? error : new RetrievalError('network', 'Body read failed'));
+            throw (
+              interrupted() ??
+              (error instanceof RetrievalError
+                ? error
+                : new RetrievalError('network', 'Body read failed'))
+            );
           }
           try {
             return JSON.parse(body) as unknown;
@@ -160,7 +165,8 @@ export function createGetJson(deps: HttpDependencies): GetJson {
         clearTimeout(timer);
         signal?.removeEventListener('abort', forwardAbort);
       }
-      if (response.status === 403) throw new RetrievalError('blocked', 'Provider refused the request');
+      if (response.status === 403)
+        throw new RetrievalError('blocked', 'Provider refused the request');
       if (!RETRYABLE_STATUS.has(response.status)) {
         throw new RetrievalError('http_error', `HTTP ${response.status}`);
       }

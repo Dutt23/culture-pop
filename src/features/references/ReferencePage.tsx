@@ -11,6 +11,8 @@ import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { CATEGORY_LABEL, ERA_LABEL } from '../../domain/labels';
+import { isFromOnline } from '../../domain/types';
+import { PUBLISHER } from '../../domain/sources';
 import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
 import styles from './ReferencePage.module.css';
@@ -24,7 +26,11 @@ export function ReferencePage() {
   const isOnline = useOnlineStatus();
 
   if (detail === undefined) {
-    return <p className={styles.loading} role="status">Loading…</p>;
+    return (
+      <p className={styles.loading} role="status">
+        Loading…
+      </p>
+    );
   }
 
   if (detail === null) {
@@ -45,13 +51,48 @@ export function ReferencePage() {
       ? `${reference.year} (per ${yearSource.publisher})`
       : reference.decade && ERA_LABEL[reference.decade];
   const eyebrow = [CATEGORY_LABEL[reference.category], when].filter(Boolean).join(' · ');
-  const isRetrieved = reference.editorialState === 'retrieved';
+  const fromOnline = isFromOnline(reference.editorialState);
+  const explained = interpretations.length > 0;
+  const backed = interpretations.some((i) => i.provenance === 'source_supported');
+  // Comics characters' Wikipedia pages carry their story under this heading; if a page doesn't,
+  // the link still opens the article.
+  const wikipedia = sources.find((s) => s.publisher === PUBLISHER.wikipedia);
+  const storyLink =
+    reference.kind === 'character' && reference.category === 'comics' && wikipedia
+      ? [
+          {
+            label: 'Wikipedia: the character’s story',
+            href: `${wikipedia.url}#Fictional_character_biography`,
+          },
+        ]
+      : [];
+  const otherSites = [
+    ...storyLink,
+    ...(reference.externalLinks ?? []).map((link) => ({ label: link.label, href: link.url })),
+  ];
 
   return (
     <Page
       title={reference.title}
       eyebrow={eyebrow}
-      intro={reference.origin && <p>From {reference.origin}</p>}
+      intro={
+        reference.origin ? (
+          <p>From {reference.origin}</p>
+        ) : (
+          reference.presentIn &&
+          reference.presentIn.length > 0 && (
+            <p>
+              From:{' '}
+              {reference.presentIn.map((work, index) => (
+                <span key={work.qid}>
+                  {index > 0 && ', '}
+                  <Link to={`/search?q=${encodeURIComponent(work.label)}`}>{work.label}</Link>
+                </span>
+              ))}
+            </p>
+          )
+        )
+      }
     >
       <div className={styles.actions}>
         <FavouriteButton
@@ -65,7 +106,7 @@ export function ReferencePage() {
         )}
       </div>
 
-      {isRetrieved && interpretations.length === 0 && (
+      {fromOnline && !explained && (
         <Section
           title="Not explained yet"
           description="This was found online and hasn't been explained in plain language yet. Here's exactly what the sources say: unverified, quoted with credit."
@@ -74,25 +115,49 @@ export function ReferencePage() {
         </Section>
       )}
 
-      {interpretations.length > 0 && (
-      <Section
-        title={interpretations.length === 1 ? 'What it means' : `${interpretations.length} meanings`}
-        description={
-          interpretations.length > 1 ? 'Different ways people use this reference.' : undefined
-        }
-      >
-        <ol className={styles.interpretations}>
-          {interpretations.map((interpretation, index) => (
-            <AnimatedItem key={interpretation.id} index={index}>
-              <InterpretationCard
-                interpretation={interpretation}
-                index={index}
-                revealSpoilers={settings.spoilers === 'show'}
-              />
-            </AnimatedItem>
-          ))}
-        </ol>
-      </Section>
+      {explained && (
+        <Section
+          title={
+            fromOnline
+              ? backed
+                ? 'Explained from sources'
+                : 'Explanation not verified'
+              : interpretations.length === 1
+                ? 'What it means'
+                : `${interpretations.length} meanings`
+          }
+          description={
+            fromOnline
+              ? backed
+                ? 'Built automatically, only from what the cited sources state. Nothing is guessed or written by hand.'
+                : "A source this would rely on isn't on this device any more, so treat it as unverified."
+              : interpretations.length > 1
+                ? 'Different ways people use this reference.'
+                : undefined
+          }
+        >
+          <ol className={styles.interpretations}>
+            {interpretations.map((interpretation, index) => (
+              <AnimatedItem key={interpretation.id} index={index}>
+                <InterpretationCard
+                  interpretation={interpretation}
+                  index={index}
+                  revealSpoilers={settings.spoilers === 'show'}
+                  citations={sources.filter((s) => interpretation.sourceIds.includes(s.id))}
+                />
+              </AnimatedItem>
+            ))}
+          </ol>
+        </Section>
+      )}
+
+      {fromOnline && explained && (
+        <Section
+          title="What the sources say"
+          description="Quoted with credit, exactly as found online."
+        >
+          <SourceList sources={sources} />
+        </Section>
       )}
 
       {otherMeanings.length > 0 && (
@@ -119,16 +184,14 @@ export function ReferencePage() {
         </Section>
       )}
 
-      {isRetrieved ? (
+      {fromOnline ? (
         <>
-          {reference.externalLinks && reference.externalLinks.length > 0 && (
+          {otherSites.length > 0 && (
             <Section
               title="Its page on other sites"
               description="Exact pages listed by Wikidata. They open outside the app, and nothing from them is copied here."
             >
-              <ExternalLinks
-                links={reference.externalLinks.map((link) => ({ label: link.label, href: link.url }))}
-              />
+              <ExternalLinks links={otherSites} />
             </Section>
           )}
           <Section title="Look further">

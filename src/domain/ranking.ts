@@ -1,8 +1,18 @@
-import { compareStrings, groupBy } from './collections';
+import { compareReferences, groupBy } from './collections';
+import { fuzzyMatches } from './miniSearchExtras';
 import { normalizePhrase, tokenize } from './normalize';
 import type { Alias, Reference } from './types';
 
-export type MatchKind = 'exact_title' | 'exact_alias' | 'title_prefix' | 'alias_prefix' | 'partial';
+export type MatchKind =
+  | 'exact_title'
+  | 'exact_alias'
+  | 'title_prefix'
+  | 'alias_prefix'
+  | 'partial'
+  /** Found only by typo-tolerant search (`miniSearchExtras.ts`). Never resolves a query by itself. */
+  | 'typo'
+  /** Found only by a sound-alike code. Never resolves a query by itself. */
+  | 'sound';
 
 export const MATCH_RANK: Readonly<Record<MatchKind, number>> = {
   exact_title: 0,
@@ -10,18 +20,20 @@ export const MATCH_RANK: Readonly<Record<MatchKind, number>> = {
   title_prefix: 2,
   alias_prefix: 3,
   partial: 4,
+  typo: 5,
+  sound: 6,
 };
+
+/** Matches that suggest, but never settle, what the user meant (see `needsRetrieval`). */
+export function isFuzzyMatch(match: RankedMatch): boolean {
+  return match.kind === 'typo' || match.kind === 'sound';
+}
 
 export interface RankedMatch {
   reference: Reference;
   kind: MatchKind;
   /** Display text of the title or alias that matched. */
   matchedPhrase: string;
-}
-
-/** Deterministic tie-break: normalized title, then ID. Locale-independent on purpose. */
-export function compareReferences(a: Reference, b: Reference): number {
-  return compareStrings(a.normalizedTitle, b.normalizedTitle) || compareStrings(a.id, b.id);
 }
 
 function tokensMatch(queryTokens: readonly string[], phrases: readonly string[]): boolean {
@@ -34,7 +46,8 @@ function classify(
   reference: Reference,
   aliases: readonly Alias[],
 ): { kind: MatchKind; matchedPhrase: string } | null {
-  if (reference.normalizedTitle === query) return { kind: 'exact_title', matchedPhrase: reference.title };
+  if (reference.normalizedTitle === query)
+    return { kind: 'exact_title', matchedPhrase: reference.title };
   const exactAlias = aliases.find((a) => a.normalizedPhrase === query);
   if (exactAlias) return { kind: 'exact_alias', matchedPhrase: exactAlias.phrase };
   if (reference.normalizedTitle.startsWith(query)) {
@@ -58,10 +71,11 @@ function classify(
 }
 
 /**
- * Ranks every matching reference. Never drops or auto-selects among equal matches:
- * callers decide how to present ties (see `isAmbiguous`).
+ * The deterministic tiers alone: exact title > exact alias > title prefix > alias prefix >
+ * partial. Never drops or auto-selects among equal matches: callers decide how to present ties
+ * (see `isAmbiguous`).
  */
-export function rankReferences(
+export function rankByTiers(
   query: string,
   references: readonly Reference[],
   aliases: readonly Alias[],
@@ -73,12 +87,31 @@ export function rankReferences(
 
   return references
     .flatMap((reference) => {
-      const match = classify(normalizedQuery, reference, aliasesByReference.get(reference.id) ?? []);
+      const match = classify(
+        normalizedQuery,
+        reference,
+        aliasesByReference.get(reference.id) ?? [],
+      );
       return match ? [{ reference, ...match }] : [];
     })
     .sort(
-      (a, b) => MATCH_RANK[a.kind] - MATCH_RANK[b.kind] || compareReferences(a.reference, b.reference),
+      (a, b) =>
+        MATCH_RANK[a.kind] - MATCH_RANK[b.kind] || compareReferences(a.reference, b.reference),
     );
+}
+
+/**
+ * What search shows: the tiers first, then, after them, references that match only within a typo
+ * (`miniSearchExtras.ts`). Adopted after the MiniSearch trial; exact matches keep their order.
+ */
+export function rankReferences(
+  query: string,
+  references: readonly Reference[],
+  aliases: readonly Alias[],
+): RankedMatch[] {
+  const tiers = rankByTiers(query, references, aliases);
+  const found = new Set(tiers.map((m) => m.reference.id));
+  return [...tiers, ...fuzzyMatches(query, references, aliases, found)];
 }
 
 export function isExactMatch(match: RankedMatch): boolean {

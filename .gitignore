@@ -32,3 +32,6 @@ Thumbs.db
 
 # Agent tooling state
 .omc
+
+# Embedding experiment: downloaded models and cached vectors (D42), never committed
+.cache/

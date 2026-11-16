@@ -1,112 +1,112 @@
 {
- "batchcomplete": true,
- "continue": {
-  "gsroffset": 5,
-  "continue": "gsroffset||"
- },
- "query": {
-  "pages": [
-   {
-    "pageid": 18884,
-    "ns": 0,
-    "title": "Matrix",
-    "index": 5,
-    "pageprops": {
-     "disambiguation": "",
-     "wikibase_item": "Q190069"
-    },
-    "extract": "Matrix (pl.: matrices or matrixes) or MATRIX may refer to:",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-07T19:45:56Z",
-    "lastrevid": 1376200457,
-    "length": 6561,
-    "fullurl": "https://en.wikipedia.org/wiki/Matrix",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=Matrix&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/Matrix"
-   },
-   {
-    "pageid": 30007,
-    "ns": 0,
-    "title": "The Matrix",
-    "index": 1,
-    "pageprops": {
-     "wikibase_item": "Q83495"
-    },
-    "extract": "The Matrix is a 1999 science fiction–action film written and directed by the Wachowskis. The first installment in the Matrix film series, it stars Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss, Hugo Weaving, and Joe Pantoliano.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-15T05:50:18Z",
-    "lastrevid": 1385789437,
-    "length": 180649,
-    "fullurl": "https://en.wikipedia.org/wiki/The_Matrix",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix"
-   },
-   {
-    "pageid": 210998,
-    "ns": 0,
-    "title": "The Matrix Revolutions",
-    "index": 3,
-    "pageprops": {
-     "wikibase_item": "Q207536"
-    },
-    "extract": "The Matrix Revolutions is a 2003 American science fiction action film written and directed by the Wachowskis. It is the third installment in The Matrix film series, shot back-to-back with The Matrix Reloaded (2003).",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-14T07:03:19Z",
-    "lastrevid": 1384424938,
-    "length": 40412,
-    "fullurl": "https://en.wikipedia.org/wiki/The_Matrix_Revolutions",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix_Revolutions&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix_Revolutions"
-   },
-   {
-    "pageid": 376228,
-    "ns": 0,
-    "title": "The Matrix (franchise)",
-    "index": 2,
-    "pageprops": {
-     "wikibase_item": "Q13014087"
-    },
-    "extract": "The Matrix is an American cyberpunk media franchise consisting of four feature films, beginning with The Matrix (1999) and continuing with three sequels, Reloaded (2003), Revolutions (2003), and Resurrections (2021). The first three films were written and directed by the Wachowskis and produced by Joel Silver.",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-15T06:06:05Z",
-    "lastrevid": 1385791829,
-    "length": 97337,
-    "fullurl": "https://en.wikipedia.org/wiki/The_Matrix_(franchise)",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix_(franchise)&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix_(franchise)"
-   },
-   {
-    "pageid": 61567171,
-    "ns": 0,
-    "title": "The Matrix Resurrections",
-    "index": 4,
-    "pageprops": {
-     "wikibase_item": "Q80322391"
-    },
-    "extract": "The Matrix Resurrections is a 2021 American science fiction action film co-produced and directed by Lana Wachowski, who co-wrote the screenplay with David Mitchell and Aleksandar Hemon. It is the fourth installment in The Matrix film series and the sequel to The Matrix Revolutions (2003).",
-    "contentmodel": "wikitext",
-    "pagelanguage": "en",
-    "pagelanguagehtmlcode": "en",
-    "pagelanguagedir": "ltr",
-    "touched": "2026-11-14T07:31:07Z",
-    "lastrevid": 1379877916,
-    "length": 108446,
-    "fullurl": "https://en.wikipedia.org/wiki/The_Matrix_Resurrections",
-    "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix_Resurrections&action=edit",
-    "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix_Resurrections"
-   }
-  ]
- }
+  "batchcomplete": true,
+  "continue": {
+    "gsroffset": 5,
+    "continue": "gsroffset||"
+  },
+  "query": {
+    "pages": [
+      {
+        "pageid": 18884,
+        "ns": 0,
+        "title": "Matrix",
+        "index": 5,
+        "pageprops": {
+          "disambiguation": "",
+          "wikibase_item": "Q190069"
+        },
+        "extract": "Matrix (pl.: matrices or matrixes) or MATRIX may refer to:",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-07T19:45:56Z",
+        "lastrevid": 1376200457,
+        "length": 6561,
+        "fullurl": "https://en.wikipedia.org/wiki/Matrix",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=Matrix&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/Matrix"
+      },
+      {
+        "pageid": 30007,
+        "ns": 0,
+        "title": "The Matrix",
+        "index": 1,
+        "pageprops": {
+          "wikibase_item": "Q83495"
+        },
+        "extract": "The Matrix is a 1999 science fiction–action film written and directed by the Wachowskis. The first installment in the Matrix film series, it stars Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss, Hugo Weaving, and Joe Pantoliano.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-15T05:50:18Z",
+        "lastrevid": 1385789437,
+        "length": 180649,
+        "fullurl": "https://en.wikipedia.org/wiki/The_Matrix",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix"
+      },
+      {
+        "pageid": 210998,
+        "ns": 0,
+        "title": "The Matrix Revolutions",
+        "index": 3,
+        "pageprops": {
+          "wikibase_item": "Q207536"
+        },
+        "extract": "The Matrix Revolutions is a 2003 American science fiction action film written and directed by the Wachowskis. It is the third installment in The Matrix film series, shot back-to-back with The Matrix Reloaded (2003).",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-14T07:03:19Z",
+        "lastrevid": 1384424938,
+        "length": 40412,
+        "fullurl": "https://en.wikipedia.org/wiki/The_Matrix_Revolutions",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix_Revolutions&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix_Revolutions"
+      },
+      {
+        "pageid": 376228,
+        "ns": 0,
+        "title": "The Matrix (franchise)",
+        "index": 2,
+        "pageprops": {
+          "wikibase_item": "Q13014087"
+        },
+        "extract": "The Matrix is an American cyberpunk media franchise consisting of four feature films, beginning with The Matrix (1999) and continuing with three sequels, Reloaded (2003), Revolutions (2003), and Resurrections (2021). The first three films were written and directed by the Wachowskis and produced by Joel Silver.",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-15T06:06:05Z",
+        "lastrevid": 1385791829,
+        "length": 97337,
+        "fullurl": "https://en.wikipedia.org/wiki/The_Matrix_(franchise)",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix_(franchise)&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix_(franchise)"
+      },
+      {
+        "pageid": 61567171,
+        "ns": 0,
+        "title": "The Matrix Resurrections",
+        "index": 4,
+        "pageprops": {
+          "wikibase_item": "Q80322391"
+        },
+        "extract": "The Matrix Resurrections is a 2021 American science fiction action film co-produced and directed by Lana Wachowski, who co-wrote the screenplay with David Mitchell and Aleksandar Hemon. It is the fourth installment in The Matrix film series and the sequel to The Matrix Revolutions (2003).",
+        "contentmodel": "wikitext",
+        "pagelanguage": "en",
+        "pagelanguagehtmlcode": "en",
+        "pagelanguagedir": "ltr",
+        "touched": "2026-11-14T07:31:07Z",
+        "lastrevid": 1379877916,
+        "length": 108446,
+        "fullurl": "https://en.wikipedia.org/wiki/The_Matrix_Resurrections",
+        "editurl": "https://en.wikipedia.org/w/index.php?title=The_Matrix_Resurrections&action=edit",
+        "canonicalurl": "https://en.wikipedia.org/wiki/The_Matrix_Resurrections"
+      }
+    ]
+  }
 }

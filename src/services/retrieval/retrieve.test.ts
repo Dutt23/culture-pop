@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FIXED_NOW, fixtureGetJson, type FixtureQuery } from '../../test/fakeRetrieval';
-import { retrieve } from './retrieve';
+import { firstValueFrom, toArray } from 'rxjs';
+import { rerankCandidates } from './rerank';
+import { retrieve, retrieve$, retrieveRaw } from './retrieve';
 import { RetrievalError, type GetJson, type RetrievalResult } from './types';
 import taarakMehtaTvmaze from './fixtures/tvmaze-taarak-mehta.json';
 
@@ -72,7 +74,12 @@ describe('retrieve', () => {
       'wd:Q80322391',
     ]);
     const film = result.candidates[0];
-    expect(film).toMatchObject({ category: 'film', kind: 'work', year: 1999, yearSourceId: 'src:wd:Q83495' });
+    expect(film).toMatchObject({
+      category: 'film',
+      kind: 'work',
+      year: 1999,
+      yearSourceId: 'src:wd:Q83495',
+    });
     expect(film.sources.map((s) => s.publisher)).toEqual(['Wikipedia', 'Wikidata']);
     expect(film.sources[0]).toMatchObject({ license: 'CC BY-SA 4.0', retrievedAt: FIXED_NOW });
   });
@@ -88,7 +95,10 @@ describe('retrieve', () => {
   });
 
   it('keeps every distinct meaning of an ambiguous phrase, including the dictionary sense', async () => {
-    const result = await retrieve('hakuna matata', { getJson: fixtureGetJson('hakuna matata'), now });
+    const result = await retrieve('hakuna matata', {
+      getJson: fixtureGetJson('hakuna matata'),
+      now,
+    });
     const byId = new Map(result.candidates.map((c) => [c.id, c]));
     expect(byId.get('wd:Q1570072')).toMatchObject({ category: 'saying', kind: 'phrase' });
     expect(byId.get('wd:Q1646614')).toMatchObject({ category: 'music', year: 1994 });
@@ -115,16 +125,24 @@ describe('retrieve', () => {
   });
 
   it('drops unsourced years when Wikidata fails, but still returns Wikipedia hits', async () => {
-    const getJson = fixtureGetJson('the matrix', { wikidata: new RetrievalError('timeout', 'slow') });
+    const getJson = fixtureGetJson('the matrix', {
+      wikidata: new RetrievalError('timeout', 'slow'),
+    });
     const result = await retrieve('the matrix', { getJson, now });
     expect(result.candidates[0].year).toBeUndefined();
     expect(result.candidates[0].sources.map((s) => s.publisher)).toEqual(['Wikipedia']);
   });
 
   it('skips Wikidata when Wikipedia found nothing to look up', async () => {
-    const getJson = fixtureGetJson('the matrix', { wikipedia: new RetrievalError('rate_limited', 'slow down') });
+    const getJson = fixtureGetJson('the matrix', {
+      wikipedia: new RetrievalError('rate_limited', 'slow down'),
+    });
     const result = await retrieve('the matrix', { getJson, now });
-    expect(result.outcomes[0]).toEqual({ provider: 'wikipedia', status: 'failed', failure: 'rate_limited' });
+    expect(result.outcomes[0]).toEqual({
+      provider: 'wikipedia',
+      status: 'failed',
+      failure: 'rate_limited',
+    });
     expect(result.outcomes[1]).toEqual({ provider: 'wikidata', status: 'skipped' });
     expect(result.candidates).toEqual([]);
   });
@@ -247,7 +265,12 @@ describe('retrieve', () => {
     const gated = gatedFixtures('the matrix');
     const controller = new AbortController();
     const onUpdate = vi.fn();
-    const pending = retrieve('the matrix', { getJson: gated.getJson, now }, controller.signal, onUpdate);
+    const pending = retrieve(
+      'the matrix',
+      { getJson: gated.getJson, now },
+      controller.signal,
+      onUpdate,
+    );
 
     gated.release(WIKIPEDIA);
     await gated.started(WIKIDATA);
@@ -265,7 +288,11 @@ describe('retrieve', () => {
   it('merges a TVmaze show into the Wikidata item that names it (P8600)', async () => {
     const result = await retrieve('swat kats', { getJson: fixtureGetJson('swat kats'), now });
     const cartoon = result.candidates.find((c) => c.id === 'wd:Q2077112');
-    expect(cartoon).toMatchObject({ category: 'cartoon', year: 1993, yearSourceId: 'src:wd:Q2077112' });
+    expect(cartoon).toMatchObject({
+      category: 'cartoon',
+      year: 1993,
+      yearSourceId: 'src:wd:Q2077112',
+    });
     expect(cartoon?.sources.map((s) => s.publisher)).toEqual(['Wikipedia', 'Wikidata', 'TVmaze']);
     expect(result.candidates.some((c) => c.id.startsWith('tvmaze:'))).toBe(false);
   });
@@ -275,7 +302,9 @@ describe('retrieve', () => {
     const fixtures = fixtureGetJson('swat kats');
     const getJson: GetJson = async (url, signal) => {
       const parsed = new URL(url);
-      requested.push(parsed.hostname === TVMAZE ? `tvmaze:${parsed.searchParams.get('q')}` : parsed.hostname);
+      requested.push(
+        parsed.hostname === TVMAZE ? `tvmaze:${parsed.searchParams.get('q')}` : parsed.hostname,
+      );
       return fixtures(url, signal);
     };
     await retrieve('swat kats', { getJson, now });
@@ -413,7 +442,7 @@ describe('retrieve', () => {
 
     const quoted = byId.get('enwikiquote:199218');
     expect(quoted).toMatchObject({
-      title: 'Quoted in Thor: Ragnarok',
+      title: 'Thor: Ragnarok on Wikiquote',
       role: 'quoted_in',
       kind: 'quote',
       category: 'catchphrase',
@@ -435,7 +464,10 @@ describe('retrieve', () => {
     expect(result.candidates.filter((c) => c.role === 'quoted_in')).toHaveLength(3);
     // TVmaze is asked about the Indian "Break Point (2021 TV series)" and answers with Netflix's
     // 2023 "Break Point". Without a TVmaze ID or a year to match, it isn't merged.
-    expect(byId.get('wd:Q108919894')?.sources.map((s) => s.publisher)).toEqual(['Wikipedia', 'Wikidata']);
+    expect(byId.get('wd:Q108919894')?.sources.map((s) => s.publisher)).toEqual([
+      'Wikipedia',
+      'Wikidata',
+    ]);
     expect(result.outcomes[4]).toEqual({ provider: 'tvmaze', status: 'empty' });
     expect(result.candidates.some((c) => c.id.startsWith('tvmaze:'))).toBe(false);
   });
@@ -454,14 +486,75 @@ describe('retrieve', () => {
     expect(result.candidates[0].sources.map((s) => s.publisher)).toEqual(['Wikipedia', 'Wikidata']);
   });
 
+  it('returns candidates already reranked, and the dictionary sense stays behind exact-title pages', async () => {
+    const result = await retrieve('hakuna matata', {
+      getJson: fixtureGetJson('hakuna matata'),
+      now,
+    });
+    expect(rerankCandidates('hakuna matata', result.candidates)).toEqual(result.candidates);
+    expect(result.candidates[0]?.id).not.toBe('enwiktionary:hakuna matata');
+    // retrieve() is exactly retrieveRaw() plus the reranking (the benchmark relies on this).
+    const raw = await retrieveRaw('hakuna matata', {
+      getJson: fixtureGetJson('hakuna matata'),
+      now,
+    });
+    expect(result.candidates).toEqual(rerankCandidates('hakuna matata', raw.candidates));
+  });
+
   it('finds only the song for "catch me outside", not the meme', async () => {
     const result = await retrieve('catch me outside', {
       getJson: fixtureGetJson('catch me outside'),
       now,
     });
-    expect(result.candidates[0]).toMatchObject({ id: 'wd:Q110449182', category: 'music', kind: 'work' });
+    expect(result.candidates[0]).toMatchObject({
+      id: 'wd:Q110449182',
+      category: 'music',
+      kind: 'work',
+    });
     expect(result.candidates.some((c) => ['phrase', 'quote', 'meme'].includes(c.kind))).toBe(false);
     expect(result.outcomes.map((o) => o.status)).toEqual(['ok', 'ok', 'empty', 'empty', 'skipped']);
+  });
+
+  describe('retrieve$', () => {
+    it('emits one snapshot per provider answer, then completes', async () => {
+      const snapshots = await firstValueFrom(
+        retrieve$('swat kats', { getJson: fixtureGetJson('swat kats'), now }).pipe(toArray()),
+      );
+      expect(snapshots).toHaveLength(5);
+      expect(snapshots.at(-1)?.outcomes.every((o) => o.status !== 'pending')).toBe(true);
+      // Each snapshot settles exactly one more provider.
+      const settled = snapshots.map((s) => s.outcomes.filter((o) => o.status !== 'pending').length);
+      expect(settled).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('starts nothing until subscribed, and aborts every running request on unsubscribe', async () => {
+      const signals: AbortSignal[] = [];
+      const getJson: GetJson = (_url, signal) => {
+        if (signal) signals.push(signal);
+        return new Promise(() => undefined);
+      };
+      const lookup$ = retrieve$('the matrix', { getJson, now });
+      expect(signals).toEqual([]);
+
+      const subscription = lookup$.subscribe();
+      expect(signals).toHaveLength(3);
+      expect(signals.some((s) => s.aborted)).toBe(false);
+      subscription.unsubscribe();
+      expect(signals.every((s) => s.aborted)).toBe(true);
+    });
+
+    it('asks Wikidata only with the IDs Wikipedia returned', async () => {
+      const wikidataUrls: string[] = [];
+      const fixtures = fixtureGetJson('the matrix');
+      const getJson: GetJson = async (url, signal) => {
+        if (new URL(url).hostname === WIKIDATA) wikidataUrls.push(url);
+        return fixtures(url, signal);
+      };
+      await firstValueFrom(retrieve$('the matrix', { getJson, now }).pipe(toArray()));
+      expect(wikidataUrls).toHaveLength(1);
+      const query = new URL(wikidataUrls[0]).searchParams.get('query') ?? '';
+      expect(query).toContain('VALUES ?item { wd:Q83495 wd:Q13014087 wd:Q207536 wd:Q80322391 }');
+    });
   });
 
   it('throws aborted when cancelled', async () => {
@@ -470,8 +563,103 @@ describe('retrieve', () => {
     const getJson = fixtureGetJson('the matrix', {
       wikipedia: new RetrievalError('aborted', 'cancelled'),
     });
-    await expect(retrieve('the matrix', { getJson, now }, controller.signal)).rejects.toMatchObject({
-      failure: 'aborted',
+    await expect(retrieve('the matrix', { getJson, now }, controller.signal)).rejects.toMatchObject(
+      {
+        failure: 'aborted',
+      },
+    );
+  });
+
+  describe('fallbacks after a miss (D43)', () => {
+    const wikipediaPage = (title: string, pageId: number, qid: string) => ({
+      pageid: pageId,
+      title,
+      fullurl: `https://en.wikipedia.org/wiki/${title.replace(/ /g, '_')}`,
+      pageprops: { wikibase_item: qid },
+      extract: `${title} is a thing.`,
+      index: 1,
+    });
+
+    /** Answers by what is searched: `wikipedia[search]` is that search's JSON, anything else is empty. */
+    function scripted(
+      wikipedia: Record<string, unknown>,
+      quotes: unknown = { query: { search: [] } },
+    ) {
+      const requests: string[] = [];
+      const getJson: GetJson = async (url) => {
+        const u = new URL(url);
+        requests.push(
+          `${u.hostname} ${u.searchParams.get('gsrsearch') ?? u.searchParams.get('srsearch') ?? ''}`.trim(),
+        );
+        if (u.hostname === WIKIPEDIA)
+          return wikipedia[u.searchParams.get('gsrsearch') ?? ''] ?? { batchcomplete: true };
+        if (u.hostname === WIKTIONARY) return { query: { pages: [{ title: 'x', missing: true }] } };
+        if (u.hostname === WIKIQUOTE) return quotes;
+        if (u.hostname === WIKIDATA) return { results: { bindings: [] } };
+        return [];
+      };
+      return { getJson, requests };
+    }
+
+    it("searches Wikipedia's suggestion after a miss and marks what it found", async () => {
+      const { getJson, requests } = scripted({
+        'hakuna matatta': { query: { searchinfo: { suggestion: 'hakuna matata' } } },
+        'hakuna matata': { query: { pages: [wikipediaPage('Hakuna matata', 7, 'Q1570072')] } },
+      });
+      const result = await retrieve('hakuna matatta', { getJson, now });
+      expect(result.rewrite).toEqual({ kind: 'suggestion', text: 'hakuna matata' });
+      expect(result.candidates.map((c) => [c.id, c.via])).toEqual([['wd:Q1570072', 'suggestion']]);
+      // The plain search, Wiktionary, Wikiquote, then the fallback search and its Wikidata lookup.
+      expect(requests.filter((r) => r.startsWith(WIKIPEDIA))).toEqual([
+        `${WIKIPEDIA} hakuna matatta`,
+        `${WIKIPEDIA} hakuna matata`,
+      ]);
+      expect(requests.filter((r) => r.startsWith(WIKIDATA))).toHaveLength(1);
+    });
+
+    it('cuts a long query to its first words when there is no suggestion', async () => {
+      const { getJson } = scripted({
+        'babu bhaiya paisa hi paisa hoga': {
+          query: { pages: [wikipediaPage('Hemlata', 1, 'Q5712227')] },
+        },
+        'babu bhaiya': {
+          query: { pages: [wikipediaPage('Hera Pheri (2000 film)', 2, 'Q5732486')] },
+        },
+      });
+      const result = await retrieve('babu bhaiya paisa hi paisa hoga', { getJson, now });
+      expect(result.rewrite).toEqual({ kind: 'shorter_phrase', text: 'babu bhaiya' });
+      const byId = new Map(result.candidates.map((c) => [c.id, c.via]));
+      expect(byId.get('wd:Q5712227')).toBeUndefined();
+      expect(byId.get('wd:Q5732486')).toBe('shorter_phrase');
+    });
+
+    it('makes no extra request when the plain search already found a page named by the query', async () => {
+      const { getJson, requests } = scripted({
+        'hera pheri': {
+          query: {
+            pages: [wikipediaPage('Hera Pheri (2000 film)', 3, 'Q5732486')],
+            searchinfo: { suggestion: 'hera pheri 2' },
+          },
+        },
+      });
+      const result = await retrieve('hera pheri', { getJson, now });
+      expect(result.rewrite).toBeUndefined();
+      expect(requests.filter((r) => r.startsWith(WIKIPEDIA))).toEqual([`${WIKIPEDIA} hera pheri`]);
+    });
+
+    it('does not pile requests on an outage: a failed provider means no fallback', async () => {
+      const requests: string[] = [];
+      const getJson: GetJson = async (url) => {
+        const u = new URL(url);
+        requests.push(u.hostname + (u.searchParams.get('gsrsearch') ?? ''));
+        if (u.hostname === WIKTIONARY) throw new RetrievalError('network', 'down');
+        if (u.hostname === WIKIPEDIA)
+          return { query: { searchinfo: { suggestion: 'something else' } } };
+        return { query: { search: [] } };
+      };
+      const result = await retrieve('some misspelt thing here', { getJson, now });
+      expect(result.rewrite).toBeUndefined();
+      expect(requests.filter((r) => r.startsWith(WIKIPEDIA))).toHaveLength(1);
     });
   });
 });

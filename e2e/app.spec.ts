@@ -36,7 +36,10 @@ test('a favourite persists across reload', async ({ page }) => {
   await expect(favourite).toHaveAttribute('aria-pressed', 'true');
 
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Favourite' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Favourite' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await primaryNav(page).getByRole('link', { name: 'Favourites' }).click();
   await expect(page.getByRole('link', { name: /D'oh! \(The Simpsons\)/ })).toBeVisible();
 });
@@ -117,7 +120,9 @@ test('the production build enforces a strict CSP without violations', async ({ p
   });
   await page.addInitScript(() => {
     document.addEventListener('securitypolicyviolation', (event) => {
-      console.error(`Content Security Policy violation: ${event.violatedDirective} ${event.blockedURI}`);
+      console.error(
+        `Content Security Policy violation: ${event.violatedDirective} ${event.blockedURI}`,
+      );
     });
   });
 

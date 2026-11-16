@@ -16,7 +16,13 @@ const FORBIDDEN_CONTENT = [
   'fake-indexeddb',
   'vitest',
   'Component gallery',
+  // The dev-only on-device model benchmark, its labelled cases, and WebLLM (not shipped until D39 passes).
+  'On-device model benchmark',
+  'Kattappa ne Baahubali',
+  'CreateMLCEngine',
   '"batchcomplete"',
+  // From the search evaluation set (src/test/search-eval/queries.ts), which the dev bench imports.
+  'cash-me-ousside-howbow-dah',
 ];
 
 /** Pure check over { path, content } pairs, so it can be unit-tested without a build. */
@@ -59,5 +65,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const leak of leaks) console.error(`LEAK  ${leak}`);
     process.exit(1);
   }
-  console.log(`dist/ clean: ${files.length} files, no test code, fixtures, dev pages or source maps.`);
+  console.log(
+    `dist/ clean: ${files.length} files, no test code, fixtures, dev pages or source maps.`,
+  );
 }

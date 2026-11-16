@@ -8,8 +8,31 @@ const PHRASE_KINDS: ReadonlySet<ReferenceKind> = new Set(['phrase', 'quote', 'me
 const MIN_PHRASE_WORDS = 3;
 /** Short words that turn up in slang and memes far more than in titles; deliberately small. */
 const SLANG_WORDS: ReadonlySet<string> = new Set([
-  'ok', 'me', 'u', 'ur', 'im', 'bruh', 'lol', 'sus', 'cap', 'vibe', 'vibes', 'af', 'fr', 'ngl',
-  'tbh', 'rizz', 'yeet', 'stan', 'simp', 'boomer', 'karen', 'bestie', 'slay', 'lowkey', 'highkey',
+  'ok',
+  'me',
+  'u',
+  'ur',
+  'im',
+  'bruh',
+  'lol',
+  'sus',
+  'cap',
+  'vibe',
+  'vibes',
+  'af',
+  'fr',
+  'ngl',
+  'tbh',
+  'rizz',
+  'yeet',
+  'stan',
+  'simp',
+  'boomer',
+  'karen',
+  'bestie',
+  'slay',
+  'lowkey',
+  'highkey',
 ]);
 const COMMUNITY_SITES: ReadonlySet<string> = new Set([
   'Know Your Meme',
@@ -24,6 +47,72 @@ export function looksLikePhrase(query: string): boolean {
 }
 
 /**
+ * Question and filler words that start a sentence but name nothing: skipped before searching for a
+ * subject, or for the start of a long query.
+ */
+export const LEADING_FILLER: ReadonlySet<string> = new Set([
+  'why', 'what', 'who', 'whom', 'whose', 'how', 'when', 'where', 'which',
+  'is', 'are', 'was', 'were', 'do', 'does', 'did', 'can', 'the', 'a', 'an', 'so',
+]);
+const QUESTION_WORDS: ReadonlySet<string> = new Set([
+  ...['why', 'what', 'how', 'who', 'whom', 'whose', 'when', 'where', 'which'],
+  ...['is', 'are', 'do', 'does', 'did', 'can', 'should', 'would', 'could', 'will'],
+]);
+/**
+ * A sentence addressed to someone ("how you doin", "are you ready", "can you play...") is a phrase
+ * or a quote, not a question about a topic, so it is never question-style.
+ */
+const ADDRESSED_TO: ReadonlySet<string> = new Set([
+  ...['you', 'u', 'ya', 'i', 'we', 'he', 'she', 'it', 'they', 'me', 'my', 'your', 'our'],
+]);
+const MIN_SUBJECT_WORDS = 2;
+
+/**
+ * What a question-style query is about, with its question and filler words dropped, or undefined
+ * when it is not question-style. One rule: a leading question word (why, what, how, who, is, are,
+ * do, does...) or a trailing "?", and a subject of at least two words that does not start by
+ * addressing someone. "why are ferrari fans depressed" is about "ferrari fans depressed";
+ * "what's up doc" (the quote), "how you doin" and "what is the matrix" (a lookup) are not questions.
+ */
+export function questionSubject(query: string): string | undefined {
+  const words = tokenize(normalizePhrase(query));
+  if (!QUESTION_WORDS.has(words[0] ?? '') && !query.trim().endsWith('?')) return undefined;
+  const start = words.findIndex((word) => !LEADING_FILLER.has(word));
+  const subject = start < 0 ? [] : words.slice(start);
+  if (subject.length < MIN_SUBJECT_WORDS || ADDRESSED_TO.has(subject[0] as string)) return undefined;
+  return subject.join(' ');
+}
+
+export const looksLikeQuestion = (query: string): boolean => questionSubject(query) !== undefined;
+
+/** Words too small to say what a page is about; a title sharing only these shares nothing. */
+const SMALL_WORDS: ReadonlySet<string> = new Set([
+  ...['of', 'and', 'for', 'with', 'from', 'that', 'this', 'they', 'them', 'not', 'but', 'all'],
+]);
+
+/** The words of a question's subject that say something: no filler, nothing under three letters. */
+function meaningfulWords(query: string): string[] {
+  return tokenize(normalizePhrase(questionSubject(query) ?? query)).filter(
+    (word) => word.length >= 3 && !LEADING_FILLER.has(word) && !SMALL_WORDS.has(word),
+  );
+}
+
+/**
+ * For a question-style query, a hit that is only a related page: not a work, and not a phrase,
+ * quote, meme or definition, and whose title shares no meaningful word with the question
+ * ("Pink Floyd" for "why are ferrari fans depressed"; "Scuderia Ferrari" shares "ferrari").
+ */
+export function isWeakHit(query: string, candidate: RetrievedCandidate): boolean {
+  if (candidate.role !== 'topic' || PHRASE_KINDS.has(candidate.kind)) return false;
+  const title = new Set(tokenize(normalizePhrase(candidate.title)));
+  return !meaningfulWords(query).some((word) => title.has(word));
+}
+
+/** True when a candidate explains the phrase itself: a meme, quote, phrase or dictionary entry. */
+export const explainsQuery = (candidate: RetrievedCandidate): boolean =>
+  PHRASE_KINDS.has(candidate.kind) || candidate.role === 'definition' || candidate.role === 'quoted_in';
+
+/**
  * Owner-approved fallback (D34): with no curated answer, point to where people discuss slang and
  * memes when online search found nothing, or found only works and pages about people while the
  * query reads like a phrase ("catch me outside" finds the song, not the meme).
@@ -33,6 +122,9 @@ export function suggestCommunityLinks(
   candidates: readonly RetrievedCandidate[],
 ): boolean {
   if (candidates.length === 0) return true;
+  // A question-style query (a running joke, a stereotype) is explained by communities, not by
+  // encyclopedias, unless something found online explains it.
+  if (looksLikeQuestion(query)) return !candidates.some(explainsQuery);
   return looksLikePhrase(query) && !candidates.some((c) => PHRASE_KINDS.has(c.kind));
 }
 

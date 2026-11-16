@@ -1,43 +1,32 @@
 import { useState } from 'react';
+import { useRepositories } from '../../app/RepositoriesContext';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
-import type {
-  MotionPreference,
-  RetrievalPreference,
-  SpoilerPreference,
-  ThemePreference,
-} from '../../domain/settings';
+import { SETTING_LABELS, type SettingKey, type Settings } from '../../domain/settings';
 import { useSettings } from './SettingsContext';
 import styles from './SettingsPage.module.css';
 
-const THEME_OPTIONS: readonly SegmentedOption<ThemePreference>[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
+function optionsOf<K extends SettingKey>(key: K): readonly SegmentedOption<Settings[K]>[] {
+  // The keys are exactly the setting's values, in display order.
+  const labels = SETTING_LABELS[key] as Readonly<Record<Settings[K], string>>;
+  return (Object.entries(labels) as [Settings[K], string][]).map(([value, label]) => ({
+    value,
+    label,
+  }));
+}
 
-const MOTION_OPTIONS: readonly SegmentedOption<MotionPreference>[] = [
-  { value: 'system', label: 'Match device' },
-  { value: 'reduce', label: 'Reduce' },
-  { value: 'full', label: 'Full' },
-];
-
-const SPOILER_OPTIONS: readonly SegmentedOption<SpoilerPreference>[] = [
-  { value: 'hide', label: 'Hide until I tap' },
-  { value: 'show', label: 'Show automatically' },
-];
-
-const RETRIEVAL_OPTIONS: readonly SegmentedOption<RetrievalPreference>[] = [
-  { value: 'ask', label: 'Ask first' },
-  { value: 'on', label: 'On' },
-  { value: 'off', label: 'Off' },
-];
+const THEME_OPTIONS = optionsOf('theme');
+const MOTION_OPTIONS = optionsOf('motion');
+const SPOILER_OPTIONS = optionsOf('spoilers');
+const RETRIEVAL_OPTIONS = optionsOf('retrieval');
+const HISTORY_OPTIONS = optionsOf('history');
 
 const SAVE_ERROR = "Couldn't save that setting. Please try again.";
 
 export function SettingsPage() {
   const { settings, setSetting, resetLocalData } = useSettings();
+  const { history } = useRepositories();
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const save = async (action: () => Promise<void>) => {
@@ -50,13 +39,27 @@ export function SettingsPage() {
 
   const reset = async () => {
     const question =
-      'Remove all favourites, reset settings and delete online results saved on this device? This cannot be undone.';
+      'Remove all favourites and search history, reset settings and delete online results saved on this device? This cannot be undone.';
     if (!window.confirm(question)) return;
     try {
       await resetLocalData();
-      setMessage({ tone: 'ok', text: 'Favourites, settings and saved online results were cleared.' });
+      setMessage({
+        tone: 'ok',
+        text: 'Favourites, search history, settings and saved online results were cleared.',
+      });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't reset local data. Please try again." });
+    }
+  };
+
+  const clearHistory = async () => {
+    if (!window.confirm('Delete your search history from this device? This cannot be undone.'))
+      return;
+    try {
+      await history.clear();
+      setMessage({ tone: 'ok', text: 'Search history was cleared.' });
+    } catch {
+      setMessage({ tone: 'error', text: "Couldn't clear search history. Please try again." });
     }
   };
 
@@ -93,21 +96,36 @@ export function SettingsPage() {
             onChange={(value) => save(() => setSetting('retrieval', value))}
           />
           <p className={styles.ok}>
-            When something isn't in your library, your search text can be sent to Wikipedia,
-            Wikidata, Wiktionary and Wikiquote (Wikimedia Foundation) to find it. TVmaze is asked
-            only about TV series they find, never your search text. Your search text is never
-            saved, but what they find is kept on this device for offline use until you clear it
-            below.
+            When something isn't in your library, your search text can be sent to public online
+            reference sites to find it. What they find is kept on this device for offline use until
+            you clear it below.
           </p>
+        </div>
+        <div className={styles.withNote}>
+          <SegmentedControl
+            legend="Search history"
+            name="history"
+            options={HISTORY_OPTIONS}
+            value={settings.history}
+            onChange={(value) => save(() => setSetting('history', value))}
+          />
+          <p className={styles.ok}>
+            Searches you submit or open a result from are kept on this device, so recent searches
+            and your regulars can be shown. They are never sent anywhere. Turning this off stops
+            saving new searches; Clear history deletes the ones already saved.
+          </p>
+          <button type="button" className={styles.reset} onClick={clearHistory}>
+            Clear history
+          </button>
         </div>
       </div>
 
       <Section
         title="Your data"
-        description="Everything stays in this browser. Search text is never saved; it leaves the device only through online search (if you turn it on) or an external search link you tap. Results found online are kept here until you clear them."
+        description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on) or an external search link you tap. Search history and results found online are kept here until you clear them."
       >
         <button type="button" className={styles.reset} onClick={reset}>
-          Reset favourites, settings &amp; saved online results
+          Reset favourites, history, settings &amp; saved online results
         </button>
         {message && (
           <p

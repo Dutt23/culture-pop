@@ -86,6 +86,21 @@ record in `SOURCE_INVENTORY.md`, then build replaceable adapters with consent di
   registration on native, open external links via `@capacitor/browser`, add the top safe-area inset,
   generate icons/splash with `@capacitor/assets`. Risk: Apple guideline 4.2 ("minimum
   functionality") review for web-wrapped apps. Needs owner approval before starting.
+- **Backend phase (owner, 2026-11-15): website-only until then.** Candidates: a Vercel Function proxy
+  for wider web search (Brave/Mojeek key in a non-`VITE_` env variable, per-visitor rate limit, query
+  length cap, no query logging, consent wording); optionally Supabase for cross-device sync of
+  favourites and history (needs accounts, so a privacy decision) and a shared cache of curated
+  results. Moves Phase 3 step 7 here. Also **"which song has this line"**: Genius's search matches
+  lyric text but needs an access token (401 without one, checked 2026-11-16), so it waits for a
+  server; show title, artist and link only, never lyrics (copyright). LRCLIB is open (CORS `*`, no
+  key) but its `q` search matches titles, not lyric lines ("we're no strangers to love" → 0 results),
+  so it only helps when the line is the title. Shazam identifies audio, not typed text.
+  **Parallel (parallel.ai)** is another web-search candidate (owner, 2026-11-16): its own index,
+  Search/Extract/Task APIs with cited output. Needs an API key, so backend only. Its "Basis"
+  confidence scores are model-generated and never count as verification (spec §5): use only its
+  links and quoted text as pointers, verified against permitted sources. Pricing, rate limits,
+  storage/display terms and Reddit/Hinglish coverage are unread; compare with Brave/Mojeek on the
+  eval's misremembered and Indian cases before choosing.
 
 
 ## Current phase: 2 — permitted multi-source retrieval (started 2026-11-15, owner approved)
@@ -236,3 +251,146 @@ Found, to address:
 - Service worker would not register **in the embedded browser pane only** (`sw.js` served 200 and
   JS; secure context). The same build passed the offline/SW e2e test 72/72 in Playwright Chromium.
   Verify once on a real phone.
+
+---
+
+## Phase 2: approved and committed by owner (2a289f1), 2026-11-15
+
+## Current phase: 3: grounded curation and local model feasibility (owner approved 2026-11-15)
+
+### Plan (spec §5 Phase 3, owner decisions D22–D34 and the notes above)
+1. **RxJS orchestration refactor** (`retrieve.ts`, `useRetrieval`), RxJS 7.8.2.
+2. **Evaluation set** from `docs/research/query-demand.md` (≥30 labelled queries incl. Indian pop
+   culture, misremembered forms) + metrics harness (Recall@5, MRR@10, wrong-top-result, ambiguity
+   coverage, latency) + recorded baseline for local and online search.
+3. **Deterministic curator** (`src/services/curation/`): builds plain-language candidate
+   interpretations only from retrieved evidence, with source IDs; layered relations (origin ↔ quoted
+   in ↔ dictionary sense) persisted only when sources state them. Schema v3 with an upgrade test.
+4. Query rewriting (Wikipedia spelling suggestion, Wiktionary+Wikipedia together, variants).
+5. MiniSearch trial vs baseline; domain reranker (demote reordered-word titles like *Break Point*).
+6. On-device LLM benchmark (WebLLM / Transformers.js) in a Web Worker, consent before download,
+   schema-validated output with support IDs, TOON vs JSON evidence input; enable only if it passes.
+7. ~~Web-search pointer trial (Mojeek/Brave)~~: **moved to the backend phase after Phase 5** (owner,
+   2026-11-15). Phase 3 stays website-only; the "Not what I meant" hook stays in place.
+Gate: 30-case corpus validated, provenance, model fallback, consent, persistence, errors.
+
+### Owner decisions, 2026-11-15 (to record as D37 when built)
+- **Search history: ON by default** (owner overrides spec §4 "no history"), disclosed in the consent
+  card, with a Settings switch and "Clear history". Stays on the device. Never exported without the user.
+- **Two-tier history (2Q / segmented LRU):** a *Recent* list (~50, LRU, new searches) and a
+  *Frequent* list (~150, ranked by decayed frequency; promoted after ≥2 searches, ideally on different
+  days; demoted back to Recent rather than deleted). Discover's "Your regulars" reads Frequent only.
+  Frequent's score is stored as a single time-invariant value (log score + decay rate × time) so an
+  index gives top-k and eviction without recomputing. Items expire after 90 days untouched.
+- **One entry per meaning, not per spelling:** merge on (1) normalized text, (2) Double Metaphone
+  key + small edit distance ("point breakz", "catch/cash me outside"), (3) same resolved reference,
+  (4) later, embedding similarity if Transformers.js passes its benchmark. Label = most-used spelling.
+- **Other structures:** in-memory LRU of ~20 recent search results (session only); in-flight request
+  sharing (RxJS `shareReplay`); hashed "didn't work" list with 7-day expiry (under the history switch);
+  MiniSearch `autoSuggest` for type-ahead if MiniSearch passes its trial. Bloom filter, Count-Min Sketch
+  and tries: not needed at this scale.
+- **Libraries:** `double-metaphone` (MIT) for sound-alike keys. Frecency/LRU built in-house (~50 lines,
+  tied to Dexie); check `frecency` (Mixmax) for async-storage support before ruling it out.
+- **Search UX:** results stay in place with a "N new results, tap to show" note; every "Quoted in"
+  line hidden behind Reveal until the LLM spoiler check passes (then it decides; unsure means hidden);
+  saved answers show "Saved <date>" + Refresh button (no timed auto-refresh); "Not what I meant" →
+  offer "Search the wider web" (Brave/Mojeek, after owner approves backend + keys).
+
+### Phase 3 steps 1–3 built and checked (agent, 2026-11-15, at the owner's request)
+Done: RxJS refactor, evaluation set (baseline **not run** yet), deterministic curator + schema v3.
+Checks run by the agent: typecheck clean, lint 0 errors (5 react-refresh warnings), unit 313/313,
+e2e 24/24, `check:dist` clean.
+
+Independent review (opus) findings and what changed:
+- Just-found results jumped into the library once saving explained them and the online section
+  vanished. Fixed: online-derived references (`retrieved` and `source_curated`) never join the library
+  list or Discover, and online mode is latched per query in `SearchPage` (test added).
+- "Original work" claimed an origin no source states. Now "The work" (curator) / "Work" (online card).
+- Wikiquote search snippets were shown as "Quoted in X". Now "Matching text on the “X” page"; card
+  title "X on Wikiquote". Those interpretations are `spoiler: 'major'` (hidden behind Reveal, D37).
+- Music noun narrowed to "musical work". A year whose own source is missing is dropped instead of
+  marking the whole interpretation unverified.
+- Saved online results are hidden when a library match already resolves the query.
+
+Deferred (fix before recording the baseline or later in Phase 3):
+- Eval counts `enwikiquote:*` / `enwiki:*` first results as wrong tops (e.g. *Sholay* for "kitne aadmi
+  the"). Decide: accept Wikiquote page titles in meanings, or drop those candidates from the ranked list.
+- A Wikiquote reference's title isn't the phrase, so a later search for the phrase won't find it locally.
+- `selection: user_confirmed` survives re-curation that changes the text.
+- The v3 upgrade calls today's curator, so later curator changes alter what a v3 upgrade produces.
+
+### Search history and search UX built (agent, 2026-11-15) — NOT RUN
+Built the owner decisions above as **D37** (see `DECISIONS.md`). Code and tests are written; the agent
+ran no typecheck, lint, unit or e2e checks (owner's rule), so nothing here is verified yet.
+- Pure rules in `src/domain/history.ts`; Dexie access in `src/data/repositories/searchHistoryRepository.ts`;
+  schema v4 adds the `searchHistory` table (v1–v3 untouched). New dependency: `double-metaphone` 2.0.1.
+- Settings: Search history On/Off (default On), Clear history; Reset also clears history.
+- Search page: recent searches as chips on an empty query; records on submit and on opening a result.
+- Discover: "Your regulars" (Frequent only, hidden when empty or when history is off).
+- Search UX: "N new results, tap to show", "Saved <date>" + Refresh, "Not what I meant" toggle with a
+  hook for the wider-web search.
+- Tests written: `src/domain/history.test.ts`, v3→v4 upgrade and history store tests in
+  `src/data/db.test.ts`, app tests in `src/app/app.test.tsx` (history off, Clear history, regulars,
+  new results, Saved date + Refresh, Not what I meant).
+- Still open from the owner list: session LRU of results, `shareReplay` sharing, hashed "didn't work"
+  list, MiniSearch `autoSuggest`, embedding merges, wider-web search (needs owner approval and keys).
+
+### Phase 3 remaining work, agreed with the owner (2026-11-15)
+1. Finish the search baseline once a live run has no degraded cases.
+2. Small pieces. **Written, not run (2026-11-16):** `withSessionCache` in
+   `src/services/retrieval/sessionCache.ts`, wrapped around `retrieve$` in `createRetrievalService`:
+   identical searches running at once share one lookup (RxJS `share`), and a finished search with no
+   failed provider is replayed for 10 minutes, 20 queries max (least recently used dropped first),
+   never persisted; cancelled or failed lookups are never kept, so Retry always goes online. Tests:
+   `sessionCache.test.ts`. The hashed "didn't work" list is **moved to the backend phase**: its
+   purpose was to switch to the wider web search after repeated misses.
+3. Query rewriting, in this order (owner, 2026-11-15): (a) Wikipedia's own "did you mean"
+   suggestion, no AI; (a2) no-AI fallbacks, only when the plain search finds nothing that matches
+   well: a **shorter-phrase search** of a long query's first 2–3 words (checked live 2026-11-15:
+   "babu bhaiya" alone returns Baburao Ganpatrao Apte, Phir Hera Pheri and Hera Pheri (2000 film);
+   the full line "babu bhaiya paisa hi paisa hoga" returns singer and song-list pages), and a
+   **looser Wikiquote search** (unquoted) after the exact-phrase one finds nothing (not verified:
+   throttled). Each adds at most one request, on a miss only. Hindi Wikipedia via transliteration
+   is a later option (Hinglish spellings vary; not verified); (b) read which misremembered cases
+   still fail in the baseline (e.g. "bilkul ricks"); (c) AI-suggested rewrites only for those, only if the on-device model passes step 5:
+   at most 2–3 variants, only when the plain search finds nothing good. The AI suggests search
+   terms only, never answers.
+4. MiniSearch trial against the baseline, plus a reranker ("Break Point" must not beat "point break").
+5. On-device AI test: explanations and spoiler judgement. **Built, not run (2026-11-16, D39):** WebLLM in a
+   worker, consent-checked download, three jobs with deterministic output checks, and the dev-only
+   benchmark `/dev/llm-bench`. **Not enabled**: the owner runs the benchmark on a mid-range phone
+   (`docs/research/ondevice-llm.md`, "How to run"); enable only if every criterion passes.
+6. **Comics** (owner: important). Started: a Comics category from Wikidata's "comics character"
+   (Q1114461, e.g. Doctor Doom, Spider-Man) and "comic" (Q1004: series, graphic novels, strips, manga)
+   classes, with curator nouns "comics character" / "comics work". Tests written, not run. Next:
+   the comics-source research (what can be fetched from the browser, what waits for the backend
+   phase, what is link-out only), then "what has this character done?" summaries only if step 5
+   passes, with plot behind Reveal.
+7. Phase 3 gate review with the owner.
+
+### Phase 3 step 4: reranker and MiniSearch trial (agent, 2026-11-16, at the owner's request)
+Done and adopted: a reranker for online results (`src/services/retrieval/rerank.ts`, called from `retrieve$`)
+and MiniSearch typo plus sound-alike matching behind `rankReferences` (D40, D41). Offline held-out half:
+Recall@5 76.6% to 80.9%, wrong first result 38.3% to 34.0%; local typo set Recall@5 50% to 100%.
+Embedding trial (Transformers.js, two models) found no gain for online results and was not adopted (D42).
+Live confirmation (98 cases, 2 degraded only in the scoring lookup): Recall@5 78.6% to 80.6%, MRR@10 0.697 to 0.719, wrong first 32.7% to 29.6% (`docs/eval/search-eval-2026-11-15-reranked.md`, table in `SEARCH_RANKING.md`).
+Checks run by the agent: `npm test`, typecheck (clean in these files), lint (0 errors). e2e not run (parent session).
+
+### On-device model: how it loads once enabled (owner, 2026-11-16)
+- Never on app start. Start the worker the first time a feature needs it, only with download consent;
+  keep it warm 5 minutes (`IDLE_MS`), then terminate to free memory.
+- Never block on it. Expose a status stream from the LLM client (RxJS `BehaviorSubject`: off,
+  loading with %, ready, unavailable); today `loaded` is internal only. Screens read it:
+  not ready means skip (search runs without AI rewrites; reference pages show the curator's
+  sentences at once), ready means enhance (rewrites on a miss; a richer explanation replaces the
+  curator's text in place, with a small "improving this explanation…" note while it runs).
+- Today nothing outside `src/features/dev/` imports `src/services/llm/`, so users never load it.
+
+### Phase 3 step 3: query rewriting without AI (agent, 2026-11-16, at the owner's request)
+Built and measured (D43): Wikipedia's "did you mean" (free, from the plain search's request) and a
+first-two-words search for long queries, each only on a miss, at most one per search (at most 2 extra
+requests). An unquoted Wikiquote search was tried and dropped (no effect). Small gain (Recall@5 80.4% to
+82.5% offline), misremembered queries unchanged; a one-line note on screen says what was searched.
+Same pass: the three leftover duplicates from the duplication review (H1 `stripDisambiguator`, H3 `safeUrl`
+built on `safeHref`, M1 one `src/domain/sources.ts` for publisher names and source-ID helpers).
+Checks run by the agent: `npm test`, typecheck, lint, e2e (24 of 24) and `check:dist`, all passing.

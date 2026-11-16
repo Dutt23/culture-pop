@@ -66,6 +66,50 @@ export const EXTERNAL_ID_PROPERTIES: readonly ExternalIdProperty[] = [
     // `:` but no spaces, `%` or markup.
     pattern: /^[a-z0-9][a-z0-9-]{0,69}:[^\s<>[\]{}|#?%\\]{1,255}$/,
   },
+  // Comics and manga (formatters and format constraints read 2026-11-15; docs/research/comics-sources.md).
+  {
+    property: 'P5905',
+    label: 'Comic Vine',
+    template: 'https://comicvine.gamespot.com/wd/$1/',
+    pattern: /^40(00|05|10|15|20|25|40|45|50|55|60|70|75)-[1-9][0-9]{0,9}$/,
+  },
+  {
+    property: 'P5621',
+    label: 'Marvel.com',
+    template: 'https://www.marvel.com/comics/characters/$1/wd',
+    pattern: /^[1-9][0-9]{0,9}$/,
+  },
+  {
+    property: 'P9851',
+    label: 'DC',
+    template: 'https://www.dccomics.com/characters/$1',
+    pattern: /^[a-z]{1,40}(-[a-z]{1,40}){0,9}$/,
+  },
+  {
+    property: 'P14738',
+    label: 'Grand Comics Database',
+    template: 'https://www.comics.org/character/$1/',
+    // Wikidata sets no format constraint here; GCD character pages use numeric IDs.
+    pattern: /^[1-9][0-9]{0,9}$/,
+  },
+  {
+    property: 'P3589',
+    label: 'Grand Comics Database',
+    template: 'https://www.comics.org/series/$1/',
+    pattern: /^[1-9][0-9]{0,9}$/,
+  },
+  {
+    property: 'P4087',
+    label: 'MyAnimeList',
+    template: 'https://myanimelist.net/manga/$1',
+    pattern: /^[1-9][0-9]{0,9}$/,
+  },
+  {
+    property: 'P8731',
+    label: 'AniList',
+    template: 'https://anilist.co/manga/$1',
+    pattern: /^[1-9][0-9]{0,9}$/,
+  },
 ];
 
 /** Encodes each `/` segment, keeping `:` like Wikibase does; `.` and `..` segments are refused. */
@@ -81,7 +125,10 @@ export function externalLink(property: string, id: string): ExternalLink | undef
   if (!spec || !spec.pattern.test(id)) return undefined;
   const encoded = encodePath(id);
   if (encoded === undefined) return undefined;
-  const url = safeUrl(spec.template.replace('$1', () => encoded), new URL(spec.template).hostname);
+  const url = safeUrl(
+    spec.template.replace('$1', () => encoded),
+    new URL(spec.template).hostname,
+  );
   return url ? { label: spec.label, url } : undefined;
 }
 

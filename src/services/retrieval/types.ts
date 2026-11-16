@@ -1,4 +1,4 @@
-import type { Category, ExternalLink, ReferenceKind, Source } from '../../domain/types';
+import type { Category, ExternalLink, PresentIn, ReferenceKind, Source } from '../../domain/types';
 
 export type ProviderId = 'wikipedia' | 'wikidata' | 'wiktionary' | 'wikiquote' | 'tvmaze';
 
@@ -41,11 +41,32 @@ export interface RetrievedCandidate {
   category: Category;
   year?: number;
   yearSourceId?: string;
+  /** Creators and first appearance, as Wikidata states them; present only when Wikidata is cited. */
+  creators?: string[];
+  firstAppearance?: string;
+  /** Works Wikidata says it appears in (P1441), at most three; present only when Wikidata is cited. */
+  presentIn?: PresentIn[];
   /** True while Wikidata hasn't answered yet: type and year may still change. */
   classifying: boolean;
   role: CandidateRole;
+  /** Set when a fallback search, not the plain one, found this candidate (see `rewrite.ts`). */
+  via?: RewriteKind;
   sources: Source[];
   externalLinks: ExternalLink[];
+}
+
+/**
+ * The fallbacks that run only when the plain search misses (docs/SEARCH_RANKING.md, D43):
+ * Wikipedia's "did you mean", and the first words of a long query. (An unquoted Wikiquote search was
+ * tried and left out: it changed no result.)
+ */
+export type RewriteKind = 'suggestion' | 'shorter_phrase';
+
+/** What a fallback searched for, so the page can say so. */
+export interface Rewrite {
+  kind: RewriteKind;
+  /** The text searched. */
+  text: string;
 }
 
 export interface ProviderOutcome {
@@ -57,6 +78,13 @@ export interface ProviderOutcome {
 export interface RetrievalResult {
   candidates: RetrievedCandidate[];
   outcomes: ProviderOutcome[];
+  /** Present once a fallback search has been chosen; its candidates carry the same `via`. */
+  rewrite?: Rewrite;
+  /**
+   * What was searched when it is not what the user typed: a question with its question words
+   * dropped ("ferrari fans depressed" for "why are ferrari fans depressed").
+   */
+  searched?: string;
 }
 
 export type GetJson = (url: string, signal?: AbortSignal) => Promise<unknown>;

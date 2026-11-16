@@ -17,10 +17,16 @@ const CLASS_PRIORITY: readonly [string, Classification][] = [
   ['Q11424', { category: 'film', kind: 'work' }], // film
   ['Q5398426', { category: 'tv', kind: 'work' }], // television series
   ['Q15416', { category: 'tv', kind: 'work' }], // television program
+  // Covers comic book series, graphic novels, comic strips and manga (checked 2026-11-15).
+  ['Q1004', { category: 'comics', kind: 'work' }], // comic
+  ['Q7889', { category: 'games', kind: 'work' }], // video game (Minecraft, Pac-Man)
+  ['Q7058673', { category: 'games', kind: 'work' }], // video game series (The Legend of Zelda)
   ['Q7366', { category: 'music', kind: 'work' }], // song
   ['Q105543609', { category: 'music', kind: 'work' }], // musical work/composition
   ['Q2708515', { category: 'catchphrase', kind: 'quote' }], // catchphrase
   ['Q206287', { category: 'catchphrase', kind: 'quote' }], // quotation
+  ['Q1114461', { category: 'comics', kind: 'character' }], // comics character (e.g. Doctor Doom)
+  ['Q1569167', { category: 'games', kind: 'character' }], // video game character (Mario)
   ['Q95074', { category: 'other', kind: 'character' }], // fictional character
   ['Q187931', { category: 'saying', kind: 'phrase' }], // phrase
   ['Q8102', { category: 'saying', kind: 'phrase' }], // slang

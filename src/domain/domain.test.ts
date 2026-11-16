@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeAlias, makeInterpretation, makeReference } from '../test/factories';
+import { formatDate } from './dates';
 import {
   eraOf,
   filterByCategory,
@@ -15,6 +16,7 @@ import { relatedReferences } from './related';
 import { DEFAULT_SETTINGS, parseSettings } from './settings';
 import { describeStorageError } from './storageErrors';
 import { summarizeByReference } from './summaries';
+import { listOf } from './text';
 
 describe('summarizeByReference', () => {
   it('counts meanings and never uses a spoiler as the teaser', () => {
@@ -96,9 +98,9 @@ describe('describeStorageError', () => {
   });
 
   it('unwraps Dexie OpenFailedError', () => {
-    expect(describeStorageError({ name: 'OpenFailedError', inner: { name: 'VersionError' } })).toMatch(
-      /newer version/,
-    );
+    expect(
+      describeStorageError({ name: 'OpenFailedError', inner: { name: 'VersionError' } }),
+    ).toMatch(/newer version/);
   });
 
   it('handles non-error values', () => {
@@ -116,7 +118,8 @@ describe('externalSearchLinks', () => {
     expect(links.find((l) => l.site === 'Know Your Meme')?.href).toBe(
       'https://knowyourmeme.com/search?q=rock%20%26%20roll%3F',
     );
-    for (const link of links) expect(link.href).toMatch(/^https:\/\/[^/]+\/.*rock%20%26%20roll%3F$/);
+    for (const link of links)
+      expect(link.href).toMatch(/^https:\/\/[^/]+\/.*rock%20%26%20roll%3F$/);
   });
 
   it('groups sites so memes, shows and general searches stay separate', () => {
@@ -157,8 +160,14 @@ describe('search filters', () => {
   it('filters by category and era together', () => {
     const items = [film1999, cartoon1993, oldFilm, saying];
     expect(items.filter((i) => matchesFilter(i, NO_FILTER))).toHaveLength(4);
-    expect(items.filter((i) => matchesFilter(i, { category: 'film', era: 'all' }))).toEqual([film1999, oldFilm]);
-    expect(items.filter((i) => matchesFilter(i, { category: 'all', era: '1990s' }))).toEqual([film1999, cartoon1993]);
+    expect(items.filter((i) => matchesFilter(i, { category: 'film', era: 'all' }))).toEqual([
+      film1999,
+      oldFilm,
+    ]);
+    expect(items.filter((i) => matchesFilter(i, { category: 'all', era: '1990s' }))).toEqual([
+      film1999,
+      cartoon1993,
+    ]);
   });
 
   it('offers only options that leave something to show, in canonical order', () => {
@@ -166,5 +175,21 @@ describe('search filters', () => {
       categories: ['cartoon', 'film', 'saying'],
       eras: ['earlier', '1990s', 'timeless'],
     });
+  });
+});
+
+describe('formatDate', () => {
+  it('formats en-GB and returns undefined, never throwing, for an invalid date', () => {
+    // Local noon, so the day is the same in every time zone.
+    expect(formatDate('2026-11-15T12:00:00')).toBe('15 Nov 2026');
+    expect(formatDate('not a date')).toBeUndefined();
+  });
+});
+
+describe('listOf', () => {
+  it('joins names in plain English, with no serial comma', () => {
+    expect(listOf(['Stan Lee'])).toBe('Stan Lee');
+    expect(listOf(['Jack Kirby', 'Stan Lee'])).toBe('Jack Kirby and Stan Lee');
+    expect(listOf(['A', 'B', 'C'])).toBe('A, B and C');
   });
 });

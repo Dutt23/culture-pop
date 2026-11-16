@@ -52,8 +52,30 @@ describe('needsRetrieval', () => {
 
   function decide(interpretations: Interpretation[], query: string) {
     const matches = rankReferences(query, refs, aliases);
-    return needsRetrieval(matches, groupBy(interpretations, (i) => i.referenceId), VALID);
+    return needsRetrieval(
+      matches,
+      groupBy(interpretations, (i) => i.referenceId),
+      VALID,
+    );
   }
+
+  it('is still needed when only a typo or sound-alike match was found', () => {
+    // "tpo" is one typo from "top" and the library has a seed-style eligible interpretation for it.
+    const typoOnly = rankReferences('topp', refs, []).filter((m) => m.kind === 'typo');
+    const fuzzy = [
+      ...typoOnly,
+      { reference: refs[0] as (typeof refs)[number], kind: 'sound' as const, matchedPhrase: 'Top' },
+    ];
+    const interpretations = [makeInterpretation('t1', 'top')];
+    expect(fuzzy.length).toBeGreaterThan(0);
+    expect(
+      needsRetrieval(
+        fuzzy,
+        groupBy(interpretations, (i) => i.referenceId),
+        VALID,
+      ),
+    ).toBe(true);
+  });
 
   it('is needed when nothing matches', () => {
     expect(decide([], 'nothing here')).toBe(true);

@@ -282,7 +282,8 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
           'A stock photo of a man turning to look at a passer-by while his partner glares at him.',
         context:
           'People label the three figures to joke about being pulled away from something you should stay loyal to.',
-        usageExample: 'Labels: man = "me", passer-by = "a new hobby", partner = "my unfinished projects".',
+        usageExample:
+          'Labels: man = "me", passer-by = "a new hobby", partner = "my unfinished projects".',
       },
     ],
   },
@@ -321,7 +322,8 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
         summary:
           'What a trainer shouts when sending a creature into battle — most famously Ash sending out Pikachu.',
         context: 'People say it jokingly when picking someone for a task or picking an item.',
-        usageExample: 'Pointing at a friend when someone needs to call the restaurant: "I choose you!"',
+        usageExample:
+          'Pointing at a friend when someone needs to call the restaurant: "I choose you!"',
       },
     ],
   },
@@ -411,6 +413,8 @@ export function buildSeed(): SeedData {
       provenance: 'seed_curated',
       evidence: 'unverified',
       selection: null,
+      // Demo meanings describe the reference itself.
+      relation: 'original',
       createdAt: SEED_TIMESTAMP,
       updatedAt: SEED_TIMESTAMP,
     })),

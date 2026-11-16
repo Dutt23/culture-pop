@@ -15,6 +15,14 @@ const ID_PROPERTIES = new Set([
 ]);
 const MAX_ID_CHARS = 300;
 const YEAR = /^(\d{4})-/;
+// Labels are untrusted text shown in a sentence: short, single-line, a handful per item.
+const MAX_LABEL_CHARS = 120;
+// Bounds memory only; the shown list is sorted and trimmed later, so row order never matters.
+const MAX_CREATORS_READ = 20;
+const MAX_PRESENT_IN_READ = 20;
+/** "Present in work": the work an item (a meme, a phrase, a character) appears in. */
+export const PRESENT_IN_PROPERTY = 'P1441';
+const CONTROL = /\p{Cc}/u;
 
 export interface WikidataFacts {
   classes: Set<string>;
@@ -22,22 +30,38 @@ export interface WikidataFacts {
   year?: number;
   /** Raw external IDs by property, unvalidated; see externalLinks.ts. */
   externalIds: Map<string, Set<string>>;
+  /** English labels of its creators (P170), e.g. comics characters' writers and artists. */
+  creators: Set<string>;
+  /** English label of its first appearance (P4584), e.g. "Fantastic Four #5". */
+  firstAppearance?: string;
+  /** Works it appears in (P1441): item to English label, e.g. Q83495 to "The Matrix". */
+  presentIn: Map<string, string>;
 }
 
 /** Builds the SPARQL query. Only validated QIDs are interpolated, so input can't alter it. */
 export function wikidataFactsUrl(qids: readonly string[]): string {
-  const items = qids.filter((q) => QID.test(q)).map((q) => `wd:${q}`).join(' ');
+  const items = qids
+    .filter((q) => QID.test(q))
+    .map((q) => `wd:${q}`)
+    .join(' ');
   const classes = QUERIED_CLASSES.map((q) => `wd:${q}`).join(' ');
   const idProperties = [...ID_PROPERTIES].map((p) => `wdt:${p}`).join(' ');
   // UNION, not separate OPTIONALs: rows add up per fact instead of multiplying across them.
   const query = [
-    'SELECT ?item ?class ?date ?idProperty ?externalId WHERE {',
+    'SELECT ?item ?class ?date ?idProperty ?externalId ?creatorLabel ?firstAppearanceLabel ?presentIn ?presentInLabel WHERE {',
     `  VALUES ?item { ${items} }`,
     '  OPTIONAL {',
     `    { VALUES ?class { ${classes} } ?item wdt:P31/wdt:P279* ?class }`,
     '    UNION { ?item wdt:P577|wdt:P580 ?date }',
     `    UNION { VALUES ?idProperty { ${idProperties} } ?item ?idProperty ?externalId }`,
+    '    UNION { ?item wdt:P170 ?creator }',
+    '    UNION { ?item wdt:P4584 ?firstAppearance }',
+    `    UNION { ?item wdt:${PRESENT_IN_PROPERTY} ?presentIn }`,
     '  }',
+    // Explicit labels only: a missing English label stays unbound instead of becoming a QID.
+    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "en" .',
+    '    ?creator rdfs:label ?creatorLabel . ?firstAppearance rdfs:label ?firstAppearanceLabel .',
+    '    ?presentIn rdfs:label ?presentInLabel . }',
     '}',
   ].join('\n');
   return `${ENDPOINT}?${new URLSearchParams({ query, format: 'json' })}`;
@@ -48,6 +72,13 @@ function entityId(binding: Record<string, unknown>, key: string): string | undef
   if (!isRecord(cell) || typeof cell.value !== 'string') return undefined;
   const id = cell.value.startsWith(ENTITY_PREFIX) ? cell.value.slice(ENTITY_PREFIX.length) : '';
   return QID.test(id) ? id : undefined;
+}
+
+function label(binding: Record<string, unknown>, key: string): string | undefined {
+  const cell = binding[key];
+  if (!isRecord(cell) || typeof cell.value !== 'string') return undefined;
+  const text = cell.value.trim();
+  return text && text.length <= MAX_LABEL_CHARS && !CONTROL.test(text) ? text : undefined;
 }
 
 function addExternalId(entry: WikidataFacts, binding: Record<string, unknown>): void {
@@ -72,13 +103,31 @@ export function parseWikidataFacts(json: unknown): Map<string, WikidataFacts> {
     if (!isRecord(binding)) continue;
     const item = entityId(binding, 'item');
     if (!item) continue;
-    const entry: WikidataFacts = facts.get(item) ?? { classes: new Set(), externalIds: new Map() };
+    const entry: WikidataFacts = facts.get(item) ?? {
+      classes: new Set(),
+      externalIds: new Map(),
+      creators: new Set(),
+      presentIn: new Map(),
+    };
     const cls = entityId(binding, 'class');
     if (cls) entry.classes.add(cls);
     const date = isRecord(binding.date) ? binding.date.value : undefined;
     const year = typeof date === 'string' ? YEAR.exec(date)?.[1] : undefined;
     if (year) entry.year = Math.min(entry.year ?? Infinity, Number(year));
     addExternalId(entry, binding);
+    const creator = label(binding, 'creatorLabel');
+    if (creator && entry.creators.size < MAX_CREATORS_READ) entry.creators.add(creator);
+    // Only a work with an item and an English label is kept; the item is validated like any QID.
+    const work = entityId(binding, 'presentIn');
+    const workLabel = label(binding, 'presentInLabel');
+    if (work && workLabel && entry.presentIn.size < MAX_PRESENT_IN_READ) {
+      entry.presentIn.set(work, workLabel);
+    }
+    // Several first-appearance statements are rare; the alphabetically first keeps it stable.
+    const first = label(binding, 'firstAppearanceLabel');
+    if (first && (entry.firstAppearance === undefined || first < entry.firstAppearance)) {
+      entry.firstAppearance = first;
+    }
     facts.set(item, entry);
   }
   return facts;

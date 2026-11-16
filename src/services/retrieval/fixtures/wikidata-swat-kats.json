@@ -1,115 +1,109 @@
 {
- "head": {
-  "vars": [
-   "item",
-   "class",
-   "date",
-   "idProperty",
-   "externalId"
-  ]
- },
- "results": {
-  "bindings": [
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q18674887"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "1995-08-01T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2077112"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "1993-09-11T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q1334740"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "starwars:Perry_King"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2077112"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P8600"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "15796"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q581714"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2077112"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q5398426"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2077112"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q15416"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q2077112"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13406463"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q6596209"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13406463"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q17018255"
-    }
-   }
-  ]
- }
+  "head": {
+    "vars": ["item", "class", "date", "idProperty", "externalId"]
+  },
+  "results": {
+    "bindings": [
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q18674887"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "1995-08-01T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2077112"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "1993-09-11T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q1334740"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "starwars:Perry_King"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2077112"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P8600"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "15796"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q581714"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2077112"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q5398426"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2077112"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q15416"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q2077112"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13406463"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q6596209"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13406463"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q17018255"
+        }
+      }
+    ]
+  }
 }

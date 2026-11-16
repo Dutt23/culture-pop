@@ -45,7 +45,9 @@ export function firstEnglishDefinition(extract: string, title: string): string |
   if (start < 0) return undefined;
   const afterHeading = extract.slice(start).replace(ENGLISH_SECTION, '');
   const end = afterHeading.search(LEVEL_TWO_HEADING);
-  const lines = (end < 0 ? afterHeading : afterHeading.slice(0, end)).split('\n').map((l) => l.trim());
+  const lines = (end < 0 ? afterHeading : afterHeading.slice(0, end))
+    .split('\n')
+    .map((l) => l.trim());
 
   let inPartOfSpeech = false;
   for (const line of lines) {
@@ -61,7 +63,8 @@ export function firstEnglishDefinition(extract: string, title: string): string |
 }
 
 export function parseWiktionary(json: unknown): WiktionaryEntry | undefined {
-  if (!isRecord(json) || !isRecord(json.query) || !Array.isArray(json.query.pages)) return undefined;
+  if (!isRecord(json) || !isRecord(json.query) || !Array.isArray(json.query.pages))
+    return undefined;
   for (const page of json.query.pages) {
     if (!isRecord(page) || 'missing' in page) continue;
     const title = stringField(page, 'title');

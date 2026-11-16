@@ -71,9 +71,9 @@ test('online search asks first, contacts only the listed providers, and cites it
   const film = page.getByRole('link').filter({ hasText: 'The Matrix' }).filter({ hasText: '1999' });
   await expect(film.first()).toBeVisible();
 
-  expect(external.length).toBeGreaterThan(0);
+  // Wikidata follows Wikipedia's answer, so it can still be on its way when the card first shows.
   // Films only: TVmaze is asked only about series Wikidata identified, so it isn't contacted here.
-  expect(new Set(external.map((r) => r.host))).toEqual(new Set(WIKIMEDIA_HOSTS));
+  await expect.poll(() => new Set(external.map((r) => r.host))).toEqual(new Set(WIKIMEDIA_HOSTS));
   for (const request of external) {
     // Wikimedia asks for Api-User-Agent; TVmaze must get no custom header (its preflight is a 405).
     if (WIKIMEDIA_HOSTS.includes(request.host)) {
@@ -84,7 +84,7 @@ test('online search asks first, contacts only the listed providers, and cites it
   }
 
   await film.first().click();
-  await expect(page.getByRole('heading', { name: 'Not explained yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Explained from sources' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Wikipedia: The Matrix/ })).toHaveAttribute(
     'href',
     'https://en.wikipedia.org/wiki/The_Matrix',

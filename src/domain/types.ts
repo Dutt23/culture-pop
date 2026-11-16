@@ -1,5 +1,7 @@
 export type Category =
   | 'cartoon'
+  | 'comics'
+  | 'games'
   | 'film'
   | 'tv'
   | 'meme'
@@ -14,8 +16,16 @@ export type ReferenceKind = 'work' | 'quote' | 'phrase' | 'meme' | 'character' |
 /** Editorial browse era. Not a sourced release date — see `Reference.year` for that. */
 export type Decade = '1990s' | '2000s' | '2010s+';
 
-/** `retrieved` = gathered from sources, not yet curated or explained. */
-export type EditorialState = 'demo' | 'published' | 'retrieved';
+/**
+ * `retrieved` = gathered from sources, not yet explained. `source_curated` = gathered from sources
+ * and explained by the deterministic curator with at least one source-supported interpretation.
+ */
+export type EditorialState = 'demo' | 'published' | 'retrieved' | 'source_curated';
+
+/** Both states hold online evidence rather than editorial content; a new retrieval may replace them. */
+export function isFromOnline(state: EditorialState): boolean {
+  return state === 'retrieved' || state === 'source_curated';
+}
 
 /** How an interpretation was created. */
 export type Provenance = 'seed_curated' | 'source_supported' | 'model_suggested' | 'unverified';
@@ -28,10 +38,22 @@ export type Selection = 'user_confirmed' | null;
 
 export type SpoilerLevel = 'none' | 'major';
 
+/**
+ * How the reference relates to the phrase, as its source states it: the original work, a page that
+ * quotes it, its dictionary sense, or another related page. Never inferred beyond the source.
+ */
+export type Relation = 'original' | 'quoted_in' | 'dictionary' | 'related';
+
 /** An exact page about a reference on another site, from Wikidata's external IDs. Tap-only. */
 export interface ExternalLink {
   label: string;
   url: string;
+}
+
+/** A work a reference appears in, as Wikidata states it: its item and its English label. */
+export interface PresentIn {
+  qid: string;
+  label: string;
 }
 
 export interface Reference {
@@ -44,6 +66,11 @@ export interface Reference {
   /** Only present when backed by a source; `yearSourceId` names it. */
   year?: number;
   yearSourceId?: string;
+  /** Labels from Wikidata (P170 creator, P4584 first appearance); its `src:wd:` source backs them. */
+  creators?: string[];
+  firstAppearance?: string;
+  /** Works Wikidata says it appears in (P1441), e.g. "The Matrix" for the red pill; cited by `src:wd:`. */
+  presentIn?: PresentIn[];
   decade?: Decade;
   /** Citations that describe this reference (not interpretation evidence). */
   sourceIds: string[];
@@ -67,6 +94,9 @@ export interface Interpretation {
   provenance: Provenance;
   evidence: Evidence;
   selection: Selection;
+  relation: Relation;
+  /** Set only when a source states the link to that other reference; otherwise evidence is shown side by side. */
+  relatedReferenceId?: string;
   createdAt: string;
   updatedAt: string;
 }

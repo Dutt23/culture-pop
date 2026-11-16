@@ -5,8 +5,10 @@ import { needsRetrieval } from '../domain/eligibility';
 import { rankReferences } from '../domain/ranking';
 import { retrieve } from '../services/retrieval/retrieve';
 import { FIXED_NOW, fixtureGetJson } from '../test/fakeRetrieval';
+import { makeCandidate, makeSource } from '../test/factories';
 import { createTestDatabase } from '../test/renderApp';
-import { createDatabase, SCHEMA_V1 } from './db';
+import { isFromOnline } from '../domain/types';
+import { createDatabase, SCHEMA_V1, SCHEMA_V2_CHANGES, type PopCultureDb } from './db';
 import { createRepositories } from './repositories';
 import { buildSeed } from './seed';
 
@@ -17,7 +19,14 @@ describe('database', () => {
 
     const tables = db.tables.map((t) => t.name);
     expect(tables).toEqual(
-      expect.arrayContaining(['references', 'interpretations', 'aliases', 'sources', 'favourites', 'settings']),
+      expect.arrayContaining([
+        'references',
+        'interpretations',
+        'aliases',
+        'sources',
+        'favourites',
+        'settings',
+      ]),
     );
     expect(tables).not.toContain('meanings');
     db.close();
@@ -79,13 +88,21 @@ describe('database', () => {
   });
 });
 
-describe('schema v2 upgrade', () => {
+describe('schema upgrades', () => {
   it('upgrades a real v1 database, backfilling kind and keeping user data', async () => {
     const name = `upgrade-${Math.random().toString(36).slice(2)}`;
     const v1 = new Dexie(name);
     v1.version(1).stores(SCHEMA_V1);
     await v1.open();
-    const legacy = { title: 'x', normalizedTitle: 'x', category: 'cartoon', tags: [], editorialState: 'demo', createdAt: 't', updatedAt: 't' };
+    const legacy = {
+      title: 'x',
+      normalizedTitle: 'x',
+      category: 'cartoon',
+      tags: [],
+      editorialState: 'demo',
+      createdAt: 't',
+      updatedAt: 't',
+    };
     await v1.table('references').bulkAdd([
       { ...legacy, id: 'doh-simpsons' },
       { ...legacy, id: 'legacy-unknown' },
@@ -95,13 +112,178 @@ describe('schema v2 upgrade', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(2);
+    expect(db.verno).toBe(4);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
-    expect(await db.references.get('legacy-unknown')).toMatchObject({ kind: 'other', sourceIds: [] });
+    expect(await db.references.get('legacy-unknown')).toMatchObject({
+      kind: 'other',
+      sourceIds: [],
+    });
     expect(await db.favourites.count()).toBe(1);
     // Upgrading must not re-seed: populate only runs for brand-new databases.
     expect(await db.references.count()).toBe(2);
     expect(await db.references.where('kind').equals('quote').count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a real v2 database: relations backfilled, cached results curated from their sources', async () => {
+    const name = `upgrade-v2-${Math.random().toString(36).slice(2)}`;
+    const v2 = new Dexie(name);
+    v2.version(1).stores(SCHEMA_V1);
+    v2.version(2).stores(SCHEMA_V2_CHANGES);
+    await v2.open();
+    const stamp = { createdAt: 't', updatedAt: 't', tags: [] };
+    await v2.table('references').bulkAdd([
+      {
+        ...stamp,
+        id: 'doh-simpsons',
+        title: "D'oh!",
+        normalizedTitle: 'doh',
+        category: 'cartoon',
+        kind: 'quote',
+        sourceIds: [],
+        editorialState: 'demo',
+      },
+      {
+        ...stamp,
+        id: 'wd:Q83495',
+        title: 'The Matrix',
+        normalizedTitle: 'the matrix',
+        category: 'film',
+        kind: 'work',
+        year: 1999,
+        yearSourceId: 'src:wd:Q83495',
+        sourceIds: ['src:wd:Q83495'],
+        editorialState: 'retrieved',
+      },
+      {
+        ...stamp,
+        id: 'enwiki:5',
+        title: 'Someone',
+        normalizedTitle: 'someone',
+        category: 'other',
+        kind: 'other',
+        sourceIds: [],
+        editorialState: 'retrieved',
+      },
+    ]);
+    await v2.table('interpretations').add({
+      id: 'doh-simpsons.1',
+      referenceId: 'doh-simpsons',
+      label: 'L',
+      summary: 'S',
+      context: 'C',
+      usageExample: 'E',
+      spoiler: 'none',
+      sourceIds: [],
+      provenance: 'seed_curated',
+      evidence: 'unverified',
+      selection: null,
+      createdAt: 't',
+      updatedAt: 't',
+    });
+    await v2.table('sources').add(wikidataSource('Q83495'));
+    await v2.table('favourites').add({ referenceId: 'wd:Q83495', savedAt: 't' });
+    v2.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(4);
+    expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
+      relation: 'original',
+      summary: 'S',
+    });
+    expect(await db.references.get('wd:Q83495')).toMatchObject({
+      editorialState: 'source_curated',
+    });
+    expect(await db.interpretations.get('wd:Q83495#original')).toMatchObject({
+      summary: '“The Matrix” is a 1999 film (Wikidata).',
+      sourceIds: ['src:wd:Q83495'],
+      provenance: 'source_supported',
+      evidence: 'supported',
+    });
+    // Nothing to template: stays an unexplained cached result.
+    expect(await db.references.get('enwiki:5')).toMatchObject({ editorialState: 'retrieved' });
+    expect(await db.interpretations.where('referenceId').equals('enwiki:5').count()).toBe(0);
+    expect(await db.favourites.count()).toBe(1);
+    expect(await db.references.count()).toBe(3);
+    db.close();
+  });
+
+  it('upgrades a real v3 database: adds an empty search history and keeps everything else', async () => {
+    const name = `upgrade-v3-${Math.random().toString(36).slice(2)}`;
+    const v3 = new Dexie(name);
+    v3.version(1).stores(SCHEMA_V1);
+    v3.version(2).stores(SCHEMA_V2_CHANGES);
+    v3.version(3).stores({});
+    await v3.open();
+    const stamp = { createdAt: 't', updatedAt: 't', tags: [] };
+    await v3.table('references').add({
+      ...stamp,
+      id: 'doh-simpsons',
+      title: "D'oh!",
+      normalizedTitle: 'doh',
+      category: 'cartoon',
+      kind: 'quote',
+      sourceIds: [],
+      editorialState: 'demo',
+    });
+    await v3.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
+    await v3.table('settings').add({ key: 'theme', value: 'dark' });
+    v3.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(4);
+    expect(db.tables.map((t) => t.name)).toContain('searchHistory');
+    expect(await db.searchHistory.count()).toBe(0);
+    expect(await db.references.count()).toBe(1);
+    expect(await db.favourites.count()).toBe(1);
+    expect(await db.settings.toArray()).toEqual([{ key: 'theme', value: 'dark' }]);
+    db.close();
+  });
+});
+
+describe('search history store', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const T0 = Date.UTC(2026, 10, 15, 9);
+
+  it('records through the domain rules and reads Recent and Frequent from the indexes', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    const { history } = createRepositories(db);
+    await history.record({ text: 'point break' }, T0);
+    await history.record({ text: 'point breakz' }, T0 + DAY);
+    await history.record({ text: 'bazinga' }, T0 + 2 * DAY);
+
+    expect((await history.recent(10, T0 + 2 * DAY)).map((e) => e.label)).toEqual([
+      'bazinga',
+      'point breakz',
+    ]);
+    expect((await history.frequent(10, T0 + 2 * DAY)).map((e) => e.id)).toEqual(['point break']);
+    // Reads hide expired rows even before the next write prunes them.
+    expect(await history.recent(10, T0 + 200 * DAY)).toEqual([]);
+    db.close();
+  });
+
+  it('replaces an expired entry that has the same ID instead of failing the write', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    const { history } = createRepositories(db);
+    await history.record({ text: 'bazinga' }, T0);
+    await history.record({ text: 'bazinga' }, T0 + 100 * DAY);
+    expect(await db.searchHistory.toArray()).toEqual([
+      expect.objectContaining({ id: 'bazinga', count: 1, lastSearchedAt: T0 + 100 * DAY }),
+    ]);
+    db.close();
+  });
+
+  it('clears every stored row', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    const { history } = createRepositories(db);
+    await history.record({ text: 'bazinga' }, T0);
+    await history.clear();
+    expect(await db.searchHistory.count()).toBe(0);
     db.close();
   });
 });
@@ -110,7 +292,10 @@ describe('retrieval cache', () => {
   async function cacheMatrix() {
     const db = createTestDatabase();
     await db.open();
-    const result = await retrieve('the matrix', { getJson: fixtureGetJson('the matrix'), now: () => FIXED_NOW });
+    const result = await retrieve('the matrix', {
+      getJson: fixtureGetJson('the matrix'),
+      now: () => FIXED_NOW,
+    });
     await createRepositories(db).retrieval.saveCandidates(result.candidates);
     return { db, result };
   }
@@ -118,7 +303,7 @@ describe('retrieval cache', () => {
   it('stores candidates and citations as structured records, without the query', async () => {
     const { db } = await cacheMatrix();
     expect(await db.references.get('wd:Q83495')).toMatchObject({
-      editorialState: 'retrieved',
+      editorialState: 'source_curated',
       category: 'film',
       year: 1999,
       yearSourceId: 'src:wd:Q83495',
@@ -134,35 +319,169 @@ describe('retrieval cache', () => {
     db.close();
   });
 
-  it('never makes retrieved candidates cache-eligible, so online lookups still run', async () => {
-    const { db } = await cacheMatrix();
+  /** Spec §6 step 1 over what the search page ranks: everything except unexplained `retrieved` rows. */
+  async function lookUp(db: PopCultureDb, query: string) {
     const { references, aliases, interpretations, sources, validSourceIds } =
       await createRepositories(db).references.getSearchIndex();
-    expect(sources.map((s) => s.id)).toEqual(expect.arrayContaining(['src:enwiki:30007']));
-    const matches = rankReferences('the matrix', references, aliases);
-    expect(matches[0].reference.id).toBe('wd:Q83495');
+    const ranked = references.filter((r) => r.editorialState !== 'retrieved');
+    const matches = rankReferences(query, ranked, aliases);
     const byReference = groupBy(interpretations, (i) => i.referenceId);
-    expect(needsRetrieval(matches, byReference, validSourceIds)).toBe(true);
+    return { matches, sources, needs: needsRetrieval(matches, byReference, validSourceIds) };
+  }
+
+  it('curates on save: a source-supported interpretation resolves the next lookup offline', async () => {
+    const { db } = await cacheMatrix();
+    expect(await db.interpretations.get('wd:Q83495#original')).toMatchObject({
+      summary: '“The Matrix” is a 1999 film (Wikidata).',
+      provenance: 'source_supported',
+      evidence: 'supported',
+    });
+    const { matches, sources, needs } = await lookUp(db, 'the matrix');
+    expect(sources.map((s) => s.id)).toEqual(expect.arrayContaining(['src:enwiki:30007']));
+    expect(matches[0].reference.id).toBe('wd:Q83495');
+    expect(needs).toBe(false);
     db.close();
   });
 
-  it('never overwrites curated content with retrieved metadata', async () => {
+  it('never lets an unverified interpretation resolve a lookup', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    // Typed as a film, but the Wikidata record that states the type is not among its sources.
+    await createRepositories(db).retrieval.saveCandidates([
+      makeCandidate({
+        id: 'wd:Q9',
+        title: 'Zzqx film',
+        kind: 'work',
+        category: 'film',
+        role: 'work',
+      }),
+    ]);
+    expect(await db.interpretations.get('wd:Q9#original')).toMatchObject({
+      provenance: 'unverified',
+      evidence: 'unverified',
+    });
+    expect(await db.references.get('wd:Q9')).toMatchObject({ editorialState: 'retrieved' });
+    expect((await lookUp(db, 'zzqx film')).needs).toBe(true);
+    db.close();
+  });
+
+  it('stops resolving lookups once a cited source disappears', async () => {
+    const { db } = await cacheMatrix();
+    await db.sources.delete('src:wd:Q83495');
+    expect((await lookUp(db, 'the matrix')).needs).toBe(true);
+    db.close();
+  });
+
+  it('never overwrites editorial content with retrieved metadata', async () => {
     const db = createTestDatabase();
     await db.open();
     const curated = await db.references.get('ok-boomer');
+    const meanings = await db.interpretations.where('referenceId').equals('ok-boomer').toArray();
     await createRepositories(db).retrieval.saveCandidates([
-      {
-        id: 'ok-boomer',
-        title: 'Overwritten',
-        kind: 'other',
-        category: 'other',
-        classifying: false,
-        role: 'topic',
-        externalLinks: [],
-        sources: [],
-      },
+      makeCandidate({ id: 'ok-boomer', title: 'Overwritten' }),
     ]);
     expect(await db.references.get('ok-boomer')).toEqual(curated);
+    expect(await db.interpretations.where('referenceId').equals('ok-boomer').toArray()).toEqual(
+      meanings,
+    );
+    db.close();
+  });
+
+  it('re-curates when its sources change, keeping the interpretation ID and creation time', async () => {
+    const { db } = await cacheMatrix();
+    const before = await db.interpretations.get('wd:Q83495#original');
+    // Same film, but this time Wikidata gave no year.
+    await createRepositories(db).retrieval.saveCandidates([
+      makeCandidate({
+        id: 'wd:Q83495',
+        title: 'The Matrix',
+        kind: 'work',
+        category: 'film',
+        role: 'work',
+        sources: [wikidataSource('Q83495')],
+      }),
+    ]);
+    expect(await db.interpretations.get('wd:Q83495#original')).toMatchObject({
+      summary: '“The Matrix” is a film (Wikidata).',
+      createdAt: before?.createdAt,
+    });
+    expect(await db.interpretations.where('referenceId').equals('wd:Q83495').count()).toBe(1);
+    db.close();
+  });
+
+  it('re-curates another cached result whose source a new save replaced', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    const repo = createRepositories(db).retrieval;
+    const sense = (id: string) => ({
+      id,
+      url: 'https://en.wiktionary.org/wiki/zzqx',
+      title: 'zzqx',
+      publisher: 'Wiktionary',
+      sourceType: 'dictionary' as const,
+      retrievedAt: FIXED_NOW,
+      license: 'CC BY-SA 4.0',
+      excerpt: 'A test word.',
+    });
+    const entry = (id: string, sourceId: string) =>
+      makeCandidate({
+        id,
+        title: 'zzqx',
+        kind: 'phrase',
+        category: 'saying',
+        role: 'definition',
+        sources: [sense(sourceId)],
+      });
+    await repo.saveCandidates([entry('enwiktionary:old', 'src:old')]);
+    expect(await db.references.get('enwiktionary:old')).toMatchObject({
+      editorialState: 'source_curated',
+    });
+
+    await repo.saveCandidates([entry('enwiktionary:new', 'src:new')]);
+
+    expect(await db.references.get('enwiktionary:old')).toMatchObject({
+      editorialState: 'retrieved',
+    });
+    expect(await db.interpretations.where('referenceId').equals('enwiktionary:old').count()).toBe(
+      0,
+    );
+    expect(await db.references.get('enwiktionary:new')).toMatchObject({
+      editorialState: 'source_curated',
+    });
+    db.close();
+  });
+
+  it('clears a cached year once a new save replaces the source that gave it', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    const repo = createRepositories(db).retrieval;
+    const yearSource = wikidataSource('Q5');
+    await repo.saveCandidates([
+      makeCandidate({
+        id: 'wd:Q5',
+        title: 'Zzqx',
+        kind: 'work',
+        category: 'film',
+        role: 'work',
+        year: 1999,
+        yearSourceId: yearSource.id,
+        sources: [yearSource],
+      }),
+    ]);
+    expect(await db.references.get('wd:Q5')).toMatchObject({ year: 1999 });
+
+    // Another result brings the same page under a new ID, replacing the year's source.
+    await repo.saveCandidates([
+      makeCandidate({
+        id: 'wd:Q6',
+        title: 'Zzqx again',
+        sources: [{ ...yearSource, id: 'src:wd:Q5-new' }],
+      }),
+    ]);
+
+    const film = await db.references.get('wd:Q5');
+    expect(film?.year).toBeUndefined();
+    expect(film?.yearSourceId).toBeUndefined();
     db.close();
   });
 
@@ -182,12 +501,22 @@ describe('retrieval cache', () => {
     db.close();
   });
 
-  it('clears cached results and their sources, leaving curated content alone', async () => {
+  it('clears cached results, their curated interpretations and sources, leaving editorial content alone', async () => {
     const { db } = await cacheMatrix();
     await createRepositories(db).retrieval.clear();
-    expect(await db.references.filter((r) => r.editorialState === 'retrieved').count()).toBe(0);
+    expect(await db.references.filter((r) => isFromOnline(r.editorialState)).count()).toBe(0);
     expect(await db.sources.count()).toBe(0);
     expect(await db.references.count()).toBe(buildSeed().references.length);
+    expect(await db.interpretations.count()).toBe(buildSeed().interpretations.length);
     db.close();
   });
 });
+
+function wikidataSource(qid: string) {
+  return makeSource(`src:wd:${qid}`, 'Wikidata', {
+    url: `https://www.wikidata.org/wiki/${qid}`,
+    title: qid,
+    sourceType: 'structured_data',
+    license: 'CC0 1.0',
+  });
+}

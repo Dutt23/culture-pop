@@ -4,6 +4,8 @@ import { compactText, isRecord, safeUrl, stringField, throwIfMediaWikiError } fr
 const HOST = 'en.wikipedia.org';
 const RESULT_LIMIT = 5;
 const QID = /^Q\d+$/;
+/** A suggestion is a short corrected query, never a paragraph. */
+const MAX_SUGGESTION_CHARS = 120;
 
 export interface WikipediaHit {
   pageId: number;
@@ -15,7 +17,11 @@ export interface WikipediaHit {
   rank: number;
 }
 
-export function wikipediaSearchUrl(query: string): string {
+/**
+ * `suggestion: true` also asks for Wikipedia's "did you mean" in the same response
+ * (`query.searchinfo.suggestion`), so a spelling suggestion costs no extra request.
+ */
+export function wikipediaSearchUrl(query: string, options: { suggestion?: boolean } = {}): string {
   const params = new URLSearchParams({
     action: 'query',
     format: 'json',
@@ -33,6 +39,7 @@ export function wikipediaSearchUrl(query: string): string {
     exlimit: String(RESULT_LIMIT),
     inprop: 'url',
     redirects: '1',
+    ...(options.suggestion ? { gsrinfo: 'suggestion' } : {}),
   });
   return `https://${HOST}/w/api.php?${params}`;
 }
@@ -60,6 +67,30 @@ export function parseWikipediaSearch(json: unknown): WikipediaHit[] {
     });
   }
   return hits.sort((a, b) => a.rank - b.rank);
+}
+
+/** Wikipedia's spelling suggestion for the query, when it has one. */
+export function parseWikipediaSuggestion(json: unknown): string | undefined {
+  if (!isRecord(json) || !isRecord(json.query) || !isRecord(json.query.searchinfo))
+    return undefined;
+  const suggestion = stringField(json.query.searchinfo, 'suggestion');
+  return suggestion ? compactText(suggestion, MAX_SUGGESTION_CHARS) || undefined : undefined;
+}
+
+export interface WikipediaSearch {
+  hits: WikipediaHit[];
+  suggestion?: string;
+}
+
+/** The search plus Wikipedia's "did you mean", from one request. */
+export async function searchWikipediaWithSuggestion(
+  query: string,
+  getJson: GetJson,
+  signal?: AbortSignal,
+): Promise<WikipediaSearch> {
+  const json = await getJson(wikipediaSearchUrl(query, { suggestion: true }), signal);
+  throwIfMediaWikiError(json);
+  return { hits: parseWikipediaSearch(json), suggestion: parseWikipediaSuggestion(json) };
 }
 
 export async function searchWikipedia(

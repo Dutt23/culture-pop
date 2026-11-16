@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePhrase, tokenize } from './normalize';
+import { normalizePhrase, stripDisambiguator, tokenize } from './normalize';
 
 describe('normalizePhrase', () => {
   it.each([
@@ -36,5 +36,23 @@ describe('tokenize', () => {
 
   it('splits on single spaces', () => {
     expect(tokenize('let it go')).toEqual(['let', 'it', 'go']);
+  });
+});
+
+describe('stripDisambiguator', () => {
+  it.each([
+    ['Point Break (2015 film)', 'Point Break'],
+    ['Break Point (2021 TV series)', 'Break Point'],
+    ['Chernobyl (miniseries)', 'Chernobyl'],
+    ['Taarak Mehta Ka Ooltah Chashmah (TV serial)', 'Taarak Mehta Ka Ooltah Chashmah'],
+    ['The Office (American sitcom)', 'The Office'],
+    ['Days of Our Lives (soap opera)', 'Days of Our Lives'],
+    ['Planet Earth (docuseries)', 'Planet Earth'],
+  ])('drops the bracket of %s', (title, plain) => {
+    expect(stripDisambiguator(title)).toBe(plain);
+  });
+
+  it('keeps a bracket that belongs to the title', () => {
+    expect(stripDisambiguator('Rocky (Part 2)')).toBe('Rocky (Part 2)');
   });
 });

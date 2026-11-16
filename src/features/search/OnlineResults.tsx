@@ -3,11 +3,11 @@ import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { Section } from '../../components/ui/Section';
+import { formatDate } from '../../domain/dates';
 import type { RetrievalPreference } from '../../domain/settings';
-import {
-  communitySearchLinks,
-  suggestCommunityLinks,
-} from '../../services/retrieval/community';
+import { PUBLISHER } from '../../domain/sources';
+import { listOf } from '../../domain/text';
+import { communitySearchLinks, suggestCommunityLinks } from '../../services/retrieval/community';
 import { candidateToReference } from '../../services/retrieval/toReference';
 import type {
   CandidateRole,
@@ -16,23 +16,18 @@ import type {
   RetrievalFailure,
   RetrievalResult,
   RetrievedCandidate,
+  Rewrite,
 } from '../../services/retrieval/types';
 import styles from './OnlineResults.module.css';
 import type { RetrievalState } from './useRetrieval';
 import type { SavedOnlineMatch } from './useSearch';
 
-const PROVIDER_NAME: Record<ProviderId, string> = {
-  wikipedia: 'Wikipedia',
-  wikidata: 'Wikidata',
-  wiktionary: 'Wiktionary',
-  wikiquote: 'Wikiquote',
-  tvmaze: 'TVmaze',
-};
+const PROVIDER_NAME: Record<ProviderId, string> = PUBLISHER;
 
 /** How each card relates to the search, as its source states it (shown in the match-note slot). */
 const ROLE_LABEL: Record<CandidateRole, string> = {
-  work: 'Original work',
-  quoted_in: 'Quoted in',
+  work: 'Work',
+  quoted_in: 'On Wikiquote',
   definition: 'Dictionary',
   topic: 'Related',
 };
@@ -48,9 +43,7 @@ const FAILURE_TEXT: Record<RetrievalFailure, string> = {
   aborted: 'was cancelled',
 };
 
-// en-GB: "A, B and C", matching the rest of the copy.
-const NAME_LIST = new Intl.ListFormat('en-GB', { type: 'conjunction' });
-const ALL_PROVIDERS = NAME_LIST.format(Object.values(PROVIDER_NAME));
+const ALL_PROVIDERS = listOf(Object.values(PROVIDER_NAME));
 
 interface OnlineResultsProps {
   /** The search text, for the community search links. */
@@ -64,9 +57,18 @@ interface OnlineResultsProps {
   candidates: readonly RetrievedCandidate[];
   /** Results cached by earlier online searches, filtered and not repeated in `candidates`. */
   saved: readonly SavedOnlineMatch[];
+  /** Fresh candidates that arrived after the first ones were shown, held back until tapped. */
+  newCount: number;
+  onShowNew: () => void;
   onAllow: () => void;
   onSkip: () => void;
   onRetry: () => void;
+  onOpen: (referenceId: string) => void;
+}
+
+function savedOn(isoDate: string): string | undefined {
+  const date = formatDate(isoDate);
+  return date && `Saved ${date}`;
 }
 
 function failedProviders(outcomes: readonly ProviderOutcome[]): string[] {
@@ -76,7 +78,9 @@ function failedProviders(outcomes: readonly ProviderOutcome[]): string[] {
 }
 
 function pendingProviders(result: RetrievalResult): string[] {
-  return result.outcomes.filter((o) => o.status === 'pending').map((o) => PROVIDER_NAME[o.provider]);
+  return result.outcomes
+    .filter((o) => o.status === 'pending')
+    .map((o) => PROVIDER_NAME[o.provider]);
 }
 
 /** Consent, offline, skipped/off and progress messages that sit above any results. */
@@ -99,10 +103,12 @@ function OnlineStatus(props: OnlineResultsProps) {
           Search online?
         </h2>
         <p>
-          To find references that aren't in your library, your search text is sent to Wikipedia,
-          Wikidata, Wiktionary and Wikiquote (run by the Wikimedia Foundation). TVmaze is asked
-          only about TV series they find. Nothing else is sent, and your searches aren't saved.
-          What they find is kept on this device until you clear it in Settings.
+          To find references that aren't in your library, your search text is sent to public online
+          reference sites. Nothing else is sent. What they find is kept on this device until you
+          clear it in Settings.
+        </p>
+        <p>
+          Your search history stays on this device too; you can turn it off or clear it in Settings.
         </p>
         <div className={styles.actions}>
           <button type="button" className={styles.primary} onClick={props.onAllow}>
@@ -144,7 +150,7 @@ function OnlineStatus(props: OnlineResultsProps) {
     const pending = pendingProviders(state.result);
     return pending.length > 0 ? (
       <p className={styles.note} role="status" aria-busy="true">
-        Still searching {NAME_LIST.format(pending)}…
+        Still searching {listOf(pending)}…
       </p>
     ) : null;
   }
@@ -152,8 +158,7 @@ function OnlineStatus(props: OnlineResultsProps) {
     return (
       <div className={styles.error} role="alert">
         <p>
-          Online search failed:{' '}
-          {state.failure === 'offline' ? '' : 'the online sources '}
+          Online search failed: {state.failure === 'offline' ? '' : 'the online sources '}
           {FAILURE_TEXT[state.failure]}.
         </p>
         <button type="button" className={styles.secondary} onClick={props.onRetry}>
@@ -165,7 +170,12 @@ function OnlineStatus(props: OnlineResultsProps) {
   return null;
 }
 
-function CandidateList({ candidates }: { candidates: readonly RetrievedCandidate[] }) {
+interface CandidateListProps {
+  candidates: readonly RetrievedCandidate[];
+  onOpen: (referenceId: string) => void;
+}
+
+function CandidateList({ candidates, onOpen }: CandidateListProps) {
   return (
     <ul className={styles.list}>
       {/* Keyed by stable candidate ID, so a card updates in place as later providers answer. */}
@@ -176,6 +186,7 @@ function CandidateList({ candidates }: { candidates: readonly RetrievedCandidate
             teaser={candidate.sources.find((s) => s.excerpt)?.excerpt}
             matchNote={ROLE_LABEL[candidate.role]}
             pending={candidate.classifying}
+            onOpen={() => onOpen(candidate.id)}
           />
         </AnimatedItem>
       ))}
@@ -205,6 +216,16 @@ function CommunityLinks({ query }: { query: string }) {
   );
 }
 
+/** Says what a fallback search looked for, so nobody mistakes its results for the plain search's. */
+function rewriteNote(rewrite: Rewrite): string {
+  switch (rewrite.kind) {
+    case 'suggestion':
+      return `Also searched \u201c${rewrite.text}\u201d, Wikipedia's suggestion for your spelling.`;
+    case 'shorter_phrase':
+      return `Also searched \u201c${rewrite.text}\u201d, the start of your search.`;
+  }
+}
+
 /** Online lookup for a local cache miss: status, fresh (possibly partial) results, then cached ones. */
 export function OnlineResults(props: OnlineResultsProps) {
   const { query, state, candidates, saved } = props;
@@ -217,7 +238,8 @@ export function OnlineResults(props: OnlineResultsProps) {
   const allFailed =
     state.status === 'done' &&
     state.result.outcomes.every((o) => o.status === 'failed' || o.status === 'skipped');
-  const showFresh = result !== undefined && (settled || candidates.length > 0 || failures.length > 0);
+  const showFresh =
+    result !== undefined && (settled || candidates.length > 0 || failures.length > 0);
 
   return (
     <div className={styles.online}>
@@ -227,7 +249,7 @@ export function OnlineResults(props: OnlineResultsProps) {
       {showFresh && (
         <Section
           title="Found online"
-          description="Unverified matches from Wikimedia and TVmaze. Open one to see exactly what its sources say."
+          description="Unverified matches found online. Open one to see exactly what its sources say."
         >
           {failures.length > 0 && (
             <div className={styles.error} role={allFailed ? 'alert' : 'status'}>
@@ -241,8 +263,9 @@ export function OnlineResults(props: OnlineResultsProps) {
               )}
             </div>
           )}
+          {result?.rewrite && <p className={styles.note}>{rewriteNote(result.rewrite)}</p>}
           {candidates.length > 0 ? (
-            <CandidateList candidates={candidates} />
+            <CandidateList candidates={candidates} onOpen={props.onOpen} />
           ) : (
             // Unfiltered count: a type or era filter hiding every match isn't "no matches".
             state.status === 'done' &&
@@ -251,26 +274,61 @@ export function OnlineResults(props: OnlineResultsProps) {
               <p className={styles.note}>No matches online either.</p>
             )
           )}
+          <div aria-live="polite">
+            {props.newCount > 0 && (
+              <button type="button" className={styles.secondary} onClick={props.onShowNew}>
+                {props.newCount === 1 ? '1 new result' : `${props.newCount} new results`}, tap to
+                show
+              </button>
+            )}
+          </div>
           {state.status === 'done' && !state.cached && (
             <p className={styles.note}>These results couldn't be saved for offline use.</p>
           )}
         </Section>
       )}
 
-      {saved.length > 0 && (
-        <Section
-          title="Saved from earlier online searches"
-          description="Found online before and kept on this device. Unverified, like anything found online."
-        >
-          <ul className={styles.list}>
-            {saved.map(({ reference, teaser }, index) => (
-              <AnimatedItem key={reference.id} index={index}>
-                <ReferenceCard reference={reference} teaser={teaser} />
-              </AnimatedItem>
-            ))}
-          </ul>
-        </Section>
-      )}
+      <SavedOnlineResults saved={saved} onOpen={props.onOpen} />
     </div>
+  );
+}
+
+interface SavedOnlineResultsProps {
+  saved: readonly SavedOnlineMatch[];
+  onOpen: (referenceId: string) => void;
+  /** Offered when the saved answer stands alone (no lookup running): reruns it and saves again. */
+  onRefresh?: () => void;
+}
+
+/**
+ * Results kept from earlier online searches. Shown on their own when a saved, source-explained answer
+ * already resolves the query (no lookup runs), and below fresh results otherwise. Never refreshed on a
+ * timer: only when the reader asks (D37).
+ */
+export function SavedOnlineResults({ saved, onOpen, onRefresh }: SavedOnlineResultsProps) {
+  if (saved.length === 0) return null;
+  return (
+    <Section
+      title="Saved from earlier online searches"
+      description="Found online before and kept on this device. Open one to see exactly what its sources say."
+    >
+      <ul className={styles.list}>
+        {saved.map(({ reference, teaser }, index) => (
+          <AnimatedItem key={reference.id} index={index}>
+            <ReferenceCard
+              reference={reference}
+              teaser={teaser}
+              matchNote={savedOn(reference.updatedAt)}
+              onOpen={() => onOpen(reference.id)}
+            />
+          </AnimatedItem>
+        ))}
+      </ul>
+      {onRefresh && (
+        <button type="button" className={styles.secondary} onClick={onRefresh}>
+          Refresh
+        </button>
+      )}
+    </Section>
   );
 }

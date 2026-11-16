@@ -1,351 +1,345 @@
 {
- "head": {
-  "vars": [
-   "item",
-   "class",
-   "date",
-   "idProperty",
-   "externalId"
-  ]
- },
- "results": {
-  "bindings": [
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "1999-03-31T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "1999-06-17T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "1999-07-14T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q207536"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2003-01-01T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q207536"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2003-11-05T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2021-12-17T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2021-12-18T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2021-12-22T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2021-12-23T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "date": {
-     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
-     "type": "literal",
-     "value": "2021-12-26T00:00:00Z"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "matrix:The_Matrix"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "movies:The_Matrix"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "tropedia:The_Matrix"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6839"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "Film/TheMatrix"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q207536"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "matrix:The_Matrix_Revolutions"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q207536"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "movies:The_Matrix_Revolutions"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q207536"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6839"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "Film/TheMatrixRevolutions"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13014087"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "matrix:The_Matrix_franchise"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q13014087"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6839"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "Franchise/TheMatrix"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "matrix:The_Matrix_Resurrections"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "ru.neopedia:Матрица:_Воскрешение"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "uk.matrix:Матриця_4"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6262"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "movies:The_Matrix_Resurrections"
-    }
-   },
-   {
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    },
-    "idProperty": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/prop/direct/P6839"
-    },
-    "externalId": {
-     "type": "literal",
-     "value": "Film/TheMatrixResurrections"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q11424"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q83495"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q11424"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q207536"
-    }
-   },
-   {
-    "class": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q11424"
-    },
-    "item": {
-     "type": "uri",
-     "value": "http://www.wikidata.org/entity/Q80322391"
-    }
-   }
-  ]
- }
+  "head": {
+    "vars": ["item", "class", "date", "idProperty", "externalId"]
+  },
+  "results": {
+    "bindings": [
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "1999-03-31T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "1999-06-17T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "1999-07-14T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q207536"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2003-01-01T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q207536"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2003-11-05T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2021-12-17T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2021-12-18T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2021-12-22T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2021-12-23T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "date": {
+          "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "type": "literal",
+          "value": "2021-12-26T00:00:00Z"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "matrix:The_Matrix"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "movies:The_Matrix"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "tropedia:The_Matrix"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6839"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "Film/TheMatrix"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q207536"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "matrix:The_Matrix_Revolutions"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q207536"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "movies:The_Matrix_Revolutions"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q207536"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6839"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "Film/TheMatrixRevolutions"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13014087"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "matrix:The_Matrix_franchise"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q13014087"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6839"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "Franchise/TheMatrix"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "matrix:The_Matrix_Resurrections"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "ru.neopedia:Матрица:_Воскрешение"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "uk.matrix:Матриця_4"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6262"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "movies:The_Matrix_Resurrections"
+        }
+      },
+      {
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        },
+        "idProperty": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/prop/direct/P6839"
+        },
+        "externalId": {
+          "type": "literal",
+          "value": "Film/TheMatrixResurrections"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q11424"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q83495"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q11424"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q207536"
+        }
+      },
+      {
+        "class": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q11424"
+        },
+        "item": {
+          "type": "uri",
+          "value": "http://www.wikidata.org/entity/Q80322391"
+        }
+      }
+    ]
+  }
 }

@@ -5,7 +5,7 @@ import { groupBy } from '../../domain/collections';
 import { needsRetrieval } from '../../domain/eligibility';
 import { isAmbiguous, rankReferences, type RankedMatch } from '../../domain/ranking';
 import { summarizeByReference, type CardSummary } from '../../domain/summaries';
-import type { Reference } from '../../domain/types';
+import { isFromOnline, type Reference } from '../../domain/types';
 
 /** A result cached by an earlier online search: evidence only, shown apart from the library. */
 export interface SavedOnlineMatch {
@@ -19,9 +19,13 @@ export interface SearchState {
   /** Curated library matches only; cached online results never rank against them. */
   matches: RankedMatch[];
   isAmbiguous: boolean;
-  /** True when no curated top match resolves the query from the cache (spec §6.1). */
+  /**
+   * True unless a curated top match, or a saved online result already explained from sources, resolves
+   * the query from the cache (spec §6.1). Saved answers are refreshed only on request (owner decision).
+   */
   needsRetrieval: boolean;
   summaries: Map<string, CardSummary>;
+  /** Empty when a library match already resolves the query. */
   savedOnline: SavedOnlineMatch[];
 }
 
@@ -34,29 +38,44 @@ const LOADING: SearchState = {
   savedOnline: [],
 };
 
-/** Search input is ephemeral: nothing about the query is persisted. */
+/** Ranking reads the query only; search history is written on submit or open (useSearchHistory). */
 export function useSearch(query: string): SearchState {
   const { references } = useRepositories();
   const index = useLiveQuery(() => references.getSearchIndex(), [references]);
 
+  // Split once per library load, not per keystroke: the search index is cached on these arrays'
+  // identity (`miniSearchExtras.ts`), so recreating them every query would rebuild it every time.
+  const parts = useMemo(
+    () =>
+      index && {
+        // Anything that came from an online search (raw or explained) stays apart from the library list.
+        curated: index.references.filter((r) => !isFromOnline(r.editorialState)),
+        fromOnline: index.references.filter((r) => isFromOnline(r.editorialState)),
+      },
+    [index],
+  );
+
   return useMemo(() => {
-    if (!index) return LOADING;
-    const curated = index.references.filter((r) => r.editorialState !== 'retrieved');
-    const retrieved = index.references.filter((r) => r.editorialState === 'retrieved');
+    if (!index || !parts) return LOADING;
+    const { curated, fromOnline } = parts;
     const matches = rankReferences(query, curated, index.aliases);
+    const onlineMatches = rankReferences(query, fromOnline, index.aliases);
     const byReference = groupBy(index.interpretations, (i) => i.referenceId);
     const excerpts = new Map(index.sources.map((s) => [s.id, s.excerpt]));
-    const savedOnline = rankReferences(query, retrieved, index.aliases).map(({ reference }) => ({
+    const savedOnline = onlineMatches.map(({ reference }) => ({
       reference,
       teaser: reference.sourceIds.map((id) => excerpts.get(id)).find(Boolean),
     }));
+    const libraryResolves = !needsRetrieval(matches, byReference, index.validSourceIds);
     return {
       loading: false,
       matches,
       isAmbiguous: isAmbiguous(matches),
-      needsRetrieval: needsRetrieval(matches, byReference, index.validSourceIds),
+      needsRetrieval:
+        !libraryResolves && needsRetrieval(onlineMatches, byReference, index.validSourceIds),
       summaries: summarizeByReference(index.interpretations),
-      savedOnline,
+      // A library answer comes first; saved online results then stay out of the way.
+      savedOnline: libraryResolves ? [] : savedOnline,
     };
-  }, [index, query]);
+  }, [index, parts, query]);
 }

@@ -1,9 +1,11 @@
+import MiniSearch from 'minisearch';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PopCultureDb } from '../data/db';
 import { createRepositories } from '../data/repositories';
 import { buildSeed } from '../data/seed';
-import type { Source } from '../domain/types';
+import { isFromOnline, type Source } from '../domain/types';
 import { retrieve } from '../services/retrieval/retrieve';
 import { RetrievalError, type RetrievedCandidate } from '../services/retrieval/types';
 import {
@@ -39,7 +41,9 @@ afterEach(() => {
 describe('routing', () => {
   it('lands on /discover', async () => {
     renderApp('/');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Decode any reference' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Decode any reference' }),
+    ).toBeInTheDocument();
   });
 
   it('shows a not-found state for unknown references and routes', async () => {
@@ -50,7 +54,10 @@ describe('routing', () => {
   it('marks the current section in primary navigation', async () => {
     renderApp('/favourites');
     const nav = await screen.findByRole('navigation', { name: 'Primary' });
-    expect(within(nav).getByRole('link', { name: 'Favourites' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Favourites' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 });
 
@@ -58,13 +65,20 @@ describe('search', () => {
   it('shows every meaning of an ambiguous phrase without picking one', async () => {
     renderApp('/search?q=hakuna%20matata');
     expect(await screen.findByText(/can mean 2 different things/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Hakuna Matata \(The Lion King\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Hakuna matata \(Swahili phrase\)/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Hakuna Matata \(The Lion King\)/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Hakuna matata \(Swahili phrase\)/ }),
+    ).toBeInTheDocument();
   });
 
   it('updates results as the user types', async () => {
     const { user } = renderApp('/search');
-    await user.type(await screen.findByRole('searchbox', { name: 'Search references' }), 'let it go');
+    await user.type(
+      await screen.findByRole('searchbox', { name: 'Search references' }),
+      'let it go',
+    );
     expect(await screen.findByText(/can mean 2 different things/)).toBeInTheDocument();
   });
 
@@ -80,7 +94,10 @@ describe('search', () => {
     renderApp('/search?q=zzqx%20nothing');
     expect(await screen.findByText(/Nothing in your library/)).toBeInTheDocument();
     const wikipedia = screen.getByRole('link', { name: /Search Wikipedia/ });
-    expect(wikipedia).toHaveAttribute('href', 'https://en.wikipedia.org/w/index.php?search=zzqx%20nothing');
+    expect(wikipedia).toHaveAttribute(
+      'href',
+      'https://en.wikipedia.org/w/index.php?search=zzqx%20nothing',
+    );
     expect(wikipedia).toHaveAttribute('target', '_blank');
     expect(wikipedia).toHaveAttribute('rel', 'noopener noreferrer');
   });
@@ -89,7 +106,9 @@ describe('search', () => {
 describe('reference detail', () => {
   it('keeps spoilers hidden until revealed', async () => {
     const { user } = renderApp('/references/the-snap-avengers');
-    expect(await screen.findByRole('heading', { level: 1, name: 'The snap (Avengers)' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'The snap (Avengers)' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/turn to dust/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Reveal spoiler' }));
     expect(await screen.findByText(/turn to dust/)).toBeInTheDocument();
@@ -105,7 +124,9 @@ describe('reference detail', () => {
 
   it('links to the other meaning of a shared phrase', async () => {
     renderApp('/references/let-it-go-frozen');
-    expect(await screen.findByRole('heading', { name: 'Same phrase, different meaning' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Same phrase, different meaning' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Let it go \(everyday saying\)/ })).toBeInTheDocument();
   });
 
@@ -114,7 +135,10 @@ describe('reference detail', () => {
     const first = renderApp('/references/doh-simpsons', db);
     await first.user.click(await screen.findByRole('button', { name: 'Favourite' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Favourite' })).toHaveAttribute('aria-pressed', 'true'),
+      expect(screen.getByRole('button', { name: 'Favourite' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
     );
     first.unmount();
 
@@ -206,7 +230,9 @@ describe('settings', () => {
     await user.click(await screen.findByRole('button', { name: /Reset favourites/ }));
 
     expect(
-      await screen.findByText('Favourites, settings and saved online results were cleared.'),
+      await screen.findByText(
+        'Favourites, search history, settings and saved online results were cleared.',
+      ),
     ).toBeInTheDocument();
     expect(await repos.favourites.list()).toEqual([]);
     expect(await repos.settings.getAll()).toEqual([]);
@@ -240,31 +266,27 @@ describe('offline and storage states', () => {
   });
 });
 
-describe('online search (phase 2)', () => {
-  async function withConsent() {
-    const db = createTestDatabase();
-    await db.open();
-    await createRepositories(db).settings.set('retrieval', 'on');
-    return db;
-  }
+async function withConsent() {
+  const db = createTestDatabase();
+  await db.open();
+  await createRepositories(db).settings.set('retrieval', 'on');
+  return db;
+}
 
+describe('online search (phase 2)', () => {
   it('asks before sending anything, then searches and labels results as unverified', async () => {
     const retrieval = fixtureRetrievalService('the matrix');
     const { user } = renderApp('/search?q=the%20matrix', undefined, retrieval);
 
     expect(await screen.findByRole('heading', { name: 'Search online?' })).toBeInTheDocument();
-    expect(retrieval.retrieve).not.toHaveBeenCalled();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Search online' }));
     const title = await screen.findByText('The Matrix', { selector: 'span' });
     const card = title.closest('a');
     await waitFor(() => expect(card).toHaveTextContent('1999'));
     expect(card).toHaveTextContent('Found online · unverified');
-    expect(retrieval.retrieve).toHaveBeenCalledWith(
-      'the matrix',
-      expect.any(AbortSignal),
-      expect.any(Function),
-    );
+    expect(retrieval.retrieve$).toHaveBeenCalledWith('the matrix');
   });
 
   it('respects "Not now" for the rest of the session and never contacts providers', async () => {
@@ -284,41 +306,68 @@ describe('online search (phase 2)', () => {
     );
     expect(await screen.findByText(/Online search skipped for now/)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Search online?' })).not.toBeInTheDocument();
-    expect(retrieval.retrieve).not.toHaveBeenCalled();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
   });
 
   it('keeps curated answers on top and stays offline after an online result for the same phrase is cached', async () => {
     const db = await withConsent();
     await cacheOnlineResults(db, 'hakuna matata');
-    const cached = await db.references.filter((r) => r.editorialState === 'retrieved').toArray();
+    const cached = await db.references.filter((r) => isFromOnline(r.editorialState)).toArray();
     // The cache now holds an exact-title match that used to outrank the curated aliases.
     expect(cached.some((r) => r.normalizedTitle === 'hakuna matata')).toBe(true);
 
     const retrieval = fixtureRetrievalService('hakuna matata');
     renderApp('/search?q=hakuna%20matata', db, retrieval);
     expect(await screen.findByText(/can mean 2 different things/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Hakuna Matata \(The Lion King\)/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Hakuna Matata \(The Lion King\)/ }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Searching Wikipedia/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: 'Saved from earlier online searches' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Found online · unverified')).not.toBeInTheDocument();
-    expect(retrieval.retrieve).not.toHaveBeenCalled();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
   });
 
   it('does not go online when a curated local answer already resolves the query', async () => {
     const retrieval = fixtureRetrievalService('the matrix');
     renderApp('/search?q=bazinga', await withConsent(), retrieval);
     expect(await screen.findByRole('link', { name: /Bazinga!/ })).toBeInTheDocument();
-    expect(retrieval.retrieve).not.toHaveBeenCalled();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
+  });
+
+  it('still goes online when the library only matches a misspelling', async () => {
+    const retrieval = fixtureRetrievalService('the matrix');
+    renderApp('/search?q=bazingaa', await withConsent(), retrieval);
+    // The library suggests Bazinga! ("Similar spelling"), but a guess never settles the search.
+    expect(await screen.findByRole('link', { name: /Bazinga!/ })).toBeInTheDocument();
+    await waitFor(() => expect(retrieval.retrieve$).toHaveBeenCalledWith('bazingaa'));
+  });
+
+  it('keeps the search index while the query changes', async () => {
+    const build = vi.spyOn(MiniSearch.prototype, 'addAll');
+    const { user } = renderApp(
+      '/search',
+      await withConsent(),
+      fixtureRetrievalService('the matrix'),
+    );
+    const box = await screen.findByRole('searchbox', { name: 'Search references' });
+    await user.type(box, 'bazinga');
+    expect(await screen.findByRole('link', { name: /Bazinga!/ })).toBeInTheDocument();
+    // One index for the curated library; typing seven letters must not add more.
+    expect(build.mock.calls.length).toBeLessThanOrEqual(1);
+    build.mockRestore();
   });
 
   it('shows an offline state instead of searching', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     const retrieval = fixtureRetrievalService('the matrix');
     renderApp('/search?q=the%20matrix', await withConsent(), retrieval);
-    expect(await screen.findByText(/only what's saved on this device is shown/)).toBeInTheDocument();
-    expect(retrieval.retrieve).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/only what's saved on this device is shown/),
+    ).toBeInTheDocument();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
   });
 
   it('shows results saved from earlier online searches while offline, apart from the library', async () => {
@@ -332,17 +381,16 @@ describe('online search (phase 2)', () => {
     const film = within(saved)
       .getAllByRole('link', { name: /The Matrix/ })
       .find((link) => link.textContent?.includes('1999'));
-    expect(film).toHaveTextContent('Found online · unverified');
-    expect(screen.getByText(/only what's saved on this device is shown/)).toBeInTheDocument();
+    expect(film).toHaveTextContent('Explained from sources');
     expect(screen.getByText('0 matches in your library')).toBeInTheDocument();
-    expect(retrieval.retrieve).not.toHaveBeenCalled();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
   });
 
   it('streams titles before types, then updates the same card in place', async () => {
     const { service, emit, finish } = controllableRetrievalService();
     renderApp('/search?q=the%20matrix', await withConsent(), service);
     expect(await screen.findByText(/^Searching Wikipedia, Wikidata/)).toBeInTheDocument();
-    await waitFor(() => expect(service.retrieve).toHaveBeenCalled());
+    await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
 
     const article: Source = {
       id: 'src:enwiki:30007',
@@ -461,12 +509,14 @@ describe('online search (phase 2)', () => {
 
   it('explains a total failure and retries on request', async () => {
     const retrieval = fixtureRetrievalService('the matrix');
-    retrieval.retrieve.mockRejectedValueOnce(new RetrievalError('rate_limited', 'slow down'));
+    retrieval.retrieve$.mockReturnValueOnce(
+      throwError(() => new RetrievalError('rate_limited', 'slow down')),
+    );
     const { user } = renderApp('/search?q=the%20matrix', await withConsent(), retrieval);
     expect(await screen.findByRole('alert')).toHaveTextContent('asked us to slow down');
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('heading', { name: 'Found online' })).toBeInTheDocument();
-    expect(retrieval.retrieve).toHaveBeenCalledTimes(2);
+    expect(retrieval.retrieve$).toHaveBeenCalledTimes(2);
   });
 
   it('filters combined results by type', async () => {
@@ -476,6 +526,24 @@ describe('online search (phase 2)', () => {
     await user.click(await screen.findByRole('button', { name: 'Music' }));
     expect(screen.getByRole('link', { name: /Hakuna Matata \(song\)/ })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Lion King 1½/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps just-found results in the online section after saving explains them', async () => {
+    const db = await withConsent();
+    renderApp('/search?q=the%20matrix', db, fixtureRetrievalService('the matrix'));
+    await screen.findByRole('heading', { name: 'Found online' });
+    await waitFor(async () =>
+      expect((await db.references.get('wd:Q83495'))?.editorialState).toBe('source_curated'),
+    );
+    // Only renders once the saved, explained results reach the page through the live query.
+    await screen.findByRole('heading', { name: 'Not what you meant?' });
+
+    const found = screen.getByRole('region', { name: 'Found online' });
+    expect(within(found).getAllByRole('link', { name: /The Matrix/ }).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('heading', { name: 'Saved from earlier online searches' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('0 matches in your library')).toBeInTheDocument();
   });
 
   it('caches results and shows their citations on the reference page, even offline', async () => {
@@ -488,11 +556,285 @@ describe('online search (phase 2)', () => {
 
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     renderApp(`/references/${encodeURIComponent('wd:Q83495')}`, db, retrieval);
-    expect(await screen.findByRole('heading', { name: 'Not explained yet' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Explained from sources' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Film · 1999 (per Wikidata)')).toBeInTheDocument();
     const citation = screen.getByRole('link', { name: /Wikipedia: The Matrix/ });
     expect(citation).toHaveAttribute('href', 'https://en.wikipedia.org/wiki/The_Matrix');
     expect(citation).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.getAllByText(/CC BY-SA 4.0/).length).toBeGreaterThan(0);
+  });
+});
+
+describe('search history (D37)', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  /** Types a search, submits it, then opens the result, the way a reader would. */
+  async function searchAndOpenBazinga(db?: PopCultureDb) {
+    const view = renderApp('/search', db);
+    await view.user.type(
+      await screen.findByRole('searchbox', { name: 'Search references' }),
+      'bazinga',
+    );
+    await view.user.click(screen.getByRole('button', { name: 'Decode' }));
+    await view.user.click(await screen.findByRole('link', { name: /Bazinga!/ }));
+    await screen.findByRole('heading', { level: 1, name: /Bazinga!/ });
+    return view;
+  }
+
+  it('records a submit and the result opened from it as one search, never each keystroke', async () => {
+    const { db, user } = await searchAndOpenBazinga();
+    await waitFor(async () =>
+      expect(await db.searchHistory.toArray()).toEqual([
+        expect.objectContaining({
+          label: 'bazinga',
+          count: 1,
+          referenceIds: ['bazinga-big-bang-theory'],
+        }),
+      ]),
+    );
+
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    await user.click(within(nav).getByRole('link', { name: 'Search' }));
+    const recent = await screen.findByRole('region', { name: 'Recent searches' });
+    expect(within(recent).getByRole('link', { name: 'bazinga' })).toHaveAttribute(
+      'href',
+      '/search?q=bazinga',
+    );
+  });
+
+  it('stores nothing while the history switch is off', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    await createRepositories(db).settings.set('history', 'off');
+    const { user } = await searchAndOpenBazinga(db);
+    // Reads queue behind any write the clicks started, so a stray record would be counted here.
+    expect(await db.searchHistory.count()).toBe(0);
+
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+    await user.click(within(nav).getByRole('link', { name: 'Search' }));
+    await screen.findByRole('region', { name: 'Try one of these' });
+    expect(screen.queryByRole('region', { name: 'Recent searches' })).not.toBeInTheDocument();
+  });
+
+  it('switches history off and clears the stored rows from Settings', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const db = createTestDatabase();
+    await db.open();
+    const repos = createRepositories(db);
+    await repos.history.record({ text: 'bazinga' }, Date.now());
+
+    const { user } = renderApp('/settings', db);
+    const group = await screen.findByRole('group', { name: 'Search history' });
+    expect(within(group).getByRole('radio', { name: 'On' })).toBeChecked();
+    await user.click(within(group).getByRole('radio', { name: 'Off' }));
+    await waitFor(async () =>
+      expect(await repos.settings.getAll()).toContainEqual({ key: 'history', value: 'off' }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Clear history' }));
+    expect(await screen.findByText('Search history was cleared.')).toBeInTheDocument();
+    expect(await db.searchHistory.count()).toBe(0);
+  });
+
+  it('shows "Your regulars" on Discover from the Frequent tier only', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    const { history } = createRepositories(db);
+    const now = Date.now();
+    await history.record({ text: 'bazinga' }, now - 2 * DAY);
+    await history.record({ text: 'bazinga' }, now - DAY);
+    await history.record({ text: 'ok boomer' }, now - DAY);
+
+    renderApp('/discover', db);
+    const regulars = await screen.findByRole('region', { name: 'Your regulars' });
+    expect(within(regulars).getByRole('link', { name: 'bazinga' })).toBeInTheDocument();
+    expect(within(regulars).queryByRole('link', { name: 'ok boomer' })).not.toBeInTheDocument();
+  });
+
+  it('hides "Your regulars" when nothing is Frequent yet', async () => {
+    renderApp('/discover');
+    expect(await screen.findByRole('heading', { name: '1990s' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Your regulars' })).not.toBeInTheDocument();
+  });
+});
+
+describe('search UX (D37)', () => {
+  function film(id: string, title: string): RetrievedCandidate {
+    return {
+      id,
+      title,
+      kind: 'work',
+      category: 'film',
+      classifying: false,
+      role: 'work',
+      externalLinks: [],
+      sources: [],
+    };
+  }
+
+  it('holds later online results behind "N new results" instead of moving the list', async () => {
+    const { service, emit } = controllableRetrievalService();
+    const { user } = renderApp('/search?q=the%20matrix', await withConsent(), service);
+    await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
+    const first = film('wd:Q83495', 'The Matrix');
+    const later = film('wd:Q83265', 'The Matrix Reloaded');
+    const outcomes = [{ provider: 'wikipedia' as const, status: 'pending' as const }];
+
+    act(() => emit({ candidates: [first], outcomes }));
+    const found = await screen.findByRole('region', { name: 'Found online' });
+    expect(within(found).getAllByRole('link')).toHaveLength(1);
+
+    act(() => emit({ candidates: [later, first], outcomes }));
+    const note = await screen.findByRole('button', { name: '1 new result, tap to show' });
+    expect(within(found).getAllByRole('link')).toHaveLength(1);
+    expect(within(found).queryByText('The Matrix Reloaded')).not.toBeInTheDocument();
+
+    await user.click(note);
+    const links = within(found).getAllByRole('link');
+    // The card already on screen keeps its place; the new one goes below it.
+    expect(links.map((link) => link.querySelector('span:nth-child(2)')?.textContent)).toEqual([
+      'The Matrix',
+      'The Matrix Reloaded',
+    ]);
+    expect(screen.queryByRole('button', { name: /new result/ })).not.toBeInTheDocument();
+  });
+
+  it('holds a slow Wikipedia batch behind "N new results" after a dictionary-first paint, then appends it in reranked order', async () => {
+    const { service, emit } = controllableRetrievalService();
+    const { user } = renderApp('/search?q=dune', await withConsent(), service);
+    await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
+    const dictionary = {
+      ...film('enwiktionary:dune', 'dune'),
+      kind: 'phrase' as const,
+      role: 'definition' as const,
+    };
+    const first = film('wd:Q25391', 'Dune (novel)');
+    const second = film('wd:Q3', 'Dune (2021 film)');
+
+    // The dictionary entry is the fastest provider: it paints at once.
+    act(() =>
+      emit({
+        candidates: [dictionary],
+        outcomes: [
+          { provider: 'wikipedia', status: 'pending' },
+          { provider: 'wiktionary', status: 'ok' },
+        ],
+      }),
+    );
+    const found = await screen.findByRole('region', { name: 'Found online' });
+    expect(within(found).getAllByRole('link')).toHaveLength(1);
+
+    // Wikipedia answers later, reranked by the service (page first): held, nothing moves.
+    act(() =>
+      emit({
+        candidates: [first, second, dictionary],
+        outcomes: [
+          { provider: 'wikipedia', status: 'ok' },
+          { provider: 'wiktionary', status: 'ok' },
+        ],
+      }),
+    );
+    const note = await screen.findByRole('button', { name: '2 new results, tap to show' });
+    expect(within(found).getAllByRole('link')).toHaveLength(1);
+
+    await user.click(note);
+    const titles = within(found)
+      .getAllByRole('link')
+      .map((link) => link.querySelector('span:nth-child(2)')?.textContent);
+    // The card already on screen keeps its place; the new ones follow in the reranker's order.
+    expect(titles).toEqual(['dune', 'Dune (novel)', 'Dune (2021 film)']);
+  });
+
+  it.each([
+    [
+      { kind: 'suggestion' as const, text: 'hakuna matata' },
+      "Also searched \u201chakuna matata\u201d, Wikipedia's suggestion for your spelling.",
+    ],
+    [
+      { kind: 'shorter_phrase' as const, text: 'babu bhaiya' },
+      'Also searched \u201cbabu bhaiya\u201d, the start of your search.',
+    ],
+  ])('says so when a fallback search found the results (%o)', async (rewrite, note) => {
+    const { service, finish } = controllableRetrievalService();
+    renderApp('/search?q=zzqx%20nothing', await withConsent(), service);
+    await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
+    const found = { ...film('wd:Q1', 'Hakuna Matata'), via: rewrite.kind };
+    await act(async () =>
+      finish({
+        candidates: [found],
+        outcomes: [
+          { provider: 'wikipedia', status: 'ok' },
+          { provider: 'wikidata', status: 'ok' },
+          { provider: 'wiktionary', status: 'empty' },
+          { provider: 'wikiquote', status: 'empty' },
+          { provider: 'tvmaze', status: 'skipped' },
+        ],
+        rewrite,
+      }),
+    );
+    const region = await screen.findByRole('region', { name: 'Found online' });
+    expect(within(region).getByText(note)).toBeInTheDocument();
+  });
+
+  it('shows no fallback note for a plain search', async () => {
+    const { service, finish } = controllableRetrievalService();
+    renderApp('/search?q=zzqx%20nothing', await withConsent(), service);
+    await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
+    await act(async () =>
+      finish({
+        candidates: [film('wd:Q1', 'Hakuna Matata')],
+        outcomes: [
+          { provider: 'wikipedia', status: 'ok' },
+          { provider: 'wikidata', status: 'ok' },
+          { provider: 'wiktionary', status: 'empty' },
+          { provider: 'wikiquote', status: 'empty' },
+          { provider: 'tvmaze', status: 'skipped' },
+        ],
+      }),
+    );
+    const region = await screen.findByRole('region', { name: 'Found online' });
+    expect(within(region).queryByText(/Also searched|Also looked for/)).not.toBeInTheDocument();
+  });
+
+  it('shows when a saved answer was saved and refreshes it only on request', async () => {
+    const db = await withConsent();
+    await cacheOnlineResults(db, 'the matrix');
+    const retrieval = fixtureRetrievalService('the matrix');
+    const { user } = renderApp('/search?q=the%20matrix', db, retrieval);
+
+    const saved = await screen.findByRole('region', { name: 'Saved from earlier online searches' });
+    const card = within(saved)
+      .getAllByRole('link', { name: /The Matrix/ })
+      .find((link) => link.textContent?.includes('1999'));
+    expect(card).toHaveTextContent(/Saved \d{1,2} \w{3,4} \d{4}/);
+    // No timed refresh: a saved answer that resolves the query stays offline.
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
+
+    const saves = vi.spyOn(db.sources, 'bulkPut');
+    await user.click(within(saved).getByRole('button', { name: 'Refresh' }));
+    expect(await screen.findByRole('heading', { name: 'Found online' })).toBeInTheDocument();
+    expect(retrieval.retrieve$).toHaveBeenCalledWith('the matrix');
+    await waitFor(() => expect(saves).toHaveBeenCalled());
+  });
+
+  it('"Not what I meant" brings up other places to look under online results', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    await cacheOnlineResults(db, 'the matrix');
+    const { user } = renderApp('/search?q=the%20matrix', db);
+
+    await screen.findByRole('region', { name: 'Saved from earlier online searches' });
+    expect(screen.queryByRole('link', { name: /Search Wikipedia/ })).not.toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: 'Not what I meant' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: /Search Wikipedia/ })).toHaveAttribute(
+      'href',
+      'https://en.wikipedia.org/w/index.php?search=the%20matrix',
+    );
   });
 });

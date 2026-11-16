@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { summarizeByReference, type CardSummary } from '../../domain/summaries';
-import type { Reference } from '../../domain/types';
+import { isFromOnline, type Reference } from '../../domain/types';
 
 export interface DiscoveryData {
   references: Reference[];
@@ -20,7 +20,7 @@ export function useDiscovery(): DiscoveryData | undefined {
       references.getAllInterpretations(),
     ]);
     return {
-      references: all.filter((r) => r.editorialState !== 'retrieved'),
+      references: all.filter((r) => !isFromOnline(r.editorialState)),
       summaries: summarizeByReference(interpretations),
     };
   }, [references]);
