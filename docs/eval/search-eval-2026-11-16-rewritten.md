@@ -1,6 +1,6 @@
 # Search evaluation, 2026-11-16
 
-Generated 2026-11-16T06:05:16.029Z by `src/test/search-eval/live.eval.ts`. Definitions: `docs/SEARCH_RANKING.md` ("Evaluation set").
+Generated 2026-11-16T06:05:47.615Z by `src/test/search-eval/live.eval.ts`. Definitions: `docs/SEARCH_RANKING.md` ("Evaluation set").
 Set: 109 cases, 98 scored. Live runs hit real providers, so numbers drift as Wikipedia changes.
 
 ## Summary
@@ -93,7 +93,7 @@ Cases run: **98 of 98**.
 
 HTTP requests: **447** over 98 searches (4.56 per search).
 
-Degraded cases (a provider failed): **27** of 98. Rerun before recording a baseline if this is not 0.
+Degraded cases (a provider failed): **26** of 98. Rerun before recording a baseline if this is not 0.
 
 ### By category
 
@@ -101,7 +101,7 @@ Degraded cases (a provider failed): **27** of 98. Rerun before recording a basel
 |---|---|---|---|---|---|---|---|---|---|---|
 | anime_game | 3 | 33.3% | 0.333 | 33.3% | 33.3% | 0.0% (1) | 3981 | 21149 | 21149 | 21149 |
 | film | 12 | 66.7% | 0.479 | 50.0% | 16.7% | 55.6% (9) | 2616 | 21222 | 22426 | 22426 |
-| meme | 20 | 90.0% | 0.817 | 20.0% | 5.0% | – | 3898 | 21570 | 21644 | 22671 |
+| meme | 20 | 90.0% | 0.817 | 20.0% | 5.0% | – | 3898 | 21570 | 21583 | 22671 |
 | music | 11 | 90.9% | 0.818 | 18.2% | 9.1% | – | 3812 | 21092 | 21709 | 21709 |
 | quote | 40 | 55.0% | 0.483 | 45.0% | 12.5% | 40.0% (5) | 3047 | 21205 | 21232 | 21704 |
 | slang | 6 | 66.7% | 0.667 | 16.7% | 16.7% | 100.0% (1) | 1945 | 21170 | 21170 | 21170 |
@@ -115,12 +115,12 @@ Degraded cases (a provider failed): **27** of 98. Rerun before recording a basel
 | misremembered: no | 87 | 75.9% | 0.677 | 27.6% | 11.5% | 60.0% (20) | 3812 | 21205 | 21570 | 26632 |
 | ambiguous: yes | 22 | 68.2% | 0.591 | 27.3% | 22.7% | 61.9% (21) | 6897 | 21222 | 21263 | 26632 |
 | ambiguous: no | 76 | 71.1% | 0.630 | 35.5% | 7.9% | – | 3118 | 21212 | 21704 | 22671 |
-| indian: yes | 25 | 64.0% | 0.540 | 28.0% | 28.0% | 63.6% (11) | 4155 | 21212 | 21644 | 26632 |
+| indian: yes | 25 | 64.0% | 0.540 | 28.0% | 28.0% | 63.6% (11) | 4155 | 21212 | 21583 | 26632 |
 | indian: no | 73 | 72.6% | 0.650 | 35.6% | 5.5% | 60.0% (10) | 3546 | 21222 | 21704 | 22671 |
-| ambiguous or indian: yes | 36 | 61.1% | 0.514 | 30.6% | 27.8% | 61.9% (21) | 6449 | 21222 | 21644 | 26632 |
+| ambiguous or indian: yes | 36 | 61.1% | 0.514 | 30.6% | 27.8% | 61.9% (21) | 6449 | 21222 | 21583 | 26632 |
 | ambiguous or indian: no | 62 | 75.8% | 0.684 | 35.5% | 1.6% | – | 3047 | 21184 | 21704 | 22671 |
 | origin: coverage | 37 | 62.2% | 0.520 | 37.8% | 18.9% | 57.9% (19) | 3687 | 21222 | 21263 | 26632 |
-| origin: demand | 49 | 83.7% | 0.759 | 28.6% | 2.0% | 100.0% (2) | 3118 | 21184 | 21644 | 22671 |
+| origin: demand | 49 | 83.7% | 0.759 | 28.6% | 2.0% | 100.0% (2) | 3118 | 21184 | 21583 | 22671 |
 | origin: variant | 12 | 41.7% | 0.375 | 41.7% | 25.0% | – | 4155 | 21704 | 22426 | 22426 |
 
 ### Per case
@@ -179,7 +179,7 @@ Degraded cases (a provider failed): **27** of 98. Rerun before recording a basel
 | B9 | post malone ozzy osbourne | 1 | Take What You Want (wd:Q68097173) | 1 | 3812 | – |
 | B10 | everywhere at the end of time | 1 | Everywhere at the End of Time (wd:Q104771220) | 1 | 1525 | – |
 | I1 | mogambo khush hua | 2 | Mogambo (character) (wd:Q136377380) | 1 | 1722 | – |
-| I2 | rasode mein kaun tha | 2 | Rucha Hasabnis (wd:Q7376575) | 1 | 21644 | wikidata:timeout |
+| I2 | rasode mein kaun tha | 2 | Rucha Hasabnis (wd:Q7376575) | 1 | 21583 | – |
 | I2-v | kokilaben rap | – | – | 0 | 21166 | wikipedia:rate_limited, wiktionary:rate_limited, wikiquote:rate_limited |
 | I3 | paisa hi paisa hoga | – | Bewafa (song) (wd:Q135420995) | 0 | 3004 | – |
 | I3-v | babu bhaiya paisa hi paisa hoga | – | Hemlata (singer) (wd:Q5712227) | 0 | 4155 | – |
