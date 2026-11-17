@@ -18,3 +18,23 @@
   justify-items: center;
   color: var(--color-text-muted);
 }
+
+/* The way out of an empty page is its main action: a filled pill, the next one an outline. */
+.body > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+}
+
+.body > a ~ a {
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+}

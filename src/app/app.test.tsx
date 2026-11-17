@@ -49,6 +49,14 @@ describe('routing', () => {
     ).toBeInTheDocument();
   });
 
+  it('offers a search on a page that does not exist', async () => {
+    renderApp('/no-such-page');
+    expect(await screen.findByRole('link', { name: 'Search for a reference' })).toHaveAttribute(
+      'href',
+      '/search',
+    );
+  });
+
   it("tops Discover with the mascot's room, whose props quietly say what they reference", async () => {
     const { user } = renderApp('/');
     await user.click(await screen.findByRole('button', { name: 'A brown leather couch' }));
@@ -246,6 +254,12 @@ describe('favourites from cards and saved web links', () => {
 });
 
 describe('discover', () => {
+  it('names the browse control for screen readers without a second visible label', async () => {
+    renderApp('/discover');
+    const control = await screen.findByRole('group', { name: 'Browse by' });
+    expect(within(control).getByText('Browse by')).toHaveClass('sr-only');
+  });
+
   it('filters eras by category', async () => {
     const { user } = renderApp('/discover');
     expect(await screen.findByRole('heading', { name: '1990s' })).toBeInTheDocument();
@@ -551,6 +565,17 @@ describe('settings', () => {
     );
   });
 
+  it('shows one sentence per control and folds the fine print away', async () => {
+    renderApp('/settings');
+    const finePrint = await screen.findByText(/web-search provider \(Parallel\)/);
+    expect(finePrint).not.toBeVisible();
+    expect(finePrint.closest('details')?.querySelector('summary')).toHaveTextContent(
+      'More about wider web search',
+    );
+    expect(screen.getByText(/Off hides the button\./)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Reset everything' })).toBeInTheDocument();
+  });
+
   it('applies a choice immediately, before the database write finishes', async () => {
     const db = createTestDatabase();
     await db.open();
@@ -589,7 +614,7 @@ describe('settings', () => {
     await cacheOnlineResults(db, 'the matrix');
 
     const { user } = renderApp('/settings', db);
-    await user.click(await screen.findByRole('button', { name: /Reset favourites/ }));
+    await user.click(await screen.findByRole('button', { name: 'Reset everything' }));
 
     expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/saved web links/));
     expect(
@@ -1056,9 +1081,12 @@ describe('search UX (D37)', () => {
     act(() => emit({ candidates: [first], outcomes }));
     const found = await screen.findByRole('region', { name: 'Found online' });
     expect(within(found).getAllByRole('link')).toHaveLength(1);
+    // Under results, the other places to look sit behind a question, not a heading of their own.
+    expect(screen.getByRole('region', { name: 'Not what you meant?' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Look it up elsewhere' })).not.toBeInTheDocument();
 
     act(() => emit({ candidates: [later, first], outcomes }));
-    const note = await screen.findByRole('button', { name: '1 new result, tap to show' });
+    const note = await screen.findByRole('button', { name: 'Show 1 new result' });
     expect(within(found).getAllByRole('link')).toHaveLength(1);
     expect(within(found).queryByText('The Matrix Reloaded')).not.toBeInTheDocument();
 
@@ -1108,7 +1136,7 @@ describe('search UX (D37)', () => {
       }),
     );
     const note = await screen.findByRole('button', {
-      name: '2 new results, including “Dune (novel)”, tap to show',
+      name: 'Show 2 new results, including “Dune (novel)”',
     });
     expect(within(found).getAllByRole('link')).toHaveLength(1);
 
@@ -1224,9 +1252,9 @@ describe('search UX (D37)', () => {
       const folded = within(found).getByText('Other pages found (1)').closest('details');
       expect(folded).not.toHaveAttribute('open');
       expect(within(folded as HTMLElement).getByText(/Genocides in history/)).toBeInTheDocument();
-      // Not hidden behind "Not what I meant": nothing visible answers the question.
+      // Not hidden behind "Show other places to look": nothing visible answers the question.
       expect(screen.getByRole('button', { name: 'Search the wider web' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Not what I meant' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Show other places to look' })).toBeNull();
     });
 
     it('shows no community block or folded section when a candidate explains the question', async () => {
@@ -1280,7 +1308,7 @@ describe('search UX (D37)', () => {
     await waitFor(() => expect(saves).toHaveBeenCalled());
   });
 
-  it('"Not what I meant" brings up other places to look under online results', async () => {
+  it('"Show other places to look" brings them up under online results', async () => {
     const db = createTestDatabase();
     await db.open();
     await cacheOnlineResults(db, 'the matrix');
@@ -1289,7 +1317,7 @@ describe('search UX (D37)', () => {
     await screen.findByRole('region', { name: 'Saved from earlier online searches' });
     expect(screen.queryByRole('link', { name: /Search Wikipedia/ })).not.toBeInTheDocument();
 
-    const toggle = screen.getByRole('button', { name: 'Not what I meant' });
+    const toggle = screen.getByRole('button', { name: 'Show other places to look' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');

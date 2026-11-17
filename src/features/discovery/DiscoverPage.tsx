@@ -120,7 +120,6 @@ export function DiscoverPage() {
   return (
     <Page
       title="Decode any reference"
-      eyebrow="Pop Culture Decoder"
       intro="Quotes, memes, shows and sayings — explained in plain language, spoiler-free."
       wide
       scene={(top) => <MascotDen still={reduced}>{top}</MascotDen>}
@@ -193,6 +192,7 @@ export function DiscoverPage() {
       <Section title="Browse">
         <SegmentedControl
           legend="Browse by"
+          hideLegend
           name="discover-browse"
           options={BROWSE_OPTIONS}
           value={view}

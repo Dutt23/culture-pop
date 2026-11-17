@@ -71,7 +71,7 @@ function NotWhatIMeant({ query, isOnline, widerWeb, skipCommunity }: NotWhatIMea
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        Not what I meant
+        Show other places to look
       </button>
       {open && (
         <>
@@ -167,6 +167,8 @@ export function SearchPage() {
     isExactTitle(query, c) || (topic !== undefined && isExactTitle(topic, c));
   // Later online answers wait behind "N new results" instead of moving cards already on screen.
   const fresh = useHeldResults(onlineCandidates, query, isAnswer);
+  // Held results don't count: the chips mustn't appear above cards before the reader taps.
+  const resultCount = search.matches.length + fresh.shown.length + savedOnline.length;
   const onlineTagged = (c: RetrievedCandidate) => matchesTags(c, tags.state, c.sources[0]?.excerpt);
   const onlineShown = liftTagged(fresh.shown, onlineTagged, isAnswer).filter((c) =>
     shows(c, onlineTagged(c)),
@@ -194,8 +196,9 @@ export function SearchPage() {
     onlineState.status === 'done' &&
     isQuestion &&
     splitFolded(query, onlineCandidates, stories).shown.length === 0;
-  // Wider-web searches that finished here, by lean and query: the block moves into "Not what I meant"
-  // when online results arrive, and that remount must not pay for the same search again.
+  // Wider-web searches that finished here, by lean and query: the block moves behind "Show other
+  // places to look" when online results arrive, and that remount must not pay for the same search
+  // again.
   const [webSearched, setWebSearched] = useState<ReadonlySet<string>>(() => new Set());
   const webKey = `${stories}:${query}`;
   const lookupSettled = onlineState.status !== 'loading' && onlineState.status !== 'partial';
@@ -329,7 +332,13 @@ export function SearchPage() {
           )}
 
           {/* The tag row above replaces the category chips; eras stay here. */}
-          <SearchFilters categories={[]} eras={options.eras} value={filter} onChange={setFilter} />
+          <SearchFilters
+            categories={[]}
+            eras={options.eras}
+            resultCount={resultCount}
+            value={filter}
+            onChange={setFilter}
+          />
 
           {localShown.length > 0 && (
             <ul className={styles.results}>
@@ -408,7 +417,14 @@ export function SearchPage() {
             </EmptyState>
           )}
 
-          <Section title={search.needsRetrieval ? 'Look it up elsewhere' : 'Not what you meant?'}>
+          {/* Under online results the heading asks and the toggle answers. */}
+          <Section
+            title={
+              search.needsRetrieval && !hasOnlineResults
+                ? 'Look it up elsewhere'
+                : 'Not what you meant?'
+            }
+          >
             {hasOnlineResults ? (
               <NotWhatIMeant
                 key={query}

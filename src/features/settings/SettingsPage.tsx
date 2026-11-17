@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/retrievalService';
@@ -29,6 +29,29 @@ const HISTORY_OPTIONS = optionsOf('history');
 const TASTE_OPTIONS = optionsOf('taste');
 
 const SAVE_ERROR = "Couldn't save that setting. Please try again.";
+
+interface NoteProps {
+  /** The one sentence that says what the control does. */
+  lead: string;
+  /** Names the fold for screen readers, e.g. "online search". */
+  topic: string;
+  children: ReactNode;
+}
+
+/** One sentence on show; the fine print folds away so the controls aren't buried in text. */
+function Note({ lead, topic, children }: NoteProps) {
+  return (
+    <div className={styles.note}>
+      <p>{lead}</p>
+      <details className={styles.more}>
+        <summary>
+          More <span className="sr-only">about {topic}</span>
+        </summary>
+        <p>{children}</p>
+      </details>
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const { settings, setSetting, resetLocalData } = useSettings();
@@ -114,11 +137,12 @@ export function SettingsPage() {
             value={settings.retrieval}
             onChange={(value) => save(() => setSetting('retrieval', value))}
           />
-          <p className={styles.ok}>
-            When something isn't in your library, your search text can be sent to public online
-            reference sites to find it. What they find is kept on this device for offline use until
-            you clear it below.
-          </p>
+          <Note
+            topic="online search"
+            lead="When something isn't in your library, your search text can be sent to public online reference sites to find it."
+          >
+            What they find is kept on this device for offline use until you clear it below.
+          </Note>
         </div>
         <div className={styles.withNote}>
           <SegmentedControl
@@ -128,17 +152,19 @@ export function SettingsPage() {
             value={settings.webSearch}
             onChange={(value) => save(() => setSetting('webSearch', value))}
           />
-          <p className={styles.ok}>
-            When nothing explains a search, you can tap &ldquo;Search the wider web&rdquo;. With On,
-            once a search has worked on this device, it runs by itself on those searches. Your
-            search text then goes through our server to a web-search provider (Parallel), which may
-            keep it and use it to improve its service. Nothing else is sent. The links it finds are
-            not checked. Results from the wider web can be kept on this device, for you only, for 30
-            days while search history is on; they are never sent anywhere, and Clear history deletes
-            them. A link you save with the heart keeps only its title and address, on this device,
-            until you remove it or reset. Off hides the button. It needs an access code from the
-            owner; the app never stores the code, only a sign-in cookie from our server.
-          </p>
+          <Note
+            topic="wider web search"
+            lead="When nothing explains a search, you can tap “Search the wider web”; Off hides the button."
+          >
+            With On, once a search has worked on this device, it runs by itself on those searches.
+            Your search text then goes through our server to a web-search provider (Parallel), which
+            may keep it and use it to improve its service. Nothing else is sent. The links it finds
+            are not checked. Results from the wider web can be kept on this device, for you only,
+            for 30 days while search history is on; they are never sent anywhere, and Clear history
+            deletes them. A link you save with the heart keeps only its title and address, on this
+            device, until you remove it or reset. It needs an access code from the owner; the app
+            never stores the code, only a sign-in cookie from our server.
+          </Note>
           <button type="button" className={styles.reset} onClick={forgetAccessCode}>
             Forget access code
           </button>
@@ -151,12 +177,14 @@ export function SettingsPage() {
             value={settings.history}
             onChange={(value) => save(() => setSetting('history', value))}
           />
-          <p className={styles.ok}>
-            Searches you submit or open a result from are kept on this device, so recent searches
-            and your regulars can be shown. They are never sent anywhere. Turning this off stops
+          <Note
+            topic="search history"
+            lead="Your searches are kept on this device for recent searches and your regulars, and never sent anywhere."
+          >
+            A search is kept when you submit it or open a result from it. Turning this off stops
             saving new searches; Clear history deletes the ones already saved, with any wider web
             results kept for them. Favourites and saved web links stay.
-          </p>
+          </Note>
           <button type="button" className={styles.reset} onClick={clearHistory}>
             Clear history
           </button>
@@ -169,22 +197,34 @@ export function SettingsPage() {
             value={settings.taste}
             onChange={(value) => save(() => setSetting('taste', value))}
           />
-          <p className={styles.ok}>
-            When library results match equally well, the type you favourite and open most comes
-            first, and the search page says so. It is worked out on this device from your favourites
+          <Note
+            topic="leaning to your taste"
+            lead="When library results match equally well, the type you favourite and open most comes first."
+          >
+            The search page says when it did. It is worked out on this device from your favourites
             and search history and never sent anywhere.
-          </p>
+          </Note>
         </div>
       </div>
 
       <BackupSection />
 
-      <Section
-        title="Your data"
-        description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on), a wider web search you tap, or an external search link you tap. Search history and results found online are kept here until you clear them; wider web results are kept for 30 days, only while search history is on. Web links you save stay until you remove them or reset."
-      >
+      <Section title="Your data">
+        <Note topic="your data" lead="Everything stays in this browser.">
+          Search text leaves the device only through online search (if you turn it on), a wider web
+          search you tap, or an external search link you tap. Search history and results found
+          online are kept here until you clear them; wider web results are kept for 30 days, only
+          while search history is on. Web links you save stay until you remove them or reset.
+        </Note>
+        <Note
+          topic="resetting"
+          lead="Reset everything removes what you saved here; your library cards stay."
+        >
+          It removes favourites, packs, saved web links, search history, settings and online results
+          saved on this device. It asks first, and can't be undone.
+        </Note>
         <button type="button" className={styles.reset} onClick={reset}>
-          Reset favourites, packs, saved links, history, settings &amp; saved online results
+          Reset everything
         </button>
         {message && (
           <p
@@ -203,7 +243,7 @@ export function SettingsPage() {
         <div className={styles.row}>
           <button
             type="button"
-            className={styles.reset}
+            className={styles.secondary}
             onClick={() => {
               resetTours(['search']);
               void navigate(`/search?${TOUR_PARAM}=1`);
@@ -213,7 +253,7 @@ export function SettingsPage() {
           </button>
           <button
             type="button"
-            className={styles.reset}
+            className={styles.secondary}
             onClick={() => {
               resetTours(['packs', 'pack']);
               void navigate(`/packs?${TOUR_PARAM}=1`);

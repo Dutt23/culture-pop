@@ -3,6 +3,12 @@
   color: var(--color-text-muted);
 }
 
+.status {
+  min-height: 2.5rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .consent,
 .community,
 .error {
@@ -54,6 +60,18 @@
   justify-self: start;
   border: var(--border-width) solid var(--color-border);
   background: transparent;
+}
+
+/* Can run to two lines with a long title: a rounded box reads better than a stretched pill. */
+.showNew {
+  justify-self: start;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-weight: var(--weight-bold);
+  text-align: start;
 }
 
 .list {

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { makeCandidate } from '../../test/factories';
-import type { RetrievalResult } from '../../services/retrieval/types';
+import type { RetrievalResult, RetrievedCandidate } from '../../services/retrieval/types';
 import { OnlineResults } from './OnlineResults';
 import type { RetrievalState } from './useRetrieval';
 
@@ -12,7 +12,13 @@ const RESULT: RetrievalResult = {
   outcomes: [{ provider: 'wikipedia', status: 'ok' }],
 };
 
-function show(state: RetrievalState, held: { newCount?: number; newLead?: string } = {}) {
+interface Extra {
+  newCount?: number;
+  newLead?: string;
+  candidates?: readonly RetrievedCandidate[];
+}
+
+function show(state: RetrievalState, held: Extra = {}) {
   render(
     <MemoryRouter>
       <OnlineResults
@@ -21,7 +27,7 @@ function show(state: RetrievalState, held: { newCount?: number; newLead?: string
         isOnline
         skipped={false}
         state={state}
-        candidates={[CANDIDATE]}
+        candidates={held.candidates ?? [CANDIDATE]}
         saved={[]}
         newCount={held.newCount ?? 0}
         newLead={held.newLead}
@@ -62,12 +68,28 @@ describe('the new results button', () => {
   it('names a held page called exactly like the search', () => {
     show({ status: 'partial', result: RESULT }, { newCount: 5, newLead: 'Doctor Doom' });
     expect(
-      screen.getByRole('button', { name: '5 new results, including “Doctor Doom”, tap to show' }),
+      screen.getByRole('button', { name: 'Show 5 new results, including “Doctor Doom”' }),
     ).toBeInTheDocument();
   });
 
   it('just counts when none is', () => {
     show({ status: 'partial', result: RESULT }, { newCount: 1 });
-    expect(screen.getByRole('button', { name: '1 new result, tap to show' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show 1 new result' })).toBeInTheDocument();
+  });
+});
+
+describe('while the lookup runs', () => {
+  const skeletons = () => document.querySelectorAll('ul[aria-hidden="true"] > li');
+
+  it('holds the place of results with card shapes that screen readers skip', () => {
+    show({ status: 'loading' }, { candidates: [] });
+    expect(screen.getByRole('status')).toHaveTextContent(/^Searching Wikipedia/);
+    expect(skeletons()).toHaveLength(3);
+  });
+
+  it('keeps the status line in place, empty, once no source is still answering', () => {
+    show({ status: 'partial', result: RESULT });
+    expect(screen.getByRole('status')).toHaveTextContent('');
+    expect(skeletons()).toHaveLength(0);
   });
 });

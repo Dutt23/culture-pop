@@ -6,6 +6,7 @@ export function NotFoundPage() {
   return (
     <Page title="Page not found">
       <EmptyState title="This page doesn't exist">
+        <Link to="/search">Search for a reference</Link>
         <Link to="/discover">Back to Discover</Link>
       </EmptyState>
     </Page>
