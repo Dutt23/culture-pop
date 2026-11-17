@@ -23,29 +23,12 @@
   pointer-events: none;
 }
 
-/* Just under the top of the screen: the app's name and the page's top margin sit above the den. */
+/* The Stranger Things lights, strung across the top of the screen behind the app's name. */
 .lights {
   position: absolute;
-  inset-inline: 0;
-  inset-block-start: calc(100vh - 5rem);
-  block-size: 2.5rem;
-}
-
-.wire {
-  display: block;
-  inline-size: 100%;
-  block-size: 100%;
-}
-
-.bulb {
-  position: absolute;
-  inline-size: 7px;
-  block-size: 9px;
-  margin-inline-start: -3.5px;
-  border-radius: 50% 50% 45% 45%;
-  background: currentColor;
-  box-shadow: 0 0 10px 2px currentColor;
-  animation: twinkle 3.2s ease-in-out infinite;
+  inset-inline: calc(50% - 50vw);
+  inset-block-start: -4.5rem;
+  block-size: 4.5rem;
 }
 
 /* The room's floor starts 190 of the drawing's 250 units down. */
@@ -58,6 +41,9 @@
 }
 
 .content {
+  /* Over the low row as the heading slides down on scroll. */
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
@@ -86,6 +72,14 @@
   block-size: 100%;
 }
 
+/* The wall above the window and the low row are for wide screens only. */
+.upper,
+.lowRow,
+.toys {
+  display: none;
+  pointer-events: none;
+}
+
 /* The TV's light on the room. */
 .tvGlow {
   position: absolute;
@@ -98,8 +92,11 @@
 @media (min-width: 64rem) {
   .den {
     --room-h: min(70svh, 40vw);
+    /* From the page's left edge to just short of the furniture. */
+    --side-w: min(50rem, calc(50vw + 50% - max(var(--space-4), 3vw) - var(--room-h) * 1.2 - 2rem));
     min-block-size: calc(100svh - var(--nav-height) - 6rem);
     padding-block-start: var(--space-8);
+    grid-template-rows: auto 1fr auto;
   }
 
   .content {
@@ -111,48 +108,49 @@
     inset-block-end: 0;
     inset-inline-end: calc(50% - 50vw + max(var(--space-4), 3vw));
   }
+
+  /* Above the furniture: a row of film posters, spaced out. */
+  .upper {
+    display: block;
+    position: absolute;
+    inset-inline-end: calc(50% - 50vw + max(var(--space-4), 3vw));
+    inset-block-end: calc(var(--room-h) + var(--space-5));
+    inline-size: calc(var(--room-h) * 1.2);
+    block-size: min(calc(var(--room-h) * 0.24), 16svh);
+  }
+
+  /* Under the search bar, between the page's left edge and the furniture. */
+  .lowRow,
+  .toys {
+    display: block;
+  }
+
+  /* In the den's own flow, at the bottom: on a short screen the den grows rather than letting the
+     posters reach the search bar. */
+  .lowRow {
+    grid-row: 3;
+    inline-size: var(--side-w);
+    aspect-ratio: 300 / 112;
+    max-block-size: 28svh;
+    margin-block-end: calc(var(--room-h) * 0.04);
+  }
+
+  .toys {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-end: calc(var(--room-h) * 0.04);
+  }
+
+  .toys {
+    inline-size: calc(var(--side-w) * 0.3);
+  }
 }
 
-/* Movement and fades only, so the phone never repaints the room. */
-.twinkle {
-  animation: twinkle 2.8s ease-in-out infinite;
-}
-
-.note {
-  opacity: 0;
-  animation: note 2.6s ease-out infinite;
-}
-
-.dial {
-  animation: dial 5s ease-in-out infinite;
-}
-
-.screen {
-  opacity: 0;
-  animation: screen 8s linear infinite;
-}
-
-.scan {
-  animation: scan 1.8s linear infinite;
-}
-
-.glow {
-  opacity: 0.1;
-  animation: glow 3s ease-in-out infinite;
-}
-
-.bob {
-  animation: bob 3.5s ease-in-out infinite;
-}
-
-.steam {
-  opacity: 0;
-  animation: steam 2.4s ease-out infinite;
-}
-
-.sway {
-  transform-origin: 27px 214px;
-  animation: sway 4s ease-in-out infinite;
+/* Too short a screen for posters above the furniture: they would reach the lights. */
+@media (min-width: 64rem) and (max-height: 46rem) {
+  .upper {
+    display: none;
+  }
 }
 
 .still,
@@ -160,86 +158,9 @@
   animation: none !important;
 }
 
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes note {
-  20% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(12px, -28px);
-    opacity: 0;
-  }
-}
-
-@keyframes dial {
-  50% {
-    transform: translateX(14px);
-  }
-}
-
-/* Each of the four screens holds for a quarter of the loop. */
-@keyframes screen {
-  0% {
-    opacity: 0;
-  }
-  5%,
-  25% {
-    opacity: 1;
-  }
-  30%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes scan {
-  to {
-    transform: translateY(40px);
-  }
-}
-
-@keyframes glow {
-  40% {
-    opacity: 0.17;
-  }
-  60% {
-    opacity: 0.06;
-  }
-}
-
-@keyframes bob {
-  50% {
-    transform: translateY(-1.5px);
-  }
-}
-
-@keyframes steam {
-  30% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(-14px);
-    opacity: 0;
-  }
-}
-
-@keyframes sway {
-  0%,
-  100% {
-    transform: rotate(-5deg);
-  }
-  50% {
-    transform: rotate(5deg);
-  }
+.paused,
+.paused * {
+  animation-play-state: paused !important;
 }
 
 @keyframes tvGlow {

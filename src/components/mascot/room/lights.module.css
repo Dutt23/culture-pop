@@ -1,0 +1,55 @@
+.wire {
+  display: block;
+  inline-size: 100%;
+  block-size: 2.5rem;
+}
+
+.bulb {
+  position: absolute;
+  inline-size: 7px;
+  block-size: 9px;
+  margin-inline-start: -3.5px;
+  border-radius: 50% 50% 45% 45%;
+  background: currentColor;
+  box-shadow: 0 0 10px 2px currentColor;
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+/* Painted under the bulbs; on phones there's no room, so the bulbs just twinkle. */
+.letter {
+  position: absolute;
+  transform: translateX(-50%);
+  font:
+    700 0.8rem/1 'Marker Felt',
+    'Comic Sans MS',
+    system-ui,
+    sans-serif;
+  color: #e9e2ff;
+  opacity: 0.5;
+}
+
+@media (max-width: 47.99rem) {
+  .letter {
+    display: none;
+  }
+}
+
+.spelling .bulb {
+  animation: none;
+  opacity: 0.15;
+}
+
+.spelling .bulb[data-on] {
+  opacity: 1;
+  box-shadow: 0 0 16px 5px currentColor;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}

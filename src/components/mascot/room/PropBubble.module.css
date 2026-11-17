@@ -1,0 +1,79 @@
+/* Like the tours: above the bottom navigation, below the intro splash. */
+.bubble {
+  position: fixed;
+  inset-inline: var(--space-gutter);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-3));
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: 34rem;
+  margin-inline: auto;
+  animation: rise 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mascot {
+  flex: none;
+  animation: hop 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  color: var(--color-warm);
+}
+
+.line {
+  margin-top: var(--space-1);
+  line-height: 1.45;
+}
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.done {
+  min-height: 2.25rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.still,
+.still .mascot {
+  animation: none;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes hop {
+  0% {
+    transform: translateY(40px);
+  }
+  60% {
+    transform: translateY(-8px);
+  }
+}

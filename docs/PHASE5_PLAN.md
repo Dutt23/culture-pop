@@ -89,8 +89,10 @@ batch 3 (draft for the owner). Since then: the snap-to-dust removal (committed),
 me" flip, and the mascot den on Discover, genre places in the intro and the mascot's peek over the
 Search bar (`docs/superpowers/specs/2026-11-17-mascot-den-design.md`), committed. Then the den grew
 into Discover's whole first screen and Browse became a virtual list whose cards deal in
-(`docs/superpowers/specs/2026-11-17-room-and-virtual-browse-design.md`), built, not yet run or
-committed.
+(`docs/superpowers/specs/2026-11-17-room-and-virtual-browse-design.md`), committed. Then every
+prop in the room became a reference you can secretly tap for the mascot to explain
+(`docs/superpowers/specs/2026-11-17-room-of-references-design.md`), built, not yet run or
+committed; the 28 explanations await the owner's read.
 
 **Dropped or paused:** "Linked to N" is now optional. (Desktop layout and the type tags were first
 paused here; the owner brought both back on 2026-11-17 and they are done.)

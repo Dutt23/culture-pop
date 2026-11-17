@@ -49,9 +49,10 @@ describe('routing', () => {
     ).toBeInTheDocument();
   });
 
-  it("tops Discover with the mascot's den, hidden from screen readers", async () => {
-    renderApp('/');
-    expect(await screen.findByTestId('mascot-den')).toHaveAttribute('aria-hidden', 'true');
+  it("tops Discover with the mascot's room, whose props quietly say what they reference", async () => {
+    const { user } = renderApp('/');
+    await user.click(await screen.findByRole('button', { name: 'A brown leather couch' }));
+    expect(screen.getByRole('dialog', { name: 'The Big Bang Theory (2007)' })).toBeInTheDocument();
   });
 
   it('shows a not-found state for unknown references and routes', async () => {

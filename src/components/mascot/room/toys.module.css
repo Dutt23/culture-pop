@@ -1,0 +1,227 @@
+/* Four scenes take turns, six seconds each. */
+.scene {
+  opacity: 0;
+  animation: scene 24s linear infinite;
+}
+
+.scene:nth-of-type(2) {
+  animation-delay: 6s;
+}
+
+.scene:nth-of-type(3) {
+  animation-delay: 12s;
+}
+
+.scene:nth-of-type(4) {
+  animation-delay: 18s;
+}
+
+.lunge,
+.recoil,
+.cast,
+.sway,
+.hop,
+.cheer {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.lunge {
+  animation: lunge 1.2s ease-in-out infinite;
+}
+
+.recoil {
+  animation: recoil 1.2s ease-in-out infinite;
+}
+
+.pow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pow 1.2s ease-out infinite;
+}
+
+.cast {
+  animation: cast 1s ease-in-out infinite alternate;
+}
+
+.spark {
+  animation: spark-right 1s linear infinite;
+}
+
+.sparkLeft {
+  animation: spark-left 1s linear infinite;
+}
+
+.clash {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: clash 0.5s ease-in-out infinite alternate;
+}
+
+.sway {
+  animation: sway 2s ease-in-out infinite alternate;
+}
+
+.weed {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: weed 3s linear infinite;
+}
+
+.hop,
+.cheer {
+  animation: hop 0.7s ease-in-out infinite alternate;
+}
+
+.cheer {
+  animation-duration: 0.45s;
+}
+
+.glint {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: glint 1.4s ease-in-out infinite;
+}
+
+@keyframes scene {
+  0% {
+    opacity: 0;
+  }
+  3%,
+  22% {
+    opacity: 1;
+  }
+  25%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lunge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(46px) rotate(6deg);
+  }
+  55% {
+    transform: translateX(40px);
+  }
+}
+
+@keyframes recoil {
+  0%,
+  35%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateX(16px) rotate(12deg);
+  }
+}
+
+@keyframes pow {
+  0%,
+  38% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  85%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes cast {
+  to {
+    transform: translateY(-4px) rotate(-3deg);
+  }
+}
+
+@keyframes spark-right {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(78px);
+  }
+}
+
+@keyframes spark-left {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-78px);
+  }
+}
+
+@keyframes clash {
+  from {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+}
+
+@keyframes sway {
+  from {
+    transform: rotate(-3deg);
+  }
+  to {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes weed {
+  from {
+    transform: translateX(-60px) rotate(0);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(240px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes hop {
+  to {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glint {
+  0%,
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

@@ -1,0 +1,269 @@
+/*
+ * The room's drawings. Movement and fades only; the den's `still` class stops all of it, and it
+ * pauses while the room is scrolled away.
+ */
+
+/* A secret button: no pointer, no hover glow. Keyboard focus and the open prop glow. */
+.prop {
+  outline: none;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 200ms ease-out;
+}
+
+.prop:focus-visible,
+.prop[data-open] {
+  filter: brightness(1.2) drop-shadow(0 0 3px #ffd27a) drop-shadow(0 0 8px #ffd27a);
+}
+
+/* A see-through box around a small prop, so it's big enough to tap. */
+.hit {
+  fill: transparent;
+}
+
+.twinkle {
+  animation: twinkle 2.8s ease-in-out infinite;
+}
+
+.note {
+  opacity: 0;
+  animation: note 2.6s ease-out infinite;
+}
+
+.signal {
+  transform-box: view-box;
+  transform-origin: 44px 76px;
+  animation: signal 6s ease-in-out infinite alternate;
+}
+
+.beam {
+  opacity: 0.16;
+}
+
+.spot {
+  opacity: 0.85;
+  animation: flicker 3.5s ease-in-out infinite;
+}
+
+.bike {
+  animation: bike 10s linear infinite;
+}
+
+.static {
+  opacity: 0;
+  animation: static 0.9s steps(2) infinite;
+}
+
+.scan {
+  animation: scan 1.8s linear infinite;
+}
+
+.glow {
+  opacity: 0.1;
+  animation: glow 3s ease-in-out infinite;
+}
+
+.bob {
+  animation: bob 3.5s ease-in-out infinite;
+}
+
+.steam {
+  opacity: 0;
+  animation: steam 2.4s ease-out infinite;
+}
+
+.sway {
+  transform-origin: 27px 214px;
+  animation: sway 4s ease-in-out infinite;
+}
+
+.top {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: wobble 0.35s ease-in-out infinite alternate;
+}
+
+.flame,
+.visor {
+  animation: flame 0.5s ease-in-out infinite alternate;
+}
+
+.fin {
+  animation: fin 4s ease-in-out infinite alternate;
+}
+
+.coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: coin 1.6s linear infinite;
+}
+
+.scanner {
+  animation: scanner 1.4s ease-in-out infinite alternate;
+}
+
+.worm {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: worm 3s ease-in-out infinite alternate;
+}
+
+.band {
+  font-family: system-ui, sans-serif;
+  font-weight: 800;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes note {
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(12px, -28px);
+    opacity: 0;
+  }
+}
+
+@keyframes signal {
+  from {
+    transform: rotate(-4deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  46%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  54% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes bike {
+  from {
+    transform: translateX(-14px);
+  }
+  to {
+    transform: translateX(10px);
+  }
+}
+
+@keyframes static {
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes scan {
+  to {
+    transform: translateY(40px);
+  }
+}
+
+@keyframes glow {
+  40% {
+    opacity: 0.17;
+  }
+  60% {
+    opacity: 0.06;
+  }
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes steam {
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes wobble {
+  from {
+    transform: rotate(-7deg);
+  }
+  to {
+    transform: rotate(7deg);
+  }
+}
+
+@keyframes flame {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fin {
+  from {
+    transform: translateX(-4px);
+  }
+  to {
+    transform: translateX(9px);
+  }
+}
+
+/* Two quick flips, then it rests. */
+@keyframes coin {
+  0%,
+  60%,
+  80%,
+  100% {
+    transform: scaleX(1);
+  }
+  70%,
+  90% {
+    transform: scaleX(0.1);
+  }
+}
+
+@keyframes scanner {
+  to {
+    transform: translateX(10px);
+  }
+}
+
+@keyframes worm {
+  from {
+    transform: translateY(5px);
+  }
+  to {
+    transform: translateY(-2px);
+  }
+}
