@@ -29,6 +29,11 @@ export interface PackRepository {
    * this is a move: the card leaves that pack in the same transaction.
    */
   fileCard(referenceId: string, packId: string, index: number, fromPackId?: string): Promise<void>;
+  /**
+   * "I get this now": the card stays filed but moves after the cards still to learn. Filing it into
+   * this pack again (`fileCard`) puts it back among them.
+   */
+  markDone(packId: string, referenceId: string): Promise<void>;
   /** Unfiles the reference from this pack only; the reference itself stays. */
   removeMember(packId: string, referenceId: string): Promise<void>;
   /** Every member row with its pack, for the all-packs search and the "in your packs" chips. */
@@ -42,6 +47,12 @@ function cleanName(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('A pack needs a name.');
   return trimmed;
+}
+
+/** Cards still to learn first, then the done ones, each keeping its order; positions made dense. */
+function settle(rows: readonly PackMember[]): PackMember[] {
+  const ordered = [...rows.filter((row) => !row.doneAt), ...rows.filter((row) => row.doneAt)];
+  return ordered.map((row, position) => ({ ...row, position }));
 }
 
 export function createPackRepository(db: PopCultureDb): PackRepository {
@@ -121,16 +132,29 @@ export function createPackRepository(db: PopCultureDb): PackRepository {
         const existing = rows.find((row) => row.referenceId === referenceId);
         const others = rows.filter((row) => row.referenceId !== referenceId);
         const at = Math.max(0, Math.min(Math.trunc(index), others.length));
-        const member: PackMember = existing ?? {
-          id: `pm:${crypto.randomUUID()}`,
-          packId,
-          referenceId,
-          position: at,
-          addedAt: now,
-        };
-        const ordered = [...others.slice(0, at), member, ...others.slice(at)];
-        await db.packMembers.bulkPut(ordered.map((row, position) => ({ ...row, position })));
+        // Filing a done card again puts it back among the cards still to learn.
+        const member: PackMember = existing
+          ? { ...existing, doneAt: undefined }
+          : {
+              id: `pm:${crypto.randomUUID()}`,
+              packId,
+              referenceId,
+              position: at,
+              addedAt: now,
+            };
+        await db.packMembers.bulkPut(settle([...others.slice(0, at), member, ...others.slice(at)]));
         if (fromPackId && fromPackId !== packId) await unfile(fromPackId, referenceId);
+      }),
+    markDone: (packId, referenceId) =>
+      db.transaction('rw', db.packs, db.packMembers, async () => {
+        const rows = await sortedMembers(packId);
+        const target = rows.find((row) => row.referenceId === referenceId);
+        if (!target) throw new Error(`${referenceId} is not in pack ${packId}.`);
+        const doneAt = new Date().toISOString();
+        const others = rows.filter((row) => row !== target);
+        // Last of all: after the cards still to learn and the ones already done.
+        await db.packMembers.bulkPut(settle([...others, { ...target, doneAt }]));
+        await touch(packId, doneAt);
       }),
     removeMember: (packId, referenceId) =>
       db.transaction('rw', db.packs, db.packMembers, () => unfile(packId, referenceId)),

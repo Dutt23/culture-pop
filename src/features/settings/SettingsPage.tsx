@@ -7,6 +7,7 @@ import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { resetTours, TOUR_PARAM } from '../../components/tour/useTour';
 import { SETTING_LABELS, type SettingKey, type Settings } from '../../domain/settings';
+import { BackupSection } from './BackupSection';
 import { useSettings } from './SettingsContext';
 import styles from './SettingsPage.module.css';
 
@@ -175,6 +176,8 @@ export function SettingsPage() {
           </p>
         </div>
       </div>
+
+      <BackupSection />
 
       <Section
         title="Your data"

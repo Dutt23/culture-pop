@@ -8,14 +8,16 @@ interface ChipProps {
   /** Renders a toggle button when set, otherwise a link (requires `to`) or a plain button. */
   selected?: boolean;
   to?: string;
+  /** Router state for a link chip. */
+  state?: unknown;
   onClick?: () => void;
 }
 
-export function Chip({ children, selected, to, onClick }: ChipProps) {
+export function Chip({ children, selected, to, state, onClick }: ChipProps) {
   const className = classNames(styles.chip, selected && styles.selected);
   if (to) {
     return (
-      <Link to={to} className={className}>
+      <Link to={to} state={state} className={className} onClick={onClick}>
         {children}
       </Link>
     );

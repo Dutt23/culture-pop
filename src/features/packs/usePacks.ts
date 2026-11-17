@@ -55,7 +55,7 @@ export interface PackData {
   index: PackIndex;
   /** The packs each filed reference is in, listed Now first. */
   packsByReference: ReadonlyMap<string, Pack[]>;
-  /** Member count per pack ID. */
+  /** Per pack ID, how many cards are still to learn; a pack with none may be missing. */
   counts: ReadonlyMap<string, number>;
 }
 
@@ -82,6 +82,7 @@ export function usePackData(): PackData | undefined {
   return useMemo(() => {
     if (!raw) return undefined;
     const members = raw.memberships.map(({ member }) => member);
+    const stillToLearn = members.filter((member) => !member.doneAt);
     const byReference = groupBy(raw.memberships, ({ member }) => member.referenceId);
     return {
       index: { packs: raw.list, members, references: raw.filed, aliases: raw.aliases },
@@ -89,7 +90,7 @@ export function usePackData(): PackData | undefined {
         [...byReference].map(([id, rows]) => [id, sortPacks(rows.map(({ pack }) => pack))]),
       ),
       counts: new Map(
-        [...groupBy(members, (m) => m.packId)].map(([id, rows]) => [id, rows.length]),
+        [...groupBy(stillToLearn, (m) => m.packId)].map(([id, rows]) => [id, rows.length]),
       ),
     };
   }, [raw]);
@@ -101,12 +102,24 @@ export function usePack(packId: string): Pack | null | undefined {
   return useLiveQuery(async () => (await packs.get(packId)) ?? null, [packs, packId]);
 }
 
-/** The pack's cards in position order. */
-export function usePackMembers(packId: string): Reference[] | undefined {
+export interface PackCards {
+  /** Still to learn, in position order. */
+  active: Reference[];
+  /** Marked "I get this now", in the order they were marked. */
+  done: Reference[];
+}
+
+/** The pack's cards in position order, split by "I get this now". */
+export function usePackMembers(packId: string): PackCards | undefined {
   const { packs, references } = useRepositories();
   return useLiveQuery(async () => {
     const members = await packs.members(packId);
-    return references.getByIds(members.map((member) => member.referenceId));
+    const doneIds = new Set(members.filter((m) => m.doneAt).map((m) => m.referenceId));
+    const cards = await references.getByIds(members.map((member) => member.referenceId));
+    return {
+      active: cards.filter((card) => !doneIds.has(card.id)),
+      done: cards.filter((card) => doneIds.has(card.id)),
+    };
   }, [packs, references, packId]);
 }
 

@@ -1,0 +1,21 @@
+.action {
+  justify-self: start;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: var(--weight-bold);
+}
+
+.label {
+  font-weight: var(--weight-bold);
+}
+
+/* The browser's own file picker: keyboard and screen-reader friendly as it is. */
+.file {
+  max-width: 100%;
+  min-height: var(--tap-min);
+  font-size: var(--text-sm);
+}
