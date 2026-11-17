@@ -9,6 +9,8 @@ export type MatchKind =
   | 'title_prefix'
   | 'alias_prefix'
   | 'partial'
+  /** A known line said somewhere inside a longer text, such as a pasted message. */
+  | 'in_message'
   /** Found only by typo-tolerant search (`miniSearchExtras.ts`). Never resolves a query by itself. */
   | 'typo'
   /** Found only by a sound-alike code. Never resolves a query by itself. */
@@ -20,9 +22,26 @@ export const MATCH_RANK: Readonly<Record<MatchKind, number>> = {
   title_prefix: 2,
   alias_prefix: 3,
   partial: 4,
-  typo: 5,
-  sound: 6,
+  in_message: 5,
+  typo: 6,
+  sound: 7,
 };
+
+/** More words than this reads as a pasted message rather than a search. */
+const MESSAGE_MIN_WORDS = 8;
+
+export function looksLikeMessage(query: string): boolean {
+  return tokenize(normalizePhrase(query)).length > MESSAGE_MIN_WORDS;
+}
+
+/** A one-word line shorter than this ("snap", "groot") is too common to spot inside a message. */
+const MIN_SINGLE_WORD_IN_MESSAGE = 6;
+
+/** Whether `phrase` appears in `text` as whole words (both already normalized). */
+function saidIn(text: string, phrase: string): boolean {
+  if (!phrase.includes(' ') && phrase.length < MIN_SINGLE_WORD_IN_MESSAGE) return false;
+  return ` ${text} `.includes(` ${phrase} `);
+}
 
 /** Matches that suggest, but never settle, what the user meant (see `needsRetrieval`). */
 export function isFuzzyMatch(match: RankedMatch): boolean {
@@ -67,12 +86,17 @@ function classify(
   // Tokens spread across the title and several aliases still count as one reference match.
   const phrases = [reference.normalizedTitle, ...aliases.map((a) => a.normalizedPhrase)];
   if (tokensMatch(queryTokens, phrases)) return { kind: 'partial', matchedPhrase: reference.title };
+  if (saidIn(query, reference.normalizedTitle)) {
+    return { kind: 'in_message', matchedPhrase: reference.title };
+  }
+  const saidAlias = aliases.find((a) => saidIn(query, a.normalizedPhrase));
+  if (saidAlias) return { kind: 'in_message', matchedPhrase: saidAlias.phrase };
   return null;
 }
 
 /**
  * The deterministic tiers alone: exact title > exact alias > title prefix > alias prefix >
- * partial. Never drops or auto-selects among equal matches: callers decide how to present ties
+ * partial > said inside the text. Never drops or auto-selects among equal matches: callers decide how to present ties
  * (see `isAmbiguous`).
  */
 export function rankByTiers(
@@ -110,6 +134,8 @@ export function rankReferences(
   aliases: readonly Alias[],
 ): RankedMatch[] {
   const tiers = rankByTiers(query, references, aliases);
+  // Typo guesses across a whole message are noise, and slow on long text.
+  if (looksLikeMessage(query)) return tiers;
   const found = new Set(tiers.map((m) => m.reference.id));
   return [...tiers, ...fuzzyMatches(query, references, aliases, found)];
 }

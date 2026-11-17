@@ -11,7 +11,7 @@ import { Section } from '../../components/ui/Section';
 import { filterOptions, matchesFilter, NO_FILTER, type ResultFilter } from '../../domain/discovery';
 import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
-import { isExactMatch } from '../../domain/ranking';
+import { isExactMatch, looksLikeMessage } from '../../domain/ranking';
 import {
   looksLikeQuestion,
   splitFolded,
@@ -165,7 +165,8 @@ export function SearchPage() {
         void setSetting('webAccess', unlocked ? 'unlocked' : 'unknown').catch(() => {})
       }
       stories={stories}
-      mayAutoSearch={lookupSettled && !webSearched.has(webKey)}
+      // A pasted message is someone's private text: the wider web gets it only on a tap.
+      mayAutoSearch={lookupSettled && !webSearched.has(webKey) && !looksLikeMessage(query)}
       onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
     />
   );

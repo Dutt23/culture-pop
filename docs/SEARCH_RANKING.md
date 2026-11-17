@@ -55,7 +55,13 @@ half and were left out. See "Results after the baseline".
 | `exact_alias` | Also known as “…” |
 | `title_prefix` / `alias_prefix` | Starts with your search |
 | `partial` | Possible match |
+| `in_message` | Found “…” in your text |
 | `typo` | Similar spelling |
+
+`in_message` (Phase 5 step 4): a known title or alias said inside a longer text, as whole words; a
+one-word line needs 6+ letters. Ranked after `partial`. In a pasted message (more than 8 words) it
+settles the search and the message never goes online, typo guesses are skipped, and the wider web
+waits for a tap. Inside a short search it is only a suggestion and the online lookup still runs.
 | `sound` | Sounds like your search |
 | online candidate | Found online · unverified |
 

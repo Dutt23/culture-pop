@@ -63,6 +63,10 @@ export default defineConfig({
         start_url: '/discover',
         scope: '/',
         display: 'standalone',
+        // Installed on Android, the app appears in the Share menu (WhatsApp and others): the shared
+        // text arrives as the search. shortcut: a share with only a title or link opens an empty
+        // search; map those too if people share that way.
+        share_target: { action: '/search', method: 'GET', params: { text: 'q' } },
         background_color: '#0d0b1f',
         theme_color: '#0d0b1f',
         icons: [

@@ -77,6 +77,18 @@ describe('needsRetrieval', () => {
     ).toBe(true);
   });
 
+  it('is still needed for a short search that only contains a known line', () => {
+    const quote = [makeReference('quote', 'King of the world')];
+    const matches = rankReferences('history of the titanic sinking', quote, [
+      makeAlias('quote', 'titanic'),
+    ]);
+    expect(matches.map((m) => m.kind)).toEqual(['in_message']);
+    const byReference = groupBy([makeInterpretation('q1', 'quote')], (i) => i.referenceId);
+    expect(needsRetrieval(matches, byReference, VALID)).toBe(true);
+    // In a pasted message the found line is the answer: the message never goes online.
+    expect(needsRetrieval(matches, byReference, VALID, true)).toBe(false);
+  });
+
   it('is needed when nothing matches', () => {
     expect(decide([], 'nothing here')).toBe(true);
   });

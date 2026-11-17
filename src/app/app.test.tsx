@@ -103,6 +103,14 @@ describe('search', () => {
     expect(wikipedia).toHaveAttribute('target', '_blank');
     expect(wikipedia).toHaveAttribute('rel', 'noopener noreferrer');
   });
+
+  it('finds the known line in a message shared into the app', async () => {
+    // What the Share menu opens (manifest share_target): the message text as the search.
+    const message = 'My uncle at dinner: "ok boomer" said my cousin 😂😂';
+    renderApp(`/search?q=${encodeURIComponent(message)}`);
+    expect(await screen.findByRole('link', { name: /OK boomer/ })).toBeInTheDocument();
+    expect(screen.getByText('Found “OK boomer” in your text')).toBeInTheDocument();
+  });
 });
 
 describe('reference detail', () => {

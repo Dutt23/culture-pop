@@ -286,6 +286,7 @@ describe('matchReason', () => {
     ['exact_alias', 'let it go', 'Also known as \u201clet it go\u201d'],
     ['title_prefix', 'Let It Go (Frozen)', 'Starts with your search'],
     ['partial', 'Let It Go (Frozen)', 'Possible match'],
+    ['in_message', 'let it go', 'Found \u201clet it go\u201d in your text'],
   ] as const)('%s → %s', (kind, matchedPhrase, expected) => {
     expect(matchReason({ reference: ref, kind, matchedPhrase })).toBe(expected);
   });

@@ -3,7 +3,12 @@ import { useMemo } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { groupBy } from '../../domain/collections';
 import { needsRetrieval } from '../../domain/eligibility';
-import { isAmbiguous, rankReferences, type RankedMatch } from '../../domain/ranking';
+import {
+  isAmbiguous,
+  looksLikeMessage,
+  rankReferences,
+  type RankedMatch,
+} from '../../domain/ranking';
 import { summarizeByReference, type CardSummary } from '../../domain/summaries';
 import { isFromOnline, type Reference } from '../../domain/types';
 
@@ -66,13 +71,15 @@ export function useSearch(query: string): SearchState {
       reference,
       teaser: reference.sourceIds.map((id) => excerpts.get(id)).find(Boolean),
     }));
-    const libraryResolves = !needsRetrieval(matches, byReference, index.validSourceIds);
+    const isMessage = looksLikeMessage(query);
+    const libraryResolves = !needsRetrieval(matches, byReference, index.validSourceIds, isMessage);
     return {
       loading: false,
       matches,
       isAmbiguous: isAmbiguous(matches),
       needsRetrieval:
-        !libraryResolves && needsRetrieval(onlineMatches, byReference, index.validSourceIds),
+        !libraryResolves &&
+        needsRetrieval(onlineMatches, byReference, index.validSourceIds, isMessage),
       summaries: summarizeByReference(index.interpretations),
       // A library answer comes first; saved online results then stay out of the way.
       savedOnline: libraryResolves ? [] : savedOnline,

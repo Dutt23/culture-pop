@@ -117,6 +117,8 @@ export function matchReason(match: RankedMatch): string {
       return 'Starts with your search';
     case 'partial':
       return 'Possible match';
+    case 'in_message':
+      return `Found \u201c${match.matchedPhrase}\u201d in your text`;
     case 'typo':
       return 'Similar spelling';
     case 'sound':

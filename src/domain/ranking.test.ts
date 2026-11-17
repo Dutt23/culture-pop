@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeAlias, makeReference } from '../test/factories';
-import { isAmbiguous, rankReferences } from './ranking';
+import { isAmbiguous, looksLikeMessage, rankReferences } from './ranking';
 
 describe('rankReferences', () => {
   it('returns nothing for an empty or punctuation-only query', () => {
@@ -72,6 +72,55 @@ describe('rankReferences', () => {
       kind: 'partial',
       matchedPhrase: 'pikachu i choose you',
     });
+  });
+
+  it('finds a known line said inside a pasted message, as whole words only', () => {
+    const refs = [
+      makeReference('pill', 'Red pill (The Matrix)'),
+      makeReference('snap', 'The snap (Avengers)'),
+      makeReference('stonks', 'Stonks (meme)'),
+    ];
+    const aliases = [
+      makeAlias('pill', 'red pill'),
+      makeAlias('snap', 'snap'),
+      makeAlias('stonks', 'stonks'),
+    ];
+    const found = (text: string) =>
+      rankReferences(text, refs, aliases).map((m) => [m.reference.id, m.kind, m.matchedPhrase]);
+
+    expect(found('this is such a red pill moment lol')).toEqual([
+      ['pill', 'in_message', 'red pill'],
+    ]);
+    expect(found('bought more crypto, stonks!!')).toEqual([['stonks', 'in_message', 'stonks']]);
+    // A short one-word line is too common to spot inside a sentence, and words must be whole.
+    expect(found('oh snap i forgot the keys')).toEqual([]);
+    expect(found('my redpill moment')).toEqual([]);
+  });
+
+  it('reads more than eight words as a pasted message', () => {
+    expect(looksLikeMessage('history of the titanic sinking')).toBe(false);
+    expect(looksLikeMessage('lol my uncle literally said ok boomer at dinner yesterday')).toBe(
+      true,
+    );
+  });
+
+  it('adds no typo guesses for a pasted message', () => {
+    const refs = [makeReference('b', 'Bazinga')];
+    expect(rankReferences('bazingaa', refs, []).map((m) => m.kind)).toEqual(['typo']);
+    const message = 'he kept saying bazingaa all through dinner and nobody laughed once';
+    expect(rankReferences(message, refs, [])).toEqual([]);
+  });
+
+  it('ranks a line found inside the text after every partial match', () => {
+    const refs = [
+      makeReference('quote', 'Ok boomer'),
+      makeReference('partial', 'My nephew said ok boomer (story)'),
+    ];
+    const ranked = rankReferences('ok boomer said my nephew', refs, []);
+    expect(ranked.map((m) => [m.reference.id, m.kind])).toEqual([
+      ['partial', 'partial'],
+      ['quote', 'in_message'],
+    ]);
   });
 
   it('is deterministic regardless of input order', () => {
