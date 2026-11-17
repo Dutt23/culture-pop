@@ -3,12 +3,8 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { MascotDen } from '../../components/mascot/MascotDen';
-import {
-  ReferenceCard,
-  type ReferenceCardFavourite,
-} from '../../components/reference-card/ReferenceCard';
+import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { SearchBar } from '../../components/search-bar/SearchBar';
-import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { Chip } from '../../components/ui/Chip';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Page } from '../../components/ui/Page';
@@ -32,13 +28,14 @@ import {
   SEARCH_HINT,
   surpriseNote,
 } from '../../domain/labels';
-import type { CardSummary } from '../../domain/summaries';
 import { isFromOnline, type Reference } from '../../domain/types';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { useFavourites } from '../favourites/useFavourites';
 import { useRecordSearch, useRegulars } from '../search/useSearchHistory';
+import type { BrowseGroup } from './browseRows';
 import styles from './DiscoverPage.module.css';
 import { useDiscovery } from './useDiscovery';
+import { VirtualBrowse } from './VirtualBrowse';
 
 const REGULARS = 12;
 
@@ -77,29 +74,6 @@ function foundOnlineNote(reference: Reference): string | undefined {
   return saved ? `Found online · ${saved}` : 'Found online';
 }
 
-interface ShelfProps {
-  references: readonly Reference[];
-  summaries?: Map<string, CardSummary>;
-  favouriteOf: (referenceId: string) => ReferenceCardFavourite;
-}
-
-function Shelf({ references, summaries, favouriteOf }: ShelfProps) {
-  return (
-    <ul className={styles.row}>
-      {references.map((reference, index) => (
-        <AnimatedItem key={reference.id} index={index} className={styles.rowItem}>
-          <ReferenceCard
-            reference={reference}
-            teaser={summaries?.get(reference.id)?.teaser}
-            matchNote={foundOnlineNote(reference)}
-            favourite={favouriteOf(reference.id)}
-          />
-        </AnimatedItem>
-      ))}
-    </ul>
-  );
-}
-
 export function DiscoverPage() {
   const navigate = useNavigate();
   const data = useDiscovery();
@@ -131,6 +105,17 @@ export function DiscoverPage() {
   );
   const types = useMemo(() => groupByCategory(data?.references ?? []), [data]);
   const emptyTypes = useMemo(() => emptyCategories(data?.references ?? []), [data]);
+  const groups = useMemo<BrowseGroup[]>(
+    () =>
+      view === 'era'
+        ? eras.map(({ era, references }) => ({ key: era, title: ERA_LABEL[era], references }))
+        : types.map(({ category: c, references }) => ({
+            key: c,
+            title: `${CATEGORY_PLURAL_LABEL[c]} · ${references.length}`,
+            references,
+          })),
+    [view, eras, types],
+  );
 
   return (
     <Page
@@ -138,18 +123,19 @@ export function DiscoverPage() {
       eyebrow="Pop Culture Decoder"
       intro="Quotes, memes, shows and sayings — explained in plain language, spoiler-free."
       wide
-      scene={<MascotDen still={reduced} />}
+      scene={(top) => <MascotDen still={reduced}>{top}</MascotDen>}
+      lead={
+        <SearchBar
+          value={draft}
+          onChange={setDraft}
+          onSubmit={(value) => {
+            if (!value.trim()) return;
+            recordSearch(value);
+            navigate(`/search?q=${encodeURIComponent(value.trim())}`);
+          }}
+        />
+      }
     >
-      <SearchBar
-        value={draft}
-        onChange={setDraft}
-        onSubmit={(value) => {
-          if (!value.trim()) return;
-          recordSearch(value);
-          navigate(`/search?q=${encodeURIComponent(value.trim())}`);
-        }}
-      />
-
       {regulars.length > 0 && (
         <Section
           title="Your regulars"
@@ -247,31 +233,18 @@ export function DiscoverPage() {
                 </p>
               </EmptyState>
             )}
-
-            {eras.map(({ era, references }) => (
-              <Section key={era} title={ERA_LABEL[era]}>
-                <Shelf
-                  references={references}
-                  summaries={data?.summaries}
-                  favouriteOf={favouriteOf}
-                />
-              </Section>
-            ))}
           </>
         )}
 
+        <VirtualBrowse
+          groups={groups}
+          summaries={data?.summaries}
+          favouriteOf={favouriteOf}
+          noteOf={foundOnlineNote}
+        />
+
         {view === 'type' && (
           <>
-            {types.map(({ category: c, references }) => (
-              <Section key={c} title={`${CATEGORY_PLURAL_LABEL[c]} · ${references.length}`}>
-                <Shelf
-                  references={references}
-                  summaries={data?.summaries}
-                  favouriteOf={favouriteOf}
-                />
-              </Section>
-            ))}
-
             {data && emptyTypes.length > 0 && !isOnline && (
               <p className={styles.note}>{OFFLINE_HINT}</p>
             )}

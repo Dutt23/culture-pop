@@ -2,6 +2,8 @@
   position: relative;
   min-height: 100dvh;
   isolation: isolate;
+  /* A wall-to-wall scene (Discover's room) never makes the page scroll sideways. */
+  overflow-x: clip;
 }
 
 .skipLink {
@@ -43,9 +45,18 @@
 }
 
 .header {
+  /* Above a page's scene, which runs up behind it. */
+  position: relative;
+  z-index: 1;
   max-width: var(--layout-wide);
   margin: 0 auto;
   padding: var(--space-4) var(--space-gutter) 0;
+}
+
+/* On a page whose night scene runs up behind the header, the name stays light. */
+.shell:has([data-scene='night']) .header {
+  --color-text: #f3efff;
+  --color-accent: #b29bff;
 }
 
 .wordmark {
@@ -71,6 +82,8 @@
 }
 
 .offline {
+  position: relative;
+  z-index: 1;
   max-width: var(--layout-wide);
   margin: var(--space-3) auto 0;
   padding: var(--space-2) var(--space-gutter);

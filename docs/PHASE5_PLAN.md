@@ -87,7 +87,9 @@ the costumed mascot, mascot tours (Packs, a pack, Search), the wide-screen layou
 same-world chips. In progress: backup, then polish, then accessibility (`phase5-rest`); pack
 batch 3 (draft for the owner). Since then: the snap-to-dust removal (committed), the "Surprise
 me" flip, and the mascot den on Discover, genre places in the intro and the mascot's peek over the
-Search bar (`docs/superpowers/specs/2026-11-17-mascot-den-design.md`), built, not yet run or
+Search bar (`docs/superpowers/specs/2026-11-17-mascot-den-design.md`), committed. Then the den grew
+into Discover's whole first screen and Browse became a virtual list whose cards deal in
+(`docs/superpowers/specs/2026-11-17-room-and-virtual-browse-design.md`), built, not yet run or
 committed.
 
 **Dropped or paused:** "Linked to N" is now optional. (Desktop layout and the type tags were first

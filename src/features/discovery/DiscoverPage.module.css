@@ -33,33 +33,8 @@
   scrollbar-width: none;
 }
 
-/* Horizontal shelf scrolls inside itself; the page never scrolls sideways. */
-.row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: min(var(--size-card-row), 80%);
-  gap: var(--space-3);
-  overflow-x: auto;
-  padding: var(--space-1) var(--space-1) var(--space-3);
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-}
-
-.rowItem {
-  display: grid;
-  scroll-snap-align: start;
-}
-
-/* With room to spare, a shelf shows every card in a grid and the type chips wrap: no hidden cards
-   behind a sideways scroll. Phones keep the scrolling shelf. */
+/* With room to spare, the type chips wrap instead of scrolling sideways. */
 @container main (min-width: 40rem) {
-  .row {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(auto-fill, minmax(var(--size-card-row), 1fr));
-    overflow-x: visible;
-    scroll-snap-type: none;
-  }
-
   .filters {
     flex-wrap: wrap;
     overflow-x: visible;

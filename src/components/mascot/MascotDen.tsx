@@ -1,9 +1,9 @@
-import { useId, type CSSProperties } from 'react';
+import { m, useScroll, useTransform } from 'motion/react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
+import { classNames } from '../ui/classNames';
 import { Mascot } from './Mascot';
 import styles from './MascotDen.module.css';
 
-const WALL = '#1c1640';
-const FLOOR = '#120e2a';
 const NIGHT = '#0a0820';
 const FRAME = '#3a3270';
 const WOOD = '#4a3a8a';
@@ -229,34 +229,85 @@ function Plant() {
   );
 }
 
-/**
- * The mascot's den above Discover: a night-time living room with a TV, a radio and posters, where
- * small things move. Decorative only; `still` (reduced motion) stops every movement.
- */
-export function MascotDen({ still }: { still: boolean }) {
-  const clipId = useId();
+const BULB_COLOURS = [LAMP, PEACH, LILAC, '#7be0a8', '#6fd3ff'];
+const BULBS = 28;
+const DROOPS = 4;
+/** Height (px) of the fairy-light wire at x, from 0 to 1 across the wall. */
+const droop = (x: number) => 8 + 26 * Math.sin(Math.PI * ((x * DROOPS) % 1));
+const WIRE = Array.from({ length: 201 }, (_, i) => `${i * 5},${droop(i / 200)}`).join(' ');
+
+/** A string of lights across the top of the wall, each bulb on its own beat. */
+function FairyLights() {
   return (
-    <svg
-      className={`${styles.den} ${still ? styles.still : ''}`}
-      viewBox="0 0 300 250"
-      aria-hidden="true"
-      data-testid="mascot-den"
-    >
-      <defs>
-        <clipPath id={clipId}>
-          <rect x="234" y="118" width="40" height="38" rx="5" />
-        </clipPath>
-      </defs>
-      <rect width="300" height="192" fill={WALL} />
-      <rect y="190" width="300" height="60" fill={FLOOR} />
-      <ellipse cx="150" cy="228" rx="96" ry="14" fill="#2a2058" />
-      <Window />
-      <Radio />
-      <Posters />
-      <Television clipId={clipId} />
-      <Sofa />
-      <Chai />
-      <Plant />
-    </svg>
+    <div className={styles.lights}>
+      <svg className={styles.wire} viewBox="0 0 1000 40" preserveAspectRatio="none">
+        <polyline
+          points={WIRE}
+          stroke={FRAME}
+          strokeWidth="2"
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      {Array.from({ length: BULBS }, (_, i) => {
+        const x = (i + 0.5) / BULBS;
+        return (
+          <span
+            key={i}
+            className={styles.bulb}
+            style={{
+              insetInlineStart: `${x * 100}%`,
+              insetBlockStart: `${droop(x)}px`,
+              color: BULB_COLOURS[i % BULB_COLOURS.length],
+              ...delay((i * 0.37) % 3.2),
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Discover's first screen: the mascot's night-time living room, wall to wall, with the page's
+ * heading and search bar (`children`) on its wall. Small things move, and as the page scrolls the
+ * furniture drifts back and the heading fades. `still` (reduced motion) stops every movement.
+ */
+export function MascotDen({ still, children }: { still: boolean; children: ReactNode }) {
+  const clipId = useId();
+  const { scrollY } = useScroll();
+  const drift = useTransform(scrollY, [0, 800], [0, 200]);
+  const lift = useTransform(scrollY, [0, 800], [0, 320]);
+  const fade = useTransform(scrollY, [0, 560], [1, 0]);
+  return (
+    <div className={classNames(styles.den, still && styles.still)} data-scene="night">
+      <div className={styles.backdrop} aria-hidden="true">
+        <FairyLights />
+        <div className={styles.floor} />
+      </div>
+      <m.div className={styles.content} style={still ? undefined : { y: lift, opacity: fade }}>
+        {children}
+      </m.div>
+      <div className={styles.stage} aria-hidden="true" data-testid="mascot-den">
+        <m.div className={styles.furniture} style={still ? undefined : { y: drift }}>
+          <div className={styles.tvGlow} />
+          <svg className={styles.room} viewBox="0 0 300 250">
+            <defs>
+              <clipPath id={clipId}>
+                <rect x="234" y="118" width="40" height="38" rx="5" />
+              </clipPath>
+            </defs>
+            <ellipse cx="150" cy="228" rx="96" ry="14" fill="#2a2058" />
+            <Window />
+            <Radio />
+            <Posters />
+            <Television clipId={clipId} />
+            <Sofa />
+            <Chai />
+            <Plant />
+          </svg>
+        </m.div>
+      </div>
+    </div>
   );
 }

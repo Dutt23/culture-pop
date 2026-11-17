@@ -1,12 +1,116 @@
-/* Short enough that the search bar below stays on a phone's first screen. */
+/*
+ * Narrow screens: heading and search bar on the wall, the furniture right under them, the first
+ * cards peeking in below. `--room-h` is the furniture's height; the floor follows it.
+ */
 .den {
+  --room-h: min(calc((100vw - 2 * var(--space-gutter)) / 1.2), 50svh);
+  position: relative;
+  display: grid;
+  /* Never wider than the page, even when the search box's natural width is (small phones). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  color: var(--color-text);
+}
+
+/* Wall to wall and up behind the app's name; the page's frame doesn't hold it. */
+.backdrop {
+  position: absolute;
+  z-index: -1;
+  inset: -100vh calc(50% - 50vw) 0;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.018) 0 2px, transparent 2px 56px),
+    linear-gradient(#1c1640, #191338);
+  pointer-events: none;
+}
+
+/* Just under the top of the screen: the app's name and the page's top margin sit above the den. */
+.lights {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: calc(100vh - 5rem);
+  block-size: 2.5rem;
+}
+
+.wire {
   display: block;
-  block-size: clamp(9rem, 30vh, 13rem);
-  aspect-ratio: 300 / 250;
-  max-inline-size: 100%;
-  margin-inline: auto;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.bulb {
+  position: absolute;
+  inline-size: 7px;
+  block-size: 9px;
+  margin-inline-start: -3.5px;
+  border-radius: 50% 50% 45% 45%;
+  background: currentColor;
+  box-shadow: 0 0 10px 2px currentColor;
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+/* The room's floor starts 190 of the drawing's 250 units down. */
+.floor {
+  position: absolute;
+  inset: auto 0 0;
+  block-size: calc(var(--room-h) * 60 / 250);
+  border-block-start: 2px solid #241d52;
+  background: linear-gradient(#17123a, #0d0b1f);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-content: start;
+}
+
+/* The furniture drifts down into the floor as the page scrolls, never over what follows. */
+.stage {
+  position: relative;
+  justify-self: center;
+  inline-size: calc(var(--room-h) * 1.2);
+  block-size: var(--room-h);
+  overflow: clip;
+  overflow-clip-margin: 2rem;
+  pointer-events: none;
+}
+
+.furniture {
+  position: absolute;
+  inset: 0;
+}
+
+.room {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* The TV's light on the room. */
+.tvGlow {
+  position: absolute;
+  inset: 10% -10% 15% 35%;
+  background: radial-gradient(closest-side, rgb(111 211 255 / 0.2), transparent);
+  animation: tvGlow 4s ease-in-out infinite;
+}
+
+/* Wide screens: the room fills the screen, words on the wall at the left, furniture on the right. */
+@media (min-width: 64rem) {
+  .den {
+    --room-h: min(70svh, 40vw);
+    min-block-size: calc(100svh - var(--nav-height) - 6rem);
+    padding-block-start: var(--space-8);
+  }
+
+  .content {
+    max-inline-size: 30rem;
+  }
+
+  .stage {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-end: calc(50% - 50vw + max(var(--space-4), 3vw));
+  }
 }
 
 /* Movement and fades only, so the phone never repaints the room. */
@@ -135,5 +239,11 @@
   }
   50% {
     transform: rotate(5deg);
+  }
+}
+
+@keyframes tvGlow {
+  50% {
+    opacity: 0.45;
   }
 }

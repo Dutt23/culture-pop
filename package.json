@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@mlc-ai/web-llm": "0.2.88",
+    "@tanstack/react-virtual": "^3.14.26",
     "@toon-format/toon": "^4.4.0",
     "comlink": "^4.4.2",
     "dexie": "^4.0.10",

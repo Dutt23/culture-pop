@@ -1,10 +1,20 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { skipTours } from './returningReader';
 
 test.beforeEach(({ page }) => skipTours(page));
 
 function primaryNav(page: Page) {
   return page.getByRole('navigation', { name: 'Primary' });
+}
+
+/** Browse is a virtual list: scroll down until `target` is in the page. */
+async function scrollUntilPresent(page: Page, target: Locator) {
+  // A phone shows one card per row, so the list is long: a screen and a half per step, no backoff.
+  await expect(async () => {
+    if ((await target.count()) === 0) await page.mouse.wheel(0, 1200);
+    await expect(target).not.toHaveCount(0, { timeout: 200 });
+  }).toPass({ intervals: [0], timeout: 15_000 });
+  await target.first().scrollIntoViewIfNeeded();
 }
 
 test('discover is the landing page and the layout never scrolls sideways', async ({ page }) => {
@@ -170,7 +180,29 @@ test('Discover browses by type and opens a reference page offline', async ({ pag
   await browse.getByRole('radio', { name: 'By type' }).check();
   await expect(browse.getByText(/^You're offline\. Browse what's on this device/)).toBeVisible();
 
-  await browse.getByRole('link', { name: /Bazinga!/ }).click();
+  const bazinga = browse.getByRole('link', { name: /Bazinga!/ });
+  await scrollUntilPresent(page, bazinga);
+  await bazinga.click();
   await expect(page.getByRole('heading', { level: 1, name: /Bazinga!/ })).toBeVisible();
   await context.setOffline(false);
+});
+
+test('Browse keeps only the cards near the screen in the page', async ({ page }) => {
+  await page.goto('/discover');
+  const browse = page.getByRole('region', { name: 'Browse' });
+  const cards = browse.getByRole('link');
+  await expect(cards.first()).toBeAttached();
+  const firstCard = browse.locator(`a[href="${await cards.first().getAttribute('href')}"]`);
+
+  // Scroll a screen at a time until the end of the page stays in view.
+  await expect(async () => {
+    await page.mouse.wheel(0, 2000);
+    const atEnd = await page.evaluate(
+      () => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2,
+    );
+    expect(atEnd).toBe(true);
+  }).toPass({ timeout: 15_000 });
+
+  await expect(firstCard).toHaveCount(0);
+  await expect(cards.last()).toBeVisible();
 });

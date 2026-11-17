@@ -355,8 +355,7 @@ describe('discover', () => {
     expect(
       within(browse).queryByRole('group', { name: 'Filter by category' }),
     ).not.toBeInTheDocument();
-    const comics = within(browse).getByRole('region', { name: 'Comics · 1' });
-    expect(within(comics).getByRole('link', { name: /Doctor Doom/ })).toBeInTheDocument();
+    expect(within(browse).getByRole('link', { name: /Doctor Doom/ })).toBeInTheDocument();
   });
 
   it('says, per empty type, how to find one, and never offers "Other"', async () => {
