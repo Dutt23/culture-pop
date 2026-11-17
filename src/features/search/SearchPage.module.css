@@ -21,6 +21,12 @@
   gap: var(--space-3);
 }
 
+@container main (min-width: 40rem) {
+  .results {
+    grid-template-columns: repeat(auto-fill, minmax(var(--size-card-grid), 1fr));
+  }
+}
+
 .filters {
   display: grid;
   gap: var(--space-2);

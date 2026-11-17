@@ -7,13 +7,15 @@ interface PageProps {
   title: string;
   eyebrow?: string;
   intro?: ReactNode;
+  /** A browsing page (cards, lists) that uses the full width on big screens. */
+  wide?: boolean;
   children?: ReactNode;
 }
 
-export function Page({ title, eyebrow, intro, children }: PageProps) {
+export function Page({ title, eyebrow, intro, wide = false, children }: PageProps) {
   const { reveal } = useMotionPresets();
   return (
-    <div className={styles.page}>
+    <div className={wide ? `${styles.page} ${styles.wide}` : styles.page}>
       <m.header className={styles.header} variants={reveal} initial="hidden" animate="visible">
         {eyebrow && <p className={styles.eyebrow}>{eyebrow}</p>}
         {/* Focusable by script only: focus lands here when the control that had it disappears. */}

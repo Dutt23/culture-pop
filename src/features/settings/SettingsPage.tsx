@@ -195,18 +195,30 @@ export function SettingsPage() {
 
       <Section
         title="Show me around"
-        description="The mascot walks you through packs: what they are, the spoiler choice and pinning."
+        description="The mascot walks you through search (tags, pasting a message) or packs (the spoiler choice, pinning)."
       >
-        <button
-          type="button"
-          className={styles.reset}
-          onClick={() => {
-            resetTours(['packs', 'pack']);
-            void navigate(`/packs?${TOUR_PARAM}=1`);
-          }}
-        >
-          Tour packs
-        </button>
+        <div className={styles.row}>
+          <button
+            type="button"
+            className={styles.reset}
+            onClick={() => {
+              resetTours(['search']);
+              void navigate(`/search?${TOUR_PARAM}=1`);
+            }}
+          >
+            Tour search
+          </button>
+          <button
+            type="button"
+            className={styles.reset}
+            onClick={() => {
+              resetTours(['packs', 'pack']);
+              void navigate(`/packs?${TOUR_PARAM}=1`);
+            }}
+          >
+            Tour packs
+          </button>
+        </div>
       </Section>
 
       <Section title="About the content">

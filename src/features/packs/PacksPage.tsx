@@ -28,7 +28,7 @@ export function PacksPage() {
   const tour = useTour('packs', data !== undefined);
 
   return (
-    <Page title="Packs" intro="Folders of cards you file yourself. Saved on this device only.">
+    <Page title="Packs" intro="Folders of cards you file yourself. Saved on this device only." wide>
       <NewPackForm />
       <div data-tour="pack-search">
         <PackSearchField label="Search all packs" value={query} onChange={setQuery} />

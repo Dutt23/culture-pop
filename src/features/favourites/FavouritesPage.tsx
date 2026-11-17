@@ -20,7 +20,7 @@ export function FavouritesPage() {
   const hasLinks = links !== undefined && links.length > 0;
 
   return (
-    <Page title="Favourites" intro="Saved on this device only.">
+    <Page title="Favourites" intro="Saved on this device only." wide>
       {references && links && references.length === 0 && links.length === 0 && (
         <EmptyState title="No favourites yet">
           <p>Tap “Favourite” on any reference to keep it here. You can save web links too.</p>

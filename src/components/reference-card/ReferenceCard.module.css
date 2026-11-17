@@ -52,8 +52,10 @@
 }
 
 /* With a heart: the card's own wrapper anchors it, and the card leaves room so text stays clear. */
+/* A grid, so the card fills the whole slot: cards side by side end at the same height. */
 .wrapper {
   position: relative;
+  display: grid;
   min-width: 0;
 }
 
@@ -114,6 +116,7 @@
 }
 
 .footer {
+  margin-top: auto;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);

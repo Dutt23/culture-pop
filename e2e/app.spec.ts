@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { skipTours } from './returningReader';
+
+test.beforeEach(({ page }) => skipTours(page));
 
 function primaryNav(page: Page) {
   return page.getByRole('navigation', { name: 'Primary' });

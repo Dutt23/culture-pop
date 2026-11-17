@@ -30,11 +30,15 @@
   --weight-medium: 500;
   --weight-bold: 650;
 
+  /* Reading width; browsing pages (Page `wide`) use the wider frame on big screens. */
   --layout-max: 44rem;
+  --layout-wide: 76rem;
   --nav-height: 4.25rem;
   --tap-min: 44px;
   --size-card-feature: 12rem;
   --size-card-row: 15rem;
+  /* Narrowest card in a grid of cards on wide screens. */
+  --size-card-grid: 18rem;
   --size-icon: 1.25rem;
   --size-logo: 2rem;
   --border-width: 1px;

@@ -89,7 +89,7 @@ function PackView({ packId }: { packId: string }) {
   const otherPacks = (data?.index.packs ?? []).filter((other) => other.id !== pack.id);
 
   return (
-    <Page title={pack.name} eyebrow={eyebrow}>
+    <Page title={pack.name} eyebrow={eyebrow} wide>
       <div className={styles.stack} data-tour="pack-search-in">
         <SegmentedControl
           legend="Search in"

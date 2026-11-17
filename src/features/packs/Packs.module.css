@@ -6,8 +6,21 @@
   min-width: 0;
 }
 
+/* With room to spare, cards and packs sit side by side instead of in one long column. */
+@container main (min-width: 40rem) {
+  .list {
+    grid-template-columns: repeat(auto-fill, minmax(var(--size-card-grid), 1fr));
+  }
+}
+
 .groups {
   gap: var(--space-6);
+}
+
+.form,
+.inline,
+.field {
+  max-inline-size: var(--layout-max);
 }
 
 .form {

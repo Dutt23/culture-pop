@@ -3,6 +3,12 @@
   gap: var(--space-3);
 }
 
+@container main (min-width: 40rem) {
+  .list {
+    grid-template-columns: repeat(auto-fill, minmax(var(--size-card-grid), 1fr));
+  }
+}
+
 .error {
   font-size: var(--text-sm);
   color: var(--color-danger);

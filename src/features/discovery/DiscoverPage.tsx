@@ -122,6 +122,7 @@ export function DiscoverPage() {
       title="Decode any reference"
       eyebrow="Pop Culture Decoder"
       intro="Quotes, memes, shows and sayings — explained in plain language, spoiler-free."
+      wide
     >
       <SearchBar
         value={draft}

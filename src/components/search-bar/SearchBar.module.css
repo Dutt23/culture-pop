@@ -1,5 +1,6 @@
 .form {
   width: 100%;
+  max-inline-size: var(--layout-max);
 }
 
 .field {

@@ -43,7 +43,7 @@
 }
 
 .header {
-  max-width: var(--layout-max);
+  max-width: var(--layout-wide);
   margin: 0 auto;
   padding: var(--space-4) var(--space-gutter) 0;
 }
@@ -71,7 +71,7 @@
 }
 
 .offline {
-  max-width: var(--layout-max);
+  max-width: var(--layout-wide);
   margin: var(--space-3) auto 0;
   padding: var(--space-2) var(--space-gutter);
   background: var(--color-warm-soft);
@@ -79,8 +79,10 @@
   text-align: center;
 }
 
+/* Pages size themselves inside this frame: cards lay out by the room they get, not the screen. */
 .main {
-  max-width: var(--layout-max);
+  container: main / inline-size;
+  max-width: var(--layout-wide);
   margin: 0 auto;
   padding: var(--space-6) var(--space-gutter) calc(var(--nav-height) + var(--space-8));
 }

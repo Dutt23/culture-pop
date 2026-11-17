@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { skipTours } from './returningReader';
 
 const FIXTURES = resolve('src/services/retrieval/fixtures');
 const WIKIMEDIA_HOSTS = [
@@ -42,6 +43,7 @@ async function mockWikimedia(page: Page, fail: string[] = []) {
 
 // page.route cannot see requests that a service worker handles, so keep it out of these tests.
 test.use({ serviceWorkers: 'block' });
+test.beforeEach(({ page }) => skipTours(page));
 
 test('online search asks first, contacts only the listed providers, and cites its sources', async ({
   page,

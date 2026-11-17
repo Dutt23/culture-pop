@@ -1,6 +1,18 @@
 .page {
   display: grid;
   gap: var(--space-6);
+  inline-size: 100%;
+  max-inline-size: var(--layout-max);
+  margin-inline: auto;
+}
+
+/* Browsing pages use the full frame; running text still keeps a readable line length. */
+.wide {
+  max-inline-size: none;
+}
+
+.wide :where(p) {
+  max-inline-size: 70ch;
 }
 
 .header {

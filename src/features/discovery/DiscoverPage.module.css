@@ -1,6 +1,7 @@
 .surprise {
   display: grid;
   gap: var(--space-3);
+  max-inline-size: var(--layout-max);
 }
 
 /* Anchor for AnimatePresence popLayout so the outgoing card overlaps the incoming one. */
@@ -45,6 +46,22 @@
 .rowItem {
   display: grid;
   scroll-snap-align: start;
+}
+
+/* With room to spare, a shelf shows every card in a grid and the type chips wrap: no hidden cards
+   behind a sideways scroll. Phones keep the scrolling shelf. */
+@container main (min-width: 40rem) {
+  .row {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fill, minmax(var(--size-card-row), 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }
 
 .note {

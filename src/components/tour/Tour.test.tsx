@@ -7,6 +7,7 @@ import { createTestDatabase, renderApp } from '../../test/renderApp';
 beforeEach(() => {
   localStorage.removeItem('pcd:tour-seen:packs');
   localStorage.removeItem('pcd:tour-seen:pack');
+  localStorage.removeItem('pcd:tour-seen:search');
 });
 
 const tour = () => screen.findByRole('dialog', { name: 'Tour' });
@@ -60,6 +61,24 @@ describe('mascot tours', () => {
     expect(within(await tour()).getByText(/searches only this folder/)).toBeInTheDocument();
     await waitFor(() =>
       expect(document.querySelector('[data-tour="pack-search-in"]')).toHaveAttribute(
+        'data-tour-active',
+      ),
+    );
+  });
+
+  it('walks through search, from the search box to the tags', async () => {
+    const { user } = renderApp('/search');
+    const dialog = await tour();
+    expect(within(dialog).getByText(/paste a whole message/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.querySelector('[data-tour="search-bar"]')).toHaveAttribute(
+        'data-tour-active',
+      ),
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Next' }));
+    expect(await within(dialog).findByText(/Tags put that kind first/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(document.querySelector('[data-tour="search-tags"]')).toHaveAttribute(
         'data-tour-active',
       ),
     );

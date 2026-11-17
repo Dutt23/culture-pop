@@ -9,7 +9,7 @@ MotionGlobalConfig.skipAnimations = true;
 
 // The mascot tours open on a first visit; screen tests start as a returning reader. Tour tests
 // remove these to see them.
-const TOUR_SEEN_KEYS = ['pcd:tour-seen:packs', 'pcd:tour-seen:pack'];
+const TOUR_SEEN_KEYS = ['pcd:tour-seen:packs', 'pcd:tour-seen:pack', 'pcd:tour-seen:search'];
 
 beforeEach(() => {
   if (typeof localStorage === 'undefined') return;
