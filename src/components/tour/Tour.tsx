@@ -65,12 +65,7 @@ export function Tour({ steps, onClose }: TourProps) {
   }, [step.target]);
 
   return (
-    <section
-      ref={tourRef}
-      className={styles.tour}
-      role="dialog"
-      aria-label="Tour"
-    >
+    <section ref={tourRef} className={styles.tour} role="dialog" aria-label="Tour">
       <Mascot costume="plain" size={56} />
       <div className={styles.bubble}>
         <p className={styles.text} aria-live="polite">

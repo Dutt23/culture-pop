@@ -304,8 +304,8 @@ export function SearchPage() {
         <p className={styles.count} aria-live="polite">
           {!search.loading && (
             <>
-              {search.matches.length === 1 ? '1 match' : `${search.matches.length} matches`} in
-              your library
+              {search.matches.length === 1 ? '1 match' : `${search.matches.length} matches`} in your
+              library
             </>
           )}
         </p>

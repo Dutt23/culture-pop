@@ -44,8 +44,9 @@ export function UndoNotice({ message, onUndo, onExpire }: UndoNoticeProps) {
       role="status"
       onFocus={() => setHeld(true)}
       onBlur={(event) => {
-        // Switching apps blurs too, and focus comes back to Undo: keep holding.
-        if (!document.hasFocus()) return;
+        // Switching apps blurs too, with focus going nowhere, and it comes back to Undo: keep
+        // holding. (Focus moving to another element always names it.)
+        if (event.relatedTarget === null && !document.hasFocus()) return;
         if (!event.currentTarget.contains(event.relatedTarget)) setHeld(false);
       }}
     >

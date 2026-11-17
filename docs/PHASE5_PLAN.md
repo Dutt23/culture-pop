@@ -80,19 +80,15 @@ one clear note, offline empty-state wording).
    device (search text, messages shared in from WhatsApp, wider-web queries), the backup file as an
    untrusted input on restore, the content-security policy and the share target.
 
-**Status, 2026-11-17:** done and committed: glance card, pack batches 1–2 (60 cards), paste a
-message and the share target, packs (Move takes a card out, "Pin to top"), the opening intro with
-the costumed mascot, mascot tours (Packs, a pack, Search), the wide-screen layout, and search tags
-(merged in, Dexie v11). Done in the `phase5-rest` worktree, not yet merged: "I get this now",
-same-world chips. In progress: backup, then polish, then accessibility (`phase5-rest`); pack
-batch 3 (draft for the owner). Since then: the snap-to-dust removal (committed), the "Surprise
-me" flip, and the mascot den on Discover, genre places in the intro and the mascot's peek over the
-Search bar (`docs/superpowers/specs/2026-11-17-mascot-den-design.md`), committed. Then the den grew
-into Discover's whole first screen and Browse became a virtual list whose cards deal in
-(`docs/superpowers/specs/2026-11-17-room-and-virtual-browse-design.md`), committed. Then every
-prop in the room became a reference you can secretly tap for the mascot to explain
-(`docs/superpowers/specs/2026-11-17-room-of-references-design.md`), built, not yet run or
-committed; the 28 explanations await the owner's read.
+**Status, 2026-11-17 (end of day):** every build step is done and merged on master: glance card,
+pack batches 1–2, paste a message and the share target, packs, "Got it" (D52, D60), same-world
+chips, backup, phone polish (D55), accessibility (D56), the opening intro, tours, the wide layout,
+search tags, the room on Discover with a virtual Browse list (D57), the room of references (D58),
+cards shaped like their type (D59) and the security review with its fixes (D61). Left before
+release, all the owner's: run the final `npm run deploy:check` on master; read the 28 room
+explanations (`src/components/mascot/room/roomProps.ts`); check the phone (vivo: smoothness of the
+room and cards, install, offline, WhatsApp share); confirm the Vercel firewall rule on
+`/api/unlock` and the Parallel spending limit; review pack batch 3 (`docs/PACK_BATCH_3_DRAFT.md`).
 
 **Dropped or paused:** "Linked to N" is now optional. (Desktop layout and the type tags were first
 paused here; the owner brought both back on 2026-11-17 and they are done.)
