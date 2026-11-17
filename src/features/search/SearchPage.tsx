@@ -106,7 +106,12 @@ export function SearchPage() {
   const [onlineQuery, setOnlineQuery] = useState<string | null>(null);
   if (missesLocally && onlineQuery !== query) setOnlineQuery(query);
   const wantsOnline = missesLocally || onlineQuery === query;
-  const online = useRetrieval(query, wantsOnline && settings.retrieval === 'on');
+  // A pasted or shared message is someone's private text: even with online search on, it goes to
+  // the reference sites only after a tap on "Search online" (the wider web already asks the same).
+  const [releasedMessage, setReleasedMessage] = useState<string | null>(null);
+  const messageHeld =
+    settings.retrieval === 'on' && looksLikeMessage(query) && releasedMessage !== query;
+  const online = useRetrieval(query, wantsOnline && settings.retrieval === 'on' && !messageHeld);
 
   // Filters reset whenever the query changes (state adjusted during render, React's documented pattern).
   const [filter, setFilter] = useState<ResultFilter>(NO_FILTER);
@@ -230,7 +235,10 @@ export function SearchPage() {
     suggestCommunityLinks(query, onlineState.result.candidates);
   // While the "Search online?" card waits for an answer, "nothing found" would be premature.
   const asksConsent =
-    wantsOnline && isOnline && settings.retrieval === 'ask' && !onlineSearchSkipped;
+    wantsOnline &&
+    isOnline &&
+    (settings.retrieval === 'ask' || messageHeld) &&
+    !onlineSearchSkipped;
   const showEmpty =
     !asksConsent &&
     localShown.length === 0 &&
@@ -376,7 +384,7 @@ export function SearchPage() {
           {wantsOnline && settingsLoaded && (
             <OnlineResults
               query={query}
-              preference={settings.retrieval}
+              preference={messageHeld ? 'ask' : settings.retrieval}
               isOnline={isOnline}
               skipped={onlineSearchSkipped}
               state={onlineState}
@@ -386,6 +394,10 @@ export function SearchPage() {
               newLead={heldLead}
               onShowNew={fresh.showHeld}
               onAllow={() => {
+                if (messageHeld) {
+                  setReleasedMessage(query);
+                  return;
+                }
                 setConsentError(false);
                 setSetting('retrieval', 'on').catch(() => setConsentError(true));
               }}

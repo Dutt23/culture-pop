@@ -85,6 +85,27 @@ describe('unlock', () => {
     expect((await unlock(unlockRequest({ code: CODE }))).status).toBe(200);
   });
 
+  it("counts each visitor's wrong codes on their own, so one guesser can't lock others out", async () => {
+    const unlock = createUnlockHandler({ now: () => NOW, sleep: async () => {} });
+    const from = (ip: string, code: string) => unlockRequest({ code }, { 'x-real-ip': ip });
+    for (let i = 0; i < 10; i++) {
+      expect((await unlock(from('203.0.113.9', `guess-${i}`))).status).toBe(401);
+    }
+    expect((await unlock(from('203.0.113.9', CODE))).status).toBe(429);
+    expect((await unlock(from('198.51.100.4', CODE))).status).toBe(200);
+  });
+
+  it('counts guesses sent all at once before checking any of them', async () => {
+    const unlock = createUnlockHandler({ now: () => NOW, sleep: async () => {} });
+    const statuses = await Promise.all(
+      Array.from({ length: 15 }, (_, i) =>
+        unlock(unlockRequest({ code: `guess-${i}` })).then((response) => response.status),
+      ),
+    );
+    expect(statuses.filter((status) => status === 401)).toHaveLength(10);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(5);
+  });
+
   it('compares the code in constant time', async () => {
     const { unlock } = setup();
     await unlock(unlockRequest({ code: 'not-the-code' }));

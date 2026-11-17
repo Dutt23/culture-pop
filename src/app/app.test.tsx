@@ -1327,3 +1327,25 @@ describe('search UX (D37)', () => {
     );
   });
 });
+
+describe('a pasted or shared message', () => {
+  const MESSAGE =
+    'my cousin sent this at midnight and honestly nobody in the family group understood a single word of it ' +
+    'so here it is copied in full with all the extra bits about her landlord and the leaking kitchen tap ' +
+    'that she keeps going on about';
+
+  it('waits for "Search online" even with online search on, and sends at most 200 characters', async () => {
+    const db = await withConsent();
+    const retrieval = fixtureRetrievalService('the matrix');
+    const { user } = renderApp(`/search?q=${encodeURIComponent(MESSAGE)}`, db, retrieval);
+
+    expect(await screen.findByRole('heading', { name: 'Search online?' })).toBeInTheDocument();
+    expect(retrieval.retrieve$).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Search online' }));
+    await waitFor(() => expect(retrieval.retrieve$).toHaveBeenCalled());
+    const sent = retrieval.retrieve$.mock.calls[0][0];
+    expect(sent).toHaveLength(200);
+    expect(MESSAGE.startsWith(sent)).toBe(true);
+  });
+});

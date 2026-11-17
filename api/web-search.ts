@@ -206,7 +206,8 @@ export function toResults(body: unknown, q: string): WebResult[] | undefined {
     const page = pageKey(parsed);
     if (seenPages.has(page)) continue;
     seenPages.add(page);
-    const cleanTitle = typeof title === 'string' ? plainText(title) : '';
+    // Cut before cleaning: the markdown patterns slow down on a huge, hostile title.
+    const cleanTitle = typeof title === 'string' ? plainText(title.slice(0, MAX_EXCERPT)) : '';
     const texts = Array.isArray(excerpts)
       ? excerpts
           .filter((e): e is string => typeof e === 'string')

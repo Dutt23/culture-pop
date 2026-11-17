@@ -11,6 +11,9 @@ import {
   type RetrievalState,
 } from './retrievalPipeline';
 
+/** The longest text sent to the reference sites, matching `MAX_QUERY` in api/web-search.ts. */
+export const MAX_ONLINE_QUERY_CHARS = 200;
+
 export type { RetrievalState } from './retrievalPipeline';
 
 const MIN_QUERY_CHARS = 2;
@@ -34,7 +37,8 @@ export function useRetrieval(
   const { retrieval: cache } = useRepositories();
   const isOnline = useOnlineStatus();
   const [attempt, setAttempt] = useState(0);
-  const text = query.trim();
+  // No more than the wider-web endpoint accepts: a long paste never goes out whole.
+  const text = query.trim().slice(0, MAX_ONLINE_QUERY_CHARS);
   const active = enabled && isOnline && normalizePhrase(text).length >= MIN_QUERY_CHARS;
   // State is tagged with the request it belongs to, so a new query reads as loading at once
   // instead of showing the previous query's results during the debounce.
