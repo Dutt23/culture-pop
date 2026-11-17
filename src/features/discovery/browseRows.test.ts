@@ -20,6 +20,18 @@ describe('browseRows', () => {
     ).toEqual(['1990s', ['a 0', 'a 1'], ['a 2', 'a 3'], ['a 4'], '2000s', ['b 0', 'b 1']]);
   });
 
+  it("marks where each row of cards starts in its group, and the group's size", () => {
+    const rows = browseRows(groups, 2).flatMap((row) =>
+      row.kind === 'cards' ? [[row.start, row.total]] : [],
+    );
+    expect(rows).toEqual([
+      [0, 5],
+      [2, 5],
+      [4, 5],
+      [0, 2],
+    ]);
+  });
+
   it('gives every row its own key', () => {
     const keys = browseRows(groups, 2).map((row) => row.key);
     expect(new Set(keys).size).toBe(keys.length);

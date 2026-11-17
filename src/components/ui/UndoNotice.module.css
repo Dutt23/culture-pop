@@ -1,15 +1,29 @@
+/* A bar above the bottom navigation, so it's in view wherever the card was. */
 .notice {
+  position: fixed;
+  inset-inline: var(--space-gutter);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-3));
+  /* Over the tour, which sits in the same spot (900) and can be open while a card leaves. */
+  z-index: 901;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .undo {
   min-height: var(--tap-min);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-3);
   border: 0;
   background: none;
   color: var(--color-accent);

@@ -278,6 +278,15 @@ describe('reference page: same-world chips', () => {
     expect(chips.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("hops to the chosen card with focus on that card's name", async () => {
+    const { user } = renderApp(pageOf(redPill.id), await withCached(redPill, rain));
+    const chips = await screen.findByRole('list', { name: 'Also inspired by The Matrix' });
+    await user.click(within(chips).getByRole('link', { name: 'Digital rain' }));
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Digital rain' });
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
   it('opens the chosen card and carries the "before you watch" pack along', async () => {
     const db = await withCached(redPill, rain);
     const repos = createRepositories(db);

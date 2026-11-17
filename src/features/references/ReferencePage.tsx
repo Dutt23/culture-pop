@@ -27,8 +27,13 @@ import styles from './ReferencePage.module.css';
 import { SameWorldChips } from './SameWorldChips';
 import { useReference } from './useReference';
 
+/** Keyed on the reference: a hop to another one loads fresh, then its heading takes focus. */
 export function ReferencePage() {
   const { id = '' } = useParams();
+  return <ReferenceView key={id} id={id} />;
+}
+
+function ReferenceView({ id }: { id: string }) {
   const detail = useReference(id);
   const favourites = useFavourites();
   const { settings } = useSettings();

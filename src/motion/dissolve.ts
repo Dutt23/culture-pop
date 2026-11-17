@@ -25,6 +25,8 @@ export function dissolve(element: HTMLElement | null | undefined, reduced: boole
   const rect = element.getBoundingClientRect();
   const overlay = document.createElement('div');
   overlay.setAttribute('aria-hidden', 'true');
+  // Not reachable by Tab either: the copies keep the card's links and buttons.
+  overlay.inert = true;
   Object.assign(overlay.style, {
     position: 'fixed',
     left: `${rect.left}px`,

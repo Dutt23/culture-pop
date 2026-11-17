@@ -152,7 +152,7 @@ function OnlineStatus(props: OnlineResultsProps) {
   if (state.status === 'loading') {
     return (
       <>
-        <p className={styles.status} role="status" aria-busy="true">
+        <p className={styles.status} role="status">
           Searching {ALL_PROVIDERS}…
         </p>
         <SkeletonCards count={SKELETON_COUNT} />
@@ -163,7 +163,7 @@ function OnlineStatus(props: OnlineResultsProps) {
     const pending = pendingProviders(state.result);
     return (
       <>
-        <p className={styles.status} role="status" aria-busy={pending.length > 0}>
+        <p className={styles.status} role="status">
           {pending.length > 0 && <>Still searching {listOf(pending)}…</>}
         </p>
         {pending.length > 0 && props.candidates.length === 0 && (
@@ -336,7 +336,26 @@ export function OnlineResults(props: OnlineResultsProps) {
           )}
           <div aria-live="polite">
             {props.newCount > 0 && (
-              <button type="button" className={styles.showNew} onClick={props.onShowNew}>
+              <button
+                type="button"
+                className={styles.showNew}
+                onClick={(event) => {
+                  const section = event.currentTarget.closest('section');
+                  const linksIn = () => [
+                    ...(section?.querySelectorAll<HTMLElement>('a[href]') ?? []),
+                  ];
+                  const before = new Set(linksIn());
+                  props.onShowNew();
+                  // The button goes once tapped: carry on from the first new card that's on show.
+                  requestAnimationFrame(() => {
+                    const links = linksIn();
+                    const fresh = links.find(
+                      (link) => !before.has(link) && !link.closest('details:not([open])'),
+                    );
+                    (fresh ?? links[0])?.focus();
+                  });
+                }}
+              >
                 Show {props.newCount === 1 ? '1 new result' : `${props.newCount} new results`}
                 {props.newLead && <>, including &ldquo;{props.newLead}&rdquo;</>}
               </button>

@@ -9,7 +9,14 @@ export interface BrowseGroup {
 
 export type BrowseRow =
   | { kind: 'heading'; key: string; title: string }
-  | { kind: 'cards'; key: string; references: readonly Reference[] };
+  | {
+      kind: 'cards';
+      key: string;
+      references: readonly Reference[];
+      /** Where this row starts in its group, and the group's size: a row holds only part of it. */
+      start: number;
+      total: number;
+    };
 
 /** The Browse list as rows: each heading, then its cards `columns` at a time. */
 export function browseRows(groups: readonly BrowseGroup[], columns: number): BrowseRow[] {
@@ -23,6 +30,8 @@ export function browseRows(groups: readonly BrowseGroup[], columns: number): Bro
         kind: 'cards',
         key: `cards:${group.key}:${perRow}:${start}`,
         references: group.references.slice(start, start + perRow),
+        start,
+        total: group.references.length,
       });
     }
     return rows;

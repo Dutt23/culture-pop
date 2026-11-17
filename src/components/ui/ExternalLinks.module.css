@@ -23,7 +23,10 @@
 }
 
 .link::after {
+  /* A picture of "opens elsewhere", not something to read out; browsers without "/ alt" keep the
+     first line. */
   content: '\2197';
+  content: '\2197' / '';
   margin-inline-start: var(--space-2);
   color: var(--color-warm);
 }

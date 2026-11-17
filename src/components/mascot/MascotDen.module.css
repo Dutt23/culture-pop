@@ -64,6 +64,12 @@
   align-content: start;
 }
 
+/* The heading fades as the page scrolls; whatever holds keyboard focus is never see-through.
+   Beats the fade's inline style. */
+.content:focus-within {
+  opacity: 1 !important;
+}
+
 /* The furniture drifts down into the floor as the page scrolls, never over what follows. */
 .stage {
   position: relative;

@@ -86,17 +86,26 @@ export function VirtualBrowse({ groups, summaries, favouriteOf, noteOf }: Virtua
   const columns = columnsFor(box.width, CARD_MIN_REM * box.rem, GAP_REM * box.rem);
   const rows = useMemo(() => browseRows(groups, columns), [groups, columns]);
   const seen = useRef(new Set<string>());
+  const headings = useMemo(
+    () => rows.flatMap((row, index) => (row.kind === 'heading' ? [index] : [])),
+    [rows],
+  );
   // The row holding keyboard focus stays in the page even when scrolled away, so focus isn't lost.
+  // Every heading stays too (a few small rows), so a screen reader's list of headings is whole.
   const [focusedRow, setFocusedRow] = useState<number | null>(null);
   const rangeExtractor = useCallback(
     (range: Range) => {
-      const indexes = defaultRangeExtractor(range);
-      if (focusedRow === null || focusedRow >= rows.length || indexes.includes(focusedRow)) {
-        return indexes;
+      const keep = new Set([...defaultRangeExtractor(range), ...headings]);
+      // With two rows either side (a heading may sit between), so Tab and Shift+Tab always find
+      // the next card in the page.
+      if (focusedRow !== null) {
+        for (let index = focusedRow - 2; index <= focusedRow + 2; index += 1) {
+          if (index >= 0 && index < rows.length) keep.add(index);
+        }
       }
-      return [...indexes, focusedRow].sort((a, b) => a - b);
+      return [...keep].sort((a, b) => a - b);
     },
-    [focusedRow, rows.length],
+    [focusedRow, rows.length, headings],
   );
 
   const estimateSize = (index: number) =>
@@ -125,6 +134,8 @@ export function VirtualBrowse({ groups, summaries, favouriteOf, noteOf }: Virtua
         setFocusedRow(row ? Number(row.dataset.index) : null);
       }}
       onBlur={(event) => {
+        // Switching apps blurs too, and focus comes back to the same card: keep its row.
+        if (!document.hasFocus()) return;
         if (!event.currentTarget.contains(event.relatedTarget)) setFocusedRow(null);
       }}
     >
@@ -143,8 +154,11 @@ export function VirtualBrowse({ groups, summaries, favouriteOf, noteOf }: Virtua
             ) : (
               <ul className={styles.cards} style={{ '--columns': columns } as CSSProperties}>
                 {row.references.map((reference, column) => (
+                  // Each row is its own list: say where the card sits in its whole group.
                   <m.li
                     key={reference.id}
+                    aria-posinset={row.start + column + 1}
+                    aria-setsize={row.total}
                     className={styles.cell}
                     variants={deal}
                     custom={column}

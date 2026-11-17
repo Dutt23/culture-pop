@@ -9,7 +9,8 @@
   --color-border: #ddd1c1;
   --color-accent: #5b2fe0;
   --color-accent-contrast: #ffffff;
-  --color-warm: #b4501f;
+  /* Dark enough for small text on --color-warm-soft (4.8:1). */
+  --color-warm: #9e451a;
   --color-warm-soft: #f6dcc8;
   --color-focus: #5b2fe0;
   --color-danger: #b42318;

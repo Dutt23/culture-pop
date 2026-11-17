@@ -49,6 +49,16 @@ describe('routing', () => {
     ).toBeInTheDocument();
   });
 
+  it("moves focus to the new page's name and names the browser tab after it", async () => {
+    const { user } = renderApp('/discover');
+    const nav = await screen.findByRole('navigation', { name: 'Primary' });
+    await user.click(within(nav).getByRole('link', { name: 'Favourites' }));
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Favourites' });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(document.title).toBe('Favourites · Pop Culture Decoder');
+  });
+
   it('offers a search on a page that does not exist', async () => {
     renderApp('/no-such-page');
     expect(await screen.findByRole('link', { name: 'Search for a reference' })).toHaveAttribute(
@@ -1091,6 +1101,8 @@ describe('search UX (D37)', () => {
 
     await user.click(note);
     const links = within(found).getAllByRole('link');
+    // The button went: focus carries on from the new card.
+    await waitFor(() => expect(links[1]).toHaveFocus());
     // The card already on screen keeps its place; the new one goes below it.
     expect(links.map((link) => link.querySelector('span:nth-child(2)')?.textContent)).toEqual([
       'The Matrix',
