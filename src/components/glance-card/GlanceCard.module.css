@@ -1,0 +1,41 @@
+.card {
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-inline-start: var(--focus-ring-width) solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.lines {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.line {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.line dt {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-warm);
+}
+
+.line dd {
+  margin: 0;
+}
+
+.gist {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+}
+
+.sayBack {
+  font-style: italic;
+}

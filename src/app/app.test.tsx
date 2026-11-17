@@ -531,7 +531,7 @@ describe('settings', () => {
     expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/saved web links/));
     expect(
       await screen.findByText(
-        'Favourites, saved web links, search history, settings and saved online results were cleared.',
+        'Favourites, packs, saved web links, search history, settings and saved online results were cleared.',
       ),
     ).toBeInTheDocument();
     expect(await repos.favourites.list()).toEqual([]);
@@ -550,7 +550,9 @@ describe('offline and storage states', () => {
     renderApp('/search?q=bazinga');
     expect(await screen.findByRole('link', { name: /Bazinga!/ })).toBeInTheDocument();
     expect(screen.getByText(/You're offline\. Everything saved/)).toBeInTheDocument();
-    expect(screen.getByText(/these links need a connection/)).toBeInTheDocument();
+    expect(screen.getByText(/Search links to other sites need a connection/)).toBeInTheDocument();
+    // Offline, no outside link is offered as if it could open.
+    expect(screen.queryByRole('link', { name: /Search Wikipedia/ })).not.toBeInTheDocument();
   });
 
   it('explains when local storage cannot open', async () => {
@@ -666,7 +668,7 @@ describe('online search (phase 2)', () => {
     const retrieval = fixtureRetrievalService('the matrix');
     renderApp('/search?q=the%20matrix', await withConsent(), retrieval);
     expect(
-      await screen.findByText(/only what's saved on this device is shown/),
+      await screen.findByText(/Online search will run when you.re back online/),
     ).toBeInTheDocument();
     expect(retrieval.retrieve$).not.toHaveBeenCalled();
   });

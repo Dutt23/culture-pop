@@ -55,6 +55,15 @@ describe('seed content', () => {
     for (const i of seed.interpretations) expect(referenceIds).toContain(i.referenceId);
   });
 
+  it('gives every built-in meaning its glance lines and a usage example', () => {
+    for (const interpretation of buildSeed().interpretations) {
+      expect(interpretation.gist?.trim(), interpretation.id).toBeTruthy();
+      expect(interpretation.socialMove?.trim(), interpretation.id).toBeTruthy();
+      expect(interpretation.reply?.trim(), interpretation.id).toBeTruthy();
+      expect(interpretation.usageExample.trim(), interpretation.id).toBeTruthy();
+    }
+  });
+
   it('gives every reference at least one interpretation', () => {
     const withMeaning = new Set(seed.interpretations.map((i) => i.referenceId));
     expect(seed.references.every((r) => withMeaning.has(r.id))).toBe(true);

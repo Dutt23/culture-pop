@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BehaviorSubject } from 'rxjs';
 import { useRepositories } from '../../app/RepositoriesContext';
-import { useRetrievalService } from '../../app/RetrievalContext';
+import { useRetrievalService } from '../../app/retrievalService';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { normalizePhrase } from '../../domain/normalize';
 import {

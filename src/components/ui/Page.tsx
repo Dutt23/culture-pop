@@ -16,7 +16,10 @@ export function Page({ title, eyebrow, intro, children }: PageProps) {
     <div className={styles.page}>
       <m.header className={styles.header} variants={reveal} initial="hidden" animate="visible">
         {eyebrow && <p className={styles.eyebrow}>{eyebrow}</p>}
-        <h1 className={styles.title}>{title}</h1>
+        {/* Focusable by script only: focus lands here when the control that had it disappears. */}
+        <h1 className={styles.title} tabIndex={-1}>
+          {title}
+        </h1>
         {intro && <div className={styles.intro}>{intro}</div>}
       </m.header>
       {children}

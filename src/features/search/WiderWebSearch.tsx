@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
-import { useRetrievalService } from '../../app/RetrievalContext';
+import { useRetrievalService } from '../../app/retrievalService';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
 import { hostOf } from '../../components/ui/safeHref';

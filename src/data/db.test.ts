@@ -5,7 +5,7 @@ import { needsRetrieval } from '../domain/eligibility';
 import { rankReferences } from '../domain/ranking';
 import { retrieve } from '../services/retrieval/retrieve';
 import { FIXED_NOW, fixtureGetJson } from '../test/fakeRetrieval';
-import { makeCandidate, makeSource } from '../test/factories';
+import { makeCandidate, makeReference, makeSource } from '../test/factories';
 import { createTestDatabase } from '../test/renderApp';
 import { isFromOnline } from '../domain/types';
 import {
@@ -14,6 +14,7 @@ import {
   SCHEMA_V2_CHANGES,
   SCHEMA_V4_CHANGES,
   SCHEMA_V5_CHANGES,
+  SCHEMA_V6_CHANGES,
   type PopCultureDb,
 } from './db';
 import { createRepositories } from './repositories';
@@ -119,16 +120,15 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(6);
+    expect(db.verno).toBe(8);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
       sourceIds: [],
     });
     expect(await db.favourites.count()).toBe(1);
-    // Upgrading must not re-seed: populate only runs for brand-new databases.
-    expect(await db.references.count()).toBe(2);
-    expect(await db.references.where('kind').equals('quote').count()).toBe(1);
+    // v7 refreshes the built-in entries; a row the seed doesn't know is kept as it was.
+    expect(await db.references.count()).toBe(buildSeed().references.length + 1);
     db.close();
   });
 
@@ -194,10 +194,11 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(6);
+    expect(db.verno).toBe(8);
+    // The built-in meaning is replaced by the current seed (v7), glance lines included.
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
-      summary: 'S',
+      gist: expect.any(String),
     });
     expect(await db.references.get('wd:Q83495')).toMatchObject({
       editorialState: 'source_curated',
@@ -212,7 +213,7 @@ describe('schema upgrades', () => {
     expect(await db.references.get('enwiki:5')).toMatchObject({ editorialState: 'retrieved' });
     expect(await db.interpretations.where('referenceId').equals('enwiki:5').count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
-    expect(await db.references.count()).toBe(3);
+    expect(await db.references.count()).toBe(buildSeed().references.length + 2);
     db.close();
   });
 
@@ -240,10 +241,10 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(6);
+    expect(db.verno).toBe(8);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
-    expect(await db.references.count()).toBe(1);
+    expect(await db.references.count()).toBe(buildSeed().references.length);
     expect(await db.favourites.count()).toBe(1);
     expect(await db.settings.toArray()).toEqual([{ key: 'theme', value: 'dark' }]);
     db.close();
@@ -265,12 +266,85 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(6);
+    expect(db.verno).toBe(8);
     expect(db.tables.map((t) => t.name)).toContain('savedLinks');
     expect(await db.savedLinks.count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
     expect(await db.settings.toArray()).toEqual([{ key: 'theme', value: 'dark' }]);
     expect(await db.webResults.count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a real v6 database: built-in entries gain glance lines, reader data is kept', async () => {
+    const name = `upgrade-v6-${Math.random().toString(36).slice(2)}`;
+    const v6 = new Dexie(name);
+    v6.version(1).stores(SCHEMA_V1);
+    v6.version(2).stores(SCHEMA_V2_CHANGES);
+    v6.version(3).stores({});
+    v6.version(4).stores(SCHEMA_V4_CHANGES);
+    v6.version(5).stores(SCHEMA_V5_CHANGES);
+    v6.version(6).stores(SCHEMA_V6_CHANGES);
+    await v6.open();
+    const seed = buildSeed();
+    // A v6 install: built-in rows without glance lines, plus things the reader made.
+    await v6.table('interpretations').bulkAdd(
+      seed.interpretations.map((i) => ({
+        ...i,
+        gist: undefined,
+        socialMove: undefined,
+        reply: undefined,
+      })),
+    );
+    await v6.table('references').bulkAdd(seed.references);
+    await v6.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
+    await v6.table('savedLinks').add({ url: 'https://example.test/', title: 'x', savedAt: 't' });
+    v6.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(8);
+    expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
+      gist: 'Ugh, I just did something stupid.',
+      socialMove: "They're laughing at their own mistake.",
+    });
+    expect(await db.references.count()).toBe(seed.references.length);
+    expect(await db.favourites.count()).toBe(1);
+    expect(await db.savedLinks.count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a real v7 database: adds empty packs and members, references untouched', async () => {
+    const name = `upgrade-v7-${Math.random().toString(36).slice(2)}`;
+    const v7 = new Dexie(name);
+    v7.version(1).stores(SCHEMA_V1);
+    v7.version(2).stores(SCHEMA_V2_CHANGES);
+    v7.version(3).stores({});
+    v7.version(4).stores(SCHEMA_V4_CHANGES);
+    v7.version(5).stores(SCHEMA_V5_CHANGES);
+    v7.version(6).stores(SCHEMA_V6_CHANGES);
+    v7.version(7).stores({});
+    await v7.open();
+    const seed = buildSeed();
+    // A v7 install: the current built-in rows, a cached online result and a favourite.
+    await v7
+      .table('references')
+      .bulkAdd([
+        ...seed.references,
+        makeReference('wd:Q1', 'Zzqx', { editorialState: 'retrieved' }),
+      ]);
+    await v7.table('interpretations').bulkAdd(seed.interpretations);
+    await v7.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
+    const before = await v7.table('references').toArray();
+    v7.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(8);
+    expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['packs', 'packMembers']));
+    expect(await db.packs.count()).toBe(0);
+    expect(await db.packMembers.count()).toBe(0);
+    expect(await db.references.toArray()).toEqual(before);
+    expect(await db.favourites.count()).toBe(1);
     db.close();
   });
 });

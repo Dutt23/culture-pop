@@ -8,6 +8,7 @@ import type { RankedMatch } from './ranking';
 import {
   isFromOnline,
   type Category,
+  type PackCeiling,
   type PresentIn,
   type Provenance,
   type Reference,
@@ -24,6 +25,11 @@ export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
   music: 'Music',
   saying: 'Saying',
   other: 'Other',
+};
+
+export const CEILING_LABEL: Readonly<Record<PackCeiling, string>> = {
+  before_watching: 'Before you watch',
+  open: 'My spoiler setting',
 };
 
 export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {

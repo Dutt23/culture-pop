@@ -15,6 +15,12 @@ const ReferencePage = lazy(() =>
 const FavouritesPage = lazy(() =>
   import('../features/favourites/FavouritesPage').then((m) => ({ default: m.FavouritesPage })),
 );
+const PacksPage = lazy(() =>
+  import('../features/packs/PacksPage').then((m) => ({ default: m.PacksPage })),
+);
+const PackPage = lazy(() =>
+  import('../features/packs/PackPage').then((m) => ({ default: m.PackPage })),
+);
 const SettingsPage = lazy(() =>
   import('../features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -38,6 +44,8 @@ export function AppRoutes() {
         <Route path="/search" element={later(<SearchPage />)} />
         <Route path="/references/:id" element={later(<ReferencePage />)} />
         <Route path="/favourites" element={later(<FavouritesPage />)} />
+        <Route path="/packs" element={later(<PacksPage />)} />
+        <Route path="/packs/:packId" element={later(<PackPage />)} />
         <Route path="/settings" element={later(<SettingsPage />)} />
         {DevComponentsPage && (
           <Route

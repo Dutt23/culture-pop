@@ -63,8 +63,10 @@
   inset-inline-end: var(--space-2);
 }
 
-.hasFavourite {
-  padding-inline-end: calc(var(--tap-min) + var(--space-4));
+/* Only the top lines sit beside the heart; the teaser and footer use the card's full width. */
+.hasFavourite .meta,
+.hasFavourite .title {
+  padding-inline-end: calc(var(--tap-min) + var(--space-2));
 }
 
 .meta {

@@ -12,7 +12,11 @@ import { filterOptions, matchesFilter, NO_FILTER, type ResultFilter } from '../.
 import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
 import { isExactMatch } from '../../domain/ranking';
-import { looksLikeQuestion, splitFolded } from '../../services/retrieval/community';
+import {
+  looksLikeQuestion,
+  splitFolded,
+  suggestCommunityLinks,
+} from '../../services/retrieval/community';
 import { isExactTitle } from '../../services/retrieval/rerank';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import { useFavourites } from '../favourites/useFavourites';
@@ -35,10 +39,12 @@ interface NotWhatIMeantProps {
   isOnline: boolean;
   /** The "Search the wider web" button, offered only on a local miss (D45). */
   widerWeb: ReactNode;
+  /** The community card already offers the meme and slang sites. */
+  skipCommunity: boolean;
 }
 
 /** Shown under online and saved results: other places to look, only when asked for. */
-function NotWhatIMeant({ query, isOnline, widerWeb }: NotWhatIMeantProps) {
+function NotWhatIMeant({ query, isOnline, widerWeb, skipCommunity }: NotWhatIMeantProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -53,7 +59,7 @@ function NotWhatIMeant({ query, isOnline, widerWeb }: NotWhatIMeantProps) {
       {open && (
         <>
           {widerWeb}
-          <ExternalSearchLinks query={query} isOnline={isOnline} />
+          <ExternalSearchLinks query={query} isOnline={isOnline} skipCommunity={skipCommunity} />
         </>
       )}
     </>
@@ -163,7 +169,16 @@ export function SearchPage() {
       onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
     />
   );
+  // "Where people talk about it" is on the page: its sites aren't listed a second time below.
+  const communityShown =
+    wantsOnline &&
+    onlineState.status === 'done' &&
+    suggestCommunityLinks(query, onlineState.result.candidates);
+  // While the "Search online?" card waits for an answer, "nothing found" would be premature.
+  const asksConsent =
+    wantsOnline && isOnline && settings.retrieval === 'ask' && !onlineSearchSkipped;
   const showEmpty =
+    !asksConsent &&
     localShown.length === 0 &&
     onlineShown.length === 0 &&
     savedShown.length === 0 &&
@@ -310,17 +325,31 @@ export function SearchPage() {
 
           {showEmpty && (
             <EmptyState title={`Nothing in your library for “${query.trim()}” yet`}>
-              <p>Check the spelling, try fewer words, or look it up outside the app.</p>
+              <p>
+                {isOnline
+                  ? 'Check the spelling, try fewer words, or look it up outside the app.'
+                  : 'Check the spelling or try fewer words. Discover and Favourites work offline.'}
+              </p>
             </EmptyState>
           )}
 
           <Section title={search.needsRetrieval ? 'Look it up elsewhere' : 'Not what you meant?'}>
             {hasOnlineResults ? (
-              <NotWhatIMeant key={query} query={query} isOnline={isOnline} widerWeb={widerWeb} />
+              <NotWhatIMeant
+                key={query}
+                query={query}
+                isOnline={isOnline}
+                widerWeb={widerWeb}
+                skipCommunity={communityShown}
+              />
             ) : (
               <>
                 {widerWeb}
-                <ExternalSearchLinks query={query} isOnline={isOnline} />
+                <ExternalSearchLinks
+                  query={query}
+                  isOnline={isOnline}
+                  skipCommunity={communityShown}
+                />
               </>
             )}
           </Section>

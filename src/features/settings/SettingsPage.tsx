@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
-import { useRetrievalService } from '../../app/RetrievalContext';
+import { useRetrievalService } from '../../app/retrievalService';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
@@ -42,13 +42,13 @@ export function SettingsPage() {
 
   const reset = async () => {
     const question =
-      'Remove all favourites, saved web links and search history, reset settings and delete online results saved on this device? This cannot be undone.';
+      'Remove all favourites, packs, saved web links and search history, reset settings and delete online results saved on this device? Your library cards stay. This cannot be undone.';
     if (!window.confirm(question)) return;
     try {
       await resetLocalData();
       setMessage({
         tone: 'ok',
-        text: 'Favourites, saved web links, search history, settings and saved online results were cleared.',
+        text: 'Favourites, packs, saved web links, search history, settings and saved online results were cleared.',
       });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't reset local data. Please try again." });
@@ -163,7 +163,7 @@ export function SettingsPage() {
         description="Everything stays in this browser. Search text leaves the device only through online search (if you turn it on), a wider web search you tap, or an external search link you tap. Search history and results found online are kept here until you clear them; wider web results are kept for 30 days, only while search history is on. Web links you save stay until you remove them or reset."
       >
         <button type="button" className={styles.reset} onClick={reset}>
-          Reset favourites, saved links, history, settings &amp; saved online results
+          Reset favourites, packs, saved links, history, settings &amp; saved online results
         </button>
         {message && (
           <p

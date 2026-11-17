@@ -17,6 +17,12 @@ const SEED_TIMESTAMP = '2026-11-15T00:00:00.000Z';
 
 interface SeedInterpretation {
   label: string;
+  /** Glance card: what it means when someone says it, one spoiler-free sentence. */
+  gist: string;
+  /** Glance card: what the speaker is doing with it, spoiler-free. */
+  socialMove: string;
+  /** Glance card: a short line the reader can say back when someone uses it, spoiler-free. */
+  reply: string;
   summary: string;
   context: string;
   usageExample: string;
@@ -48,6 +54,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'The song and its carefree attitude',
+        gist: 'No worries: relax and stop stressing.',
+        reply: 'Hakuna matata, but the deadline is still Friday.',
+        socialMove: "They're shrugging off a problem, often one they should probably deal with.",
         summary:
           'A cheerful song in which a meerkat and a warthog teach a young lion to stop worrying about the past.',
         context:
@@ -67,6 +76,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Everyday Swahili for "no problem"',
+        gist: '"No problem" or "no worries" in Swahili.',
+        reply: "Hakuna matata, I'll sort it out.",
+        socialMove: "They're reassuring you that it's fine.",
         summary: 'A real Swahili expression meaning roughly "no problems" or "no worries".',
         context:
           'It is ordinary speech that existed long before the film; the film made it famous worldwide. Hearing it does not automatically mean someone is quoting Disney.',
@@ -86,6 +98,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'The giant hit song',
+        gist: 'Stop holding it in and stop caring what people think.',
+        reply: "Okay, Elsa, I'm letting it go.",
+        socialMove: "They're being dramatic about moving on, usually by singing it.",
         summary:
           'The big song from Frozen, sung by a queen who finally stops hiding her ice powers.',
         context:
@@ -104,6 +119,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Plain advice to stop dwelling',
+        gist: "Stop worrying about something you can't change.",
+        reply: "Yeah, you're right. I'll let it go.",
+        socialMove: "They're telling you, kindly, to move on.",
         summary: 'Ordinary English advice to stop holding on to a grudge, mistake or worry.',
         context:
           'This meaning is much older than the song. If the tone is calm and serious, it is probably advice, not a Frozen joke.',
@@ -123,6 +141,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Pure joy at the front of a ship',
+        gist: 'I feel on top of everything right now.',
+        reply: 'Okay, Jack, come down from the railing.',
+        socialMove: "They're celebrating a small win in an over-the-top way.",
         summary:
           'A young man yells it, arms spread wide at the front of the ship, feeling free and unstoppable.',
         context:
@@ -131,6 +152,10 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
       },
       {
         label: 'The floating-door debate',
+        gist: "That tragedy didn't need to happen.",
+        reply: 'Ah, the door debate again.',
+        socialMove:
+          "They're joking that a sad ending was avoidable. It's from Titanic (1997): save the scene until you've seen it.",
         summary:
           'A long-running joke argues that both main characters could have fit on the floating door at the end, so one did not need to die.',
         context:
@@ -152,6 +177,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: "Homer's annoyed grunt",
+        gist: 'Ugh, I just did something stupid.',
+        reply: "D'oh indeed.",
+        socialMove: "They're laughing at their own mistake.",
         summary: 'The noise Homer Simpson makes the moment he realises he has messed up.',
         context:
           'It became so familiar that it is now a common word. People say it after an obvious, self-inflicted mistake.',
@@ -171,6 +199,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: "Joey's pickup line",
+        gist: 'A cheesy flirt.',
+        reply: 'Easy there, Joey.',
+        socialMove: "They're flirting as a joke, or teasing someone who looks good.",
         summary:
           'The flirty greeting used by Joey, a lovable actor who is far less smooth than he thinks.',
         context:
@@ -191,6 +222,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Gotcha!',
+        gist: 'Gotcha, I was joking.',
+        reply: 'Okay, Sheldon, you got me.',
+        socialMove: "They've just pranked you, or said something untrue to get a reaction.",
         summary:
           'What the character Sheldon shouts after a prank or joke — his version of "gotcha!".',
         context: 'Using it signals you were joking all along, usually with a smug grin.',
@@ -210,6 +244,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: "Michael Scott's awkward joke",
+        gist: 'That sounded like an innuendo.',
+        reply: 'Okay, Michael Scott.',
+        socialMove: "They're turning an innocent sentence into a dirty joke on purpose.",
         summary:
           'The boss in The Office keeps turning innocent sentences into innuendo by adding this line.',
         context:
@@ -218,6 +255,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
       },
       {
         label: 'An older joke format',
+        gist: 'An innuendo joke much older than The Office.',
+        reply: 'I walked right into that one.',
+        socialMove: 'Same move: pointing out an accidental double meaning.',
         summary:
           'The line is an old innuendo joke that existed before the show; The Office popularised it for a new generation.',
         context:
@@ -238,6 +278,10 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'A family motto turned warning',
+        gist: 'Hard times are on the way.',
+        reply: "Then I'd better find my fur cloak.",
+        socialMove:
+          "They're being dramatic about something unpleasant coming up, like exams or a deadline.",
         summary:
           'The grim motto of the Stark family: always prepare, because hard times are on the way.',
         context:
@@ -258,6 +302,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Calm denial in a crisis',
+        gist: "Everything is falling apart and I'm pretending it isn't.",
+        reply: "Totally fine. The room's only a little bit on fire.",
+        socialMove: "They're joking that they're overwhelmed but carrying on anyway.",
         summary:
           'A cartoon dog sips coffee calmly while the room burns around it, saying "This is fine."',
         context:
@@ -278,6 +325,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Tempted by something new',
+        gist: 'Ignoring what you have for something shinier.',
+        reply: 'Classic distracted boyfriend.',
+        socialMove: "They're joking about being tempted away from a commitment.",
         summary:
           'A stock photo of a man turning to look at a passer-by while his partner glares at him.',
         context:
@@ -299,6 +349,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'A self-calming mantra',
+        gist: 'Everything will be okay; calm down.',
+        reply: 'All izz well, Rancho.',
+        socialMove: "They're calming themselves, or you, before something stressful.",
         summary:
           'A phrase a student repeats while patting his chest to calm himself when things get scary.',
         context:
@@ -319,6 +372,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'Sending in your champion',
+        gist: 'I pick you for this job.',
+        reply: 'Fine, I accept the mission.',
+        socialMove: "They're sending someone in, playfully, as if it's a Pokémon battle.",
         summary:
           'What a trainer shouts when sending a creature into battle — most famously Ash sending out Pikachu.',
         context: 'People say it jokingly when picking someone for a task or picking an item.',
@@ -339,6 +395,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: 'A dismissive comeback',
+        gist: "You're out of touch, and I'm not going to argue.",
+        reply: 'Wow, okay. Rude.',
+        socialMove: "They're brushing off an older person's opinion, sometimes rudely.",
         summary:
           'A short reply younger people use when an older person sounds condescending or out of touch.',
         context:
@@ -359,6 +418,9 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     interpretations: [
       {
         label: "A villain's world-changing gesture",
+        gist: 'Make something vanish instantly.',
+        reply: 'If only we had the gauntlet.',
+        socialMove: "They're wishing a problem away with one click of the fingers.",
         summary:
           'In the Avengers films, the villain Thanos plans to wipe out half of all life with a snap of his fingers.',
         context:
@@ -367,6 +429,10 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
       },
       {
         label: 'What happens after the snap',
+        gist: 'Disappearing into dust, as a joke.',
+        reply: "Don't you dare turn to dust on me.",
+        socialMove:
+          "They're jokingly fading away to escape a situation. It's from the Avengers films (2018–2019): save the scene until you've seen it.",
         summary:
           'The snap actually happens: half of all living things — including many heroes — turn to dust.',
         context:
@@ -405,6 +471,9 @@ export function buildSeed(): SeedData {
       id: `${def.id}.${index + 1}`,
       referenceId: def.id,
       label: item.label,
+      gist: item.gist,
+      socialMove: item.socialMove,
+      reply: item.reply,
       summary: item.summary,
       context: item.context,
       usageExample: item.usageExample,

@@ -37,6 +37,32 @@ async function withCached(...candidates: RetrievedCandidate[]) {
 
 const pageOf = (id: string) => `/references/${encodeURIComponent(id)}`;
 
+describe('reference page: glance card', () => {
+  it('opens a built-in entry with what it means, the social move and a line to say', async () => {
+    renderApp(pageOf('doh-simpsons'));
+    const glance = await screen.findByRole('region', { name: 'At a glance' });
+    expect(within(glance).getByText('Ugh, I just did something stupid.')).toBeInTheDocument();
+    expect(within(glance).getByText("They're laughing at their own mistake.")).toBeInTheDocument();
+    expect(within(glance).getByText(/D'oh indeed/)).toBeInTheDocument();
+    // The usage example is a situation, not a reply: it stays with the full meaning below.
+    expect(within(glance).queryByText(/locked your keys in the car/)).not.toBeInTheDocument();
+  });
+
+  it('keeps a spoiler-gated meaning safe at a glance', async () => {
+    renderApp(pageOf('king-of-the-world-titanic'));
+    const glance = await screen.findByRole('region', { name: 'At a glance' });
+    // The first meaning leads; the door debate's spoiler stays behind its own reveal below.
+    expect(within(glance).getByText('I feel on top of everything right now.')).toBeInTheDocument();
+    expect(within(glance).queryByText(/door/)).not.toBeInTheDocument();
+  });
+
+  it('has no glance card for an entry found online: nothing is made up from the article', async () => {
+    renderApp(pageOf(matrix.id), await withCached(matrix));
+    await screen.findByRole('heading', { name: 'Explained from sources' });
+    expect(screen.queryByRole('region', { name: 'At a glance' })).not.toBeInTheDocument();
+  });
+});
+
 describe('reference page: curated from sources', () => {
   it('shows the templated meaning with its citations, then the quoted sources', async () => {
     renderApp(pageOf(matrix.id), await withCached(matrix));

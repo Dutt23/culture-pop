@@ -1,10 +1,7 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, type ReactNode } from 'react';
 import type { Observable } from 'rxjs';
-import { browserHttpDependencies, createGetJson } from '../services/retrieval/http';
-import { retrieve$ } from '../services/retrieval/retrieve';
-import { withSessionCache } from '../services/retrieval/sessionCache';
 import type { RetrievalResult } from '../services/retrieval/types';
-import { createWebSearch, type WebSearchClient } from '../services/retrieval/webSearch';
+import type { WebSearchClient } from '../services/retrieval/webSearch';
 
 export interface RetrievalService {
   /**
@@ -18,32 +15,19 @@ export interface RetrievalService {
   webSearch: WebSearchClient;
 }
 
-const SEARCH_DEBOUNCE_MS = 500;
-
-export function createRetrievalService(): RetrievalService {
-  const getJson = createGetJson(browserHttpDependencies);
-  return {
-    retrieve$: withSessionCache((query) =>
-      retrieve$(query, { getJson, now: () => new Date().toISOString() }),
-    ),
-    debounceMs: SEARCH_DEBOUNCE_MS,
-    webSearch: createWebSearch(browserHttpDependencies),
-  };
-}
-
-const RetrievalContext = createContext<RetrievalService | null>(null);
+/**
+ * Types and the context only: the live service is built by `useRetrievalService`
+ * (`retrievalService.ts`), which only the screens loaded on demand import, so online-search code
+ * stays out of the first load (Phase 5 step 2). Null means "use the live service".
+ */
+export const RetrievalContext = createContext<RetrievalService | null>(null);
 
 interface RetrievalProviderProps {
-  service: RetrievalService;
+  /** Injected in tests; left out, the screens build the live service on first use. */
+  service?: RetrievalService;
   children: ReactNode;
 }
 
 export function RetrievalProvider({ service, children }: RetrievalProviderProps) {
-  return <RetrievalContext.Provider value={service}>{children}</RetrievalContext.Provider>;
-}
-
-export function useRetrievalService(): RetrievalService {
-  const service = useContext(RetrievalContext);
-  if (!service) throw new Error('useRetrievalService must be used inside RetrievalProvider');
-  return service;
+  return <RetrievalContext.Provider value={service ?? null}>{children}</RetrievalContext.Provider>;
 }

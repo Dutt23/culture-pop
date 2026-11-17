@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router';
 import { classNames } from '../components/ui/classNames';
-import { CompassIcon, HeartIcon, SearchIcon, SettingsIcon } from '../components/ui/icons';
+import {
+  CompassIcon,
+  FolderIcon,
+  HeartIcon,
+  SearchIcon,
+  SettingsIcon,
+} from '../components/ui/icons';
 import styles from './AppShell.module.css';
 import { useOnlineStatus } from './useOnlineStatus';
 
@@ -9,6 +15,7 @@ const NAV_ITEMS = [
   { to: '/discover', label: 'Discover', Icon: CompassIcon },
   { to: '/search', label: 'Search', Icon: SearchIcon },
   { to: '/favourites', label: 'Favourites', Icon: HeartIcon },
+  { to: '/packs', label: 'Packs', Icon: FolderIcon },
   { to: '/settings', label: 'Settings', Icon: SettingsIcon },
 ] as const;
 

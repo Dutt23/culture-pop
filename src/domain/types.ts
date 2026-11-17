@@ -88,6 +88,12 @@ export interface Interpretation {
   id: string;
   referenceId: string;
   label: string;
+  /** Glance card: what it means when someone says it, one spoiler-free sentence. Hand-written only. */
+  gist?: string;
+  /** Glance card: what the speaker is doing with it ("joking the plan is doomed"). Hand-written only. */
+  socialMove?: string;
+  /** Glance card: a short line to say back when someone uses it. Hand-written only. */
+  reply?: string;
   summary: string;
   context: string;
   usageExample: string;
@@ -136,6 +142,34 @@ export interface SavedLink {
   title: string;
   /** ISO timestamp. */
   savedAt: string;
+}
+
+/**
+ * How much a pack's cards may give away. `before_watching` hides major spoilers when a card is
+ * opened from the pack; `open` follows the reader's spoiler setting.
+ */
+export type PackCeiling = 'before_watching' | 'open';
+
+/** A named folder of existing references. One level only: packs never nest. */
+export interface Pack {
+  id: string;
+  name: string;
+  normalizedName: string;
+  ceiling: PackCeiling;
+  /** At most one pack is the Now pack. */
+  now: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A reference filed in a pack. A join row only: the card's text is never copied. */
+export interface PackMember {
+  id: string;
+  packId: string;
+  referenceId: string;
+  /** Manual order inside the pack: dense and 0-based. */
+  position: number;
+  addedAt: string;
 }
 
 export interface Setting {

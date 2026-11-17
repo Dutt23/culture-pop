@@ -19,3 +19,33 @@
   display: grid;
   gap: var(--space-3);
 }
+
+.button {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+
+/* Opened from a "before you watch" pack: what the page is holding back, and the way past it. */
+.ceiling {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Stands in for the glance card when only a spoiler-free summary was written. */
+.safeSummary {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+}

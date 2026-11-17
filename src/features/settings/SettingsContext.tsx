@@ -10,7 +10,7 @@ interface SettingsContextValue {
   /** False until stored settings have been read; until then `settings` holds defaults. */
   settingsLoaded: boolean;
   setSetting: <K extends SettingKey>(key: K, value: Settings[K]) => Promise<void>;
-  /** Clears favourites, settings, search history and cached online results. Curated content is untouched. */
+  /** Clears favourites, packs, settings, search history and cached online results. Curated content stays. */
   resetLocalData: () => Promise<void>;
   /** "Not now" on the online-search prompt: lasts until the app is reloaded, never stored. */
   onlineSearchSkipped: boolean;

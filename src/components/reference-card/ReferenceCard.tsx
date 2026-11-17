@@ -4,6 +4,7 @@ import type { Reference } from '../../domain/types';
 import { FavouriteButton } from '../favourite-button/FavouriteButton';
 import { classNames } from '../ui/classNames';
 import styles from './ReferenceCard.module.css';
+import { rememberOpenPack } from './openPack';
 
 export type ReferenceCardVariant = 'compact' | 'feature';
 
@@ -25,6 +26,8 @@ interface ReferenceCardProps {
   onOpen?: () => void;
   /** Adds a heart that favourites the reference without opening it. */
   favourite?: ReferenceCardFavourite;
+  /** Opened from this pack: the pack's spoiler ceiling applies on the reference page. */
+  packId?: string;
 }
 
 /** Static card; entrance motion belongs to the list item or stage that hosts it. */
@@ -37,13 +40,20 @@ export function ReferenceCard({
   pending = false,
   onOpen,
   favourite,
+  packId,
 }: ReferenceCardProps) {
   const works = fromWorks(reference);
   const card = (
     <Link
       to={`/references/${encodeURIComponent(reference.id)}`}
       className={classNames(styles.card, styles[variant], favourite && styles.hasFavourite)}
-      onClick={onOpen}
+      // Always set, so Back to a card opened elsewhere never falls back to the stored pack.
+      state={{ packId: packId ?? null }}
+      onClick={() => {
+        // Opened from anywhere but a pack, the last pack's ceiling no longer applies.
+        rememberOpenPack(packId);
+        onOpen?.();
+      }}
     >
       <span className={styles.meta}>
         {pending ? (
@@ -80,19 +90,22 @@ export function ReferenceCard({
       </span>
     </Link>
   );
-  if (!favourite) return card;
+  // Always the same wrapper, so a heart arriving later (online results once saved) adds a button
+  // instead of replacing the link: the card keeps its place and any keyboard focus.
   return (
     <div className={styles.wrapper}>
       {card}
       {/* A sibling of the link, never inside it: a link can't contain a button. */}
-      <div className={styles.favourite}>
-        <FavouriteButton
-          iconOnly
-          label={`Favourite ${reference.title}`}
-          isFavourite={favourite.isFavourite}
-          onToggle={favourite.onToggle}
-        />
-      </div>
+      {favourite && (
+        <div className={styles.favourite}>
+          <FavouriteButton
+            iconOnly
+            label={`Favourite ${reference.title}`}
+            isFavourite={favourite.isFavourite}
+            onToggle={favourite.onToggle}
+          />
+        </div>
+      )}
     </div>
   );
 }

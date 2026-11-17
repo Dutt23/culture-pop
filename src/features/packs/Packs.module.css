@@ -1,0 +1,268 @@
+.list,
+.groups,
+.stack {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.groups {
+  gap: var(--space-6);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Rename: field and button share a line, wrapping on the narrowest phones. */
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inline .textInput {
+  flex: 1 1 12rem;
+}
+
+.label {
+  font-weight: var(--weight-bold);
+}
+
+.inline .label {
+  flex-basis: 100%;
+}
+
+.textInput {
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button,
+.primary,
+.danger,
+.sheetButton {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.button:active,
+.primary:active,
+.sheetButton:active {
+  transform: scale(var(--motion-scale));
+}
+
+.button[aria-disabled='true'],
+.sheetButton:disabled {
+  opacity: 0.5;
+}
+
+.button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.primary {
+  justify-self: start;
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: var(--weight-bold);
+}
+
+.danger {
+  border-color: var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.muted {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.more {
+  justify-self: start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-accent);
+}
+
+/* Search: the same pill field as the Search page, with nothing to submit. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(var(--tap-min) + var(--space-3));
+  padding: var(--space-1) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-muted);
+}
+
+.field:focus-within {
+  border-color: var(--color-accent);
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--tap-min);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.packRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.packLink {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: var(--tap-min);
+  align-content: center;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.packName {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.nowChip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+/* A dragged card is over this pack or this place in it. */
+.dropOver {
+  outline: var(--focus-ring-width) dashed var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.groupHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.groupHeader .packName {
+  color: var(--color-accent);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chipsLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The filing sheet opens in place under its card, so it needs no overlay and no focus trap. */
+.sheet {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.sheet:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.sheetTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+
+.sheetList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sheetButton {
+  width: 100%;
+  border-radius: var(--radius-md);
+  text-align: start;
+  overflow-wrap: anywhere;
+}

@@ -5,6 +5,8 @@ import type {
   Alias,
   Favourite,
   Interpretation,
+  Pack,
+  PackMember,
   Reference,
   SavedLink,
   Setting,
@@ -25,6 +27,8 @@ export type PopCultureDb = Dexie & {
   searchHistory: EntityTable<HistoryEntry, 'id'>;
   webResults: EntityTable<SavedWebResults, 'key'>;
   savedLinks: EntityTable<SavedLink, 'url'>;
+  packs: EntityTable<Pack, 'id'>;
+  packMembers: EntityTable<PackMember, 'id'>;
 };
 
 /** Shipped schema v1. Exported so upgrade tests can create a genuine v1 database. */
@@ -68,6 +72,16 @@ export const SCHEMA_V5_CHANGES = {
  */
 export const SCHEMA_V6_CHANGES = {
   savedLinks: 'url, savedAt',
+} as const;
+
+/**
+ * v8 changes: packs, the reader's named folders of existing references, and their member rows.
+ * `&[packId+referenceId]` files a reference at most once per pack; `[packId+position]` serves the
+ * manual order. Booleans aren't valid IndexedDB keys, so `now` is never queried through its index.
+ */
+export const SCHEMA_V8_CHANGES = {
+  packs: 'id, normalizedName, now, updatedAt',
+  packMembers: 'id, packId, referenceId, [packId+position], &[packId+referenceId]',
 } as const;
 
 /**
@@ -132,6 +146,21 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
 
   // v6: a new, empty store for saved wider-web links. Nothing to move.
   db.version(6).stores(SCHEMA_V6_CHANGES);
+
+  // v7 (Phase 5): built-in entries gain the glance-card lines (`gist`, `socialMove`). Built-in rows
+  // are the app's own, so they are replaced from the current seed; nothing the reader made is
+  // touched. A later batch of built-in cards ships the same way, with its own version.
+  db.version(7)
+    .stores({})
+    .upgrade(async (tx) => {
+      const seed = buildSeed();
+      await tx.table('references').bulkPut(seed.references);
+      await tx.table('interpretations').bulkPut(seed.interpretations);
+      await tx.table('aliases').bulkPut(seed.aliases);
+    });
+
+  // v8: new, empty stores for packs and their member rows. Nothing to move.
+  db.version(8).stores(SCHEMA_V8_CHANGES);
 
   db.on('populate', (tx) => {
     const seed = buildSeed();

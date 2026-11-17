@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
 const NETWORK_MESSAGE = 'Network calls belong only in src/services (spec §3); Phase 1 makes none.';
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'playwright-report', 'test-results'] },
+  { ignores: ['dist', 'dev-dist', 'playwright-report', 'test-results', '.claude'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

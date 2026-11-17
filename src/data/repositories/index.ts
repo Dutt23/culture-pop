@@ -1,5 +1,6 @@
 import type { PopCultureDb } from '../db';
 import { createFavouriteRepository, type FavouriteRepository } from './favouriteRepository';
+import { createPackRepository, type PackRepository } from './packRepository';
 import { createReferenceRepository, type ReferenceRepository } from './referenceRepository';
 import { createRetrievalRepository, type RetrievalRepository } from './retrievalRepository';
 import {
@@ -20,9 +21,11 @@ export interface Repositories {
   webResults: WebResultRepository;
   /** Web links the reader saved (title and link only); device only, never synced or sent (D46). */
   savedLinks: SavedLinkRepository;
+  /** The reader's packs of existing references and their member rows. */
+  packs: PackRepository;
   /**
-   * Clears favourites, saved web links, settings, search history (with the wider-web results kept for
-   * it) and cached online results together in one
+   * Clears favourites, packs, saved web links, settings, search history (with the wider-web results
+   * kept for it) and cached online results together in one
    * transaction. Curated reference content is untouched.
    */
   resetUserData(): Promise<void>;
@@ -40,11 +43,14 @@ export function createRepositories(db: PopCultureDb): Repositories {
     history,
     webResults: createWebResultRepository(db),
     savedLinks,
+    packs: createPackRepository(db),
     resetUserData: () =>
       db.transaction(
         'rw',
         [
           db.favourites,
+          db.packs,
+          db.packMembers,
           db.savedLinks,
           db.settings,
           db.searchHistory,
@@ -55,6 +61,8 @@ export function createRepositories(db: PopCultureDb): Repositories {
         ],
         async () => {
           await db.favourites.clear();
+          await db.packMembers.clear();
+          await db.packs.clear();
           await savedLinks.clear();
           await db.settings.clear();
           await history.clear();

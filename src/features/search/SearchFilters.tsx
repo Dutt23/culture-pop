@@ -13,6 +13,8 @@ interface SearchFiltersProps {
 
 /** Category and era chips; eras come only from sourced years or editorial labels. */
 export function SearchFilters({ categories, eras, value, onChange }: SearchFiltersProps) {
+  // An empty box would still take a row, and the page's gap on both sides of it.
+  if (categories.length < 2 && eras.length < 2) return null;
   return (
     <div className={styles.filters}>
       {categories.length > 1 && (

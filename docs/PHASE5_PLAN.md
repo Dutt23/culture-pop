@@ -1,38 +1,110 @@
-# Phase 5 plan: polish and release (started 2026-11-16; full plan to follow)
+# Phase 5 plan: measured polish and release (owner approved 2026-11-17)
 
-Spec §5 Phase 5: _refine visual identity, mobile layout, animations, offline/online transitions,
-accessibility, error recovery, cache metrics, import/export, PWA installation and documentation.
-Profile before optimising; no unsupported performance claims._ Final gate: lint, strict typecheck,
-unit/integration, production build, Playwright mobile and desktop, offline/online, citations,
-disambiguation, persistence/migrations, backup validity, spoilers, reduced motion, accessibility,
-installability; README, architecture, source/licence inventory, model benchmark/fallback, test
-results, deployment steps, honest limitations. **STOP for final owner review.**
+Spec §5 Phase 5: _refine visual identity, mobile layout, animations, optional signature
+dust/scatter/morph effects, offline/online transitions, accessibility, error recovery, cache
+metrics, import/export, PWA installation and documentation. Profile before optimising: bundle size,
+render smoothness, memory, battery, model download footprint and storage. LRU only if measured need
+warrants it; never evict favourites silently. No unsupported performance claims._
 
-This file starts with what the owner has already asked for. The full plan is written after a review
-of the current state and goes to the owner for approval before building.
+Final gate: lint, strict typecheck, unit/integration, production build, Playwright mobile **and
+desktop**, offline/online, citations, disambiguation, persistence/migrations, backup validity,
+spoilers, reduced motion, accessibility, installability. Deliver README, architecture,
+source/licence inventory, model benchmark/fallback, test results, deployment steps, honest
+limitations. **STOP for final owner review.**
 
-## Agreed so far
+## Already agreed
 
-1. **Polish the UI and make it faster** (owner, 2026-11-16). Measure first (load, smoothness,
-   memory), then change; claims only from measurements. Starting point: first load 534 KB, gzip
-   176 KB (D48).
-2. **"Linked to N in your library"** (owner, 2026-11-16, from `docs/research/related-graph-ui.md`):
-   an honest "important" highlight from the reader's own library (how many saved references connect
-   to it through shared works or creators, plus favourites). Works offline; never labelled "popular"
-   or "trending". About half a day.
-   - Not now: a graph view (the demo library has no links to draw; revisit as the library grows,
-     as a small no-library SVG view on the unfolded screen); Wikidata language count (optional,
-     about a day; biased to Western, older topics); Wikipedia page views (not worth it).
+1. **Polish the UI and make it faster** (owner, 2026-11-16). Measure first, change second, claim
+   only what was measured. Starting point: first load 534 KB, gzip 176 KB (D48).
+2. **"Linked to N in your library"** (owner, 2026-11-16, `docs/research/related-graph-ui.md`).
 3. **Install and offline on the phone** (owner, Phase 3 sign-off): checked on the vivo once deployed.
+4. **Parked, not in this phase:** "Explain with AI", the photo/meme explainer, YouTube results, a
+   graph view. They need an owner decision against the spec's "no hosted inference" or more library
+   links first. The README lists them under limitations.
 
-## Also from the spec (to plan)
+## What exists today (checked 2026-11-17)
 
-- Import/export backup of favourites, saved links and settings, with a validity check.
-- Accessibility pass (keyboard, screen reader names, contrast, reduced motion), desktop Playwright.
-- README, architecture, source and licence inventory, deployment steps, honest limitations.
-- Cache metrics shown to the reader; LRU eviction only if measured need, never evicting favourites.
+- Playwright runs two **mobile** projects (360 and 390 wide); **no desktop project**.
+- **No backup export/import.**
+- **No storage or cache numbers** for the reader; Settings only clears or resets.
+- Docs: `README.md`, `SOURCE_INVENTORY.md`, `BACKEND_PLAN.md`, `SEARCH_RANKING.md`, eval reports,
+  an LLM bench. **No `ARCHITECTURE.md`**; the README predates Phases 3 and 4.
+- The on-device model is off (not good enough on a phone, D47 bench); only its bench and the
+  "off" fallback need documenting.
+- Online/offline is detected (`useOnlineStatus`), but going offline or coming back mid-search has
+  no clear on-screen change beyond per-section notes.
 
-## Ideas parked (need an owner decision against the spec's "no hosted inference")
+## Re-planned 2026-11-17 (owner agreed): the product slice comes first
 
-- "Explain with AI" on wider-web results; photo/meme explainer (server vision AI, ~$0.0001–0.0002
-  per photo).
+A product review (pasted by the owner, 2026-11-17) pointed at the real moment of use: someone drops
+a line in conversation, the reader has about ten seconds, and needs enough to stay in the joke. A
+Wikipedia-style card doesn't do that. Checked against the code: the interpretation fields for it
+already exist (`summary`, `context`, `usageExample`), but the curator writes `usageExample: ''`
+(`src/services/curation/curate.ts`), so everything found online has no line to say back; only the 16
+demo entries have one. There is no share-from-WhatsApp entry. The owner agreed to make this the
+main body of Phase 5.
+
+**Done before the re-plan:** step 1 measure and step 2 speed (`docs/eval/perf-baseline-2026-11.md`);
+a first batch of search polish (empty gap under "0 matches", meme links no longer listed twice,
+shorter "Search online?" card that says the library had nothing, outside links hidden offline with
+one clear note, offline empty-state wording).
+
+### Steps, in order
+
+1. **Glance card (½ day).** The first screen of a reference is four lines: the line heard, what it
+   means (one sentence), the social move ("they're joking the plan is doomed"), and one line to say
+   back. Year, story, sources sit behind "More". Spoiler-safe by default (step 3).
+2. **"You'll hear this" pack, ~100 hand-written cards (2–3 days).** Lines this circle still quotes:
+   Disney and Pixar, spoiler-safe Marvel and Harry Potter, The Office and Friends, 2012–2020 memes,
+   Indian films and forwards (3 Idiots, Sholay, DDLJ, WhatsApp jokes). Each card has the four glance
+   lines and a real usage line, marked as curated the way demo entries are now. Drafted in batches of
+   about 30; **the owner checks each batch before it ships**.
+3. **Safe-before-watching as the answer (½ day, with the pack).** For spoiler-heavy lines (the snap,
+   the Titanic door) the default answer is how people use it and where it's from, with "save the
+   scene until you've seen it"; the spoiler stays behind the existing veil.
+4. **Paste the whole message, and share from WhatsApp (1 day).** Search accepts a sentence ("this is
+   such a red pill moment") and finds the known line inside it by matching the library's phrases and
+   aliases, no AI. The installed app registers as a share target (Android PWA Web Share Target), so
+   WhatsApp's Share sends text straight in.
+5. **Packs, not a pin-five list.** Replaced by `docs/PACKS_REQUIREMENT.md`: folders of cards, search inside one folder or across all folders, no web. Do not also build a five-pin list.
+6. **"I get this now" (¼ day).** Mark a pack card done so it leaves the pack. No score, no streak,
+   no count.
+7. **Same-world chips (½ day).** Three chips at the top of a reference from the Phase 4 groups
+   ("Also in The Matrix": red pill, there is no spoon, glitch).
+8. **Kept from the first plan:** the rest of the phone polish (cards, selection style, settings
+   text, loading slots), "Linked to N in your library" (only if still useful after 7), backup
+   export/import, accessibility pass, one small signature effect, docs, the owner's phone check,
+   final gate.
+
+**Dropped or paused:** desktop layout work (the reader is on a phone; desktop only has to not
+break); type tags and the taste lean (owner restarted that session, 2026-11-17; it plans first and
+waits, and is lower value once the pack exists); "Linked to N" is now optional.
+
+Leave alone (the review agrees): the on-device model, the wider-web button, streaming lookups.
+
+## Owner answers (2026-11-17)
+
+- **A:** asked whether a new look is needed; answer given: no, refining is enough (the app's look
+  is consistent and themed; the gaps are spacing, loading and empty states, offline cues). Refine.
+- **B:** favourites with their references, saved links and settings; history only if ticked.
+- **C:** one small effect, built last, dropped if it stutters on the phone.
+- **D:** run the experiment in its own session so Phase 5 isn't blocked (started 2026-11-17,
+  session "Experiment: HF query classifier vs rules"; report lands in
+  `docs/eval/query-classifier-2026-11.md`).
+
+## Decisions for the owner (as asked)
+
+- **A. Visual identity.** Refine the current look (spacing, type, cards, states), or a new identity
+  (new colours, type and illustration style)? Recommended: refine. A new identity is a design
+  project of its own.
+- **B. What a backup holds.** Recommended: favourites with the references they point to (so an
+  imported favourite of an online-found reference still opens), saved web links, and settings.
+  Search history only if you tick "Include search history" when exporting; off by default.
+- **C. Signature effect.** None, or one small cancellable effect (for example, a card that scatters
+  into dust when removed from favourites, off with reduced motion). Recommended: one, built last,
+  dropped if it costs smoothness on the phone.
+- **D. Hugging Face query classifier.** Research (2026-11-17) found no model that tells fiction from
+  real history; the smallest thing worth trying is a 23 MB English embedding model
+  (`Xenova/all-MiniLM-L6-v2`) as a backup for queries the rules can't sort, with no help for memes,
+  quotes or Hinglish. Recommended: not in Phase 5. If wanted, an experiment first: 100 labelled
+  queries from real searches, rules vs model, ship only if it clearly wins.

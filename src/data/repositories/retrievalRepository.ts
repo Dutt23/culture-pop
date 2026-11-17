@@ -1,3 +1,4 @@
+import { groupBy } from '../../domain/collections';
 import { isFromOnline, type Source } from '../../domain/types';
 import { candidateToReference } from '../../services/retrieval/toReference';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
@@ -13,7 +14,10 @@ export interface RetrievalRepository {
    */
   saveCandidates(candidates: readonly LibraryCandidate<RetrievedCandidate>[]): Promise<void>;
   getSources(ids: readonly string[]): Promise<Source[]>;
-  /** Deletes every online result (explained or not) and every source curated content doesn't cite. */
+  /**
+   * Deletes every online result (explained or not), any pack member rows that filed one, and every
+   * source curated content doesn't cite.
+   */
   clear(): Promise<void>;
 }
 
@@ -106,25 +110,46 @@ export function createRetrievalRepository(db: PopCultureDb): RetrievalRepository
       return rows.filter((row): row is Source => row !== undefined);
     },
     clear: () =>
-      db.transaction('rw', db.references, db.interpretations, db.sources, async () => {
-        const references = await db.references.toArray();
-        const online = references.filter((r) => isFromOnline(r.editorialState));
-        const onlineIds = new Set(online.map((r) => r.id));
-        const kept = references.filter((r) => !onlineIds.has(r.id));
-        const interpretations = await db.interpretations.toArray();
-        const [dropped, keptInterpretations] = [
-          interpretations.filter((i) => onlineIds.has(i.referenceId)),
-          interpretations.filter((i) => !onlineIds.has(i.referenceId)),
-        ];
-        const stillCited = new Set([
-          ...kept.flatMap((r) => r.sourceIds),
-          ...keptInterpretations.flatMap((i) => i.sourceIds),
-        ]);
-        // Every uncited source goes, including ones orphaned when a later save cited fewer.
-        const sourceIds = await db.sources.toCollection().primaryKeys();
-        await db.sources.bulkDelete(sourceIds.filter((id) => !stillCited.has(id)));
-        await db.interpretations.bulkDelete(dropped.map((i) => i.id));
-        await db.references.bulkDelete([...onlineIds]);
-      }),
+      db.transaction(
+        'rw',
+        [db.references, db.interpretations, db.sources, db.packMembers],
+        async () => {
+          const references = await db.references.toArray();
+          const online = references.filter((r) => isFromOnline(r.editorialState));
+          const onlineIds = new Set(online.map((r) => r.id));
+          const kept = references.filter((r) => !onlineIds.has(r.id));
+          const interpretations = await db.interpretations.toArray();
+          const [dropped, keptInterpretations] = [
+            interpretations.filter((i) => onlineIds.has(i.referenceId)),
+            interpretations.filter((i) => !onlineIds.has(i.referenceId)),
+          ];
+          const stillCited = new Set([
+            ...kept.flatMap((r) => r.sourceIds),
+            ...keptInterpretations.flatMap((i) => i.sourceIds),
+          ]);
+          // Every uncited source goes, including ones orphaned when a later save cited fewer.
+          const sourceIds = await db.sources.toCollection().primaryKeys();
+          await db.sources.bulkDelete(sourceIds.filter((id) => !stillCited.has(id)));
+          await db.interpretations.bulkDelete(dropped.map((i) => i.id));
+          // A deleted reference leaves no pack member behind, and no gap in its packs' order.
+          const unfiled = await db.packMembers
+            .where('referenceId')
+            .anyOf([...onlineIds])
+            .toArray();
+          await db.packMembers.bulkDelete(unfiled.map((m) => m.id));
+          const left = await db.packMembers
+            .where('packId')
+            .anyOf([...new Set(unfiled.map((m) => m.packId))])
+            .toArray();
+          await db.packMembers.bulkPut(
+            [...groupBy(left, (m) => m.packId).values()].flatMap((rows) =>
+              [...rows]
+                .sort((a, b) => a.position - b.position)
+                .map((row, position) => ({ ...row, position })),
+            ),
+          );
+          await db.references.bulkDelete([...onlineIds]);
+        },
+      ),
   };
 }

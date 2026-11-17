@@ -98,9 +98,9 @@ function OnlineStatus(props: OnlineResultsProps) {
 
   if (!isOnline) {
     return (
+      // The app-wide banner already says what still works; this adds only what online search does.
       <p className={styles.note} role="status">
-        You're offline, so only what's saved on this device is shown. Online search will run when
-        you're back.
+        Online search will run when you&rsquo;re back online.
       </p>
     );
   }
@@ -112,12 +112,9 @@ function OnlineStatus(props: OnlineResultsProps) {
           Search online?
         </h2>
         <p>
-          To find references that aren't in your library, your search text is sent to public online
-          reference sites. Nothing else is sent. What they find is kept on this device until you
-          clear it in Settings.
-        </p>
-        <p>
-          Your search history stays on this device too; you can turn it off or clear it in Settings.
+          Nothing in your library for &ldquo;{props.query.trim()}&rdquo; yet. Your search text goes
+          to public reference sites (Wikipedia and friends, TVmaze). Nothing else is sent, and what
+          they find stays on this device. <Link to="/settings">Settings</Link>
         </p>
         <div className={styles.actions}>
           <button type="button" className={styles.primary} onClick={props.onAllow}>
