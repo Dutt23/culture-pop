@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { SkeletonCards } from '../../components/ui/SkeletonCards';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { UndoNotice } from '../../components/ui/UndoNotice';
@@ -78,9 +79,10 @@ function PackView({ packId }: { packId: string }) {
 
   if (pack === undefined || cards === undefined) {
     return (
-      <p className={styles.muted} role="status">
-        Loading…
-      </p>
+      <div role="status">
+        <span className="sr-only">Loading…</span>
+        <SkeletonCards count={2} />
+      </div>
     );
   }
 

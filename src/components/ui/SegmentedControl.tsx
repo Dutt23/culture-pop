@@ -7,6 +7,8 @@ export interface SegmentedOption<T extends string> {
 
 interface SegmentedControlProps<T extends string> {
   legend: string;
+  /** For a control right under a heading that already says what it is: read, not shown. */
+  hideLegend?: boolean;
   name: string;
   options: readonly SegmentedOption<T>[];
   value: T;
@@ -15,6 +17,7 @@ interface SegmentedControlProps<T extends string> {
 
 export function SegmentedControl<T extends string>({
   legend,
+  hideLegend = false,
   name,
   options,
   value,
@@ -22,7 +25,7 @@ export function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
   return (
     <fieldset className={styles.group}>
-      <legend className={styles.legend}>{legend}</legend>
+      <legend className={hideLegend ? 'sr-only' : styles.legend}>{legend}</legend>
       <div className={styles.options}>
         {options.map((option) => (
           <label key={option.value} className={styles.option}>

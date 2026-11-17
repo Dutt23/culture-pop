@@ -46,9 +46,8 @@
 }
 
 .input:checked + .text {
-  background: var(--color-surface);
-  color: var(--color-accent);
-  box-shadow: var(--shadow-card);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
 }
 
 .input:focus-visible + .text {

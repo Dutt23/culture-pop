@@ -9,12 +9,17 @@
   align-items: center;
   min-height: var(--tap-min);
   padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-pill);
-  background: var(--color-warm-soft);
+  background: transparent;
   color: var(--color-text);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   text-decoration: none;
+}
+
+.link:hover {
+  border-color: var(--color-warm);
 }
 
 .link::after {

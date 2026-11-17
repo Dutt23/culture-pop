@@ -9,6 +9,7 @@ import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { SourceList } from '../../components/source-list/SourceList';
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { SkeletonCards } from '../../components/ui/SkeletonCards';
 import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
@@ -50,9 +51,10 @@ export function ReferencePage() {
   // Until memberships load the ceiling is unknown; showing the page could flash a spoiler.
   if (detail === undefined || (openPackId !== null && inPacks === undefined)) {
     return (
-      <p className={styles.loading} role="status">
-        Loading…
-      </p>
+      <div role="status">
+        <span className="sr-only">Loading…</span>
+        <SkeletonCards count={2} />
+      </div>
     );
   }
 

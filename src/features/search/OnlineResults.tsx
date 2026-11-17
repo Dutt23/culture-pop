@@ -6,6 +6,7 @@ import {
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { Section } from '../../components/ui/Section';
+import { SkeletonCards } from '../../components/ui/SkeletonCards';
 import { savedOn } from '../../domain/dates';
 import type { RetrievalPreference } from '../../domain/settings';
 import { PUBLISHER } from '../../domain/sources';
@@ -52,6 +53,7 @@ const FAILURE_TEXT: Record<RetrievalFailure, string> = {
 };
 
 const ALL_PROVIDERS = listOf(Object.values(PROVIDER_NAME));
+const SKELETON_COUNT = 3;
 
 interface OnlineResultsProps {
   /** The search text, for the community search links. */
@@ -145,20 +147,30 @@ function OnlineStatus(props: OnlineResultsProps) {
     );
   }
 
+  // One fixed-height slot for the progress line while the lookup runs, so its wording can change
+  // and empty out without moving the page; card shapes hold the place of results not yet shown.
   if (state.status === 'loading') {
     return (
-      <p className={styles.note} role="status" aria-busy="true">
-        Searching {ALL_PROVIDERS}…
-      </p>
+      <>
+        <p className={styles.status} role="status" aria-busy="true">
+          Searching {ALL_PROVIDERS}…
+        </p>
+        <SkeletonCards count={SKELETON_COUNT} />
+      </>
     );
   }
   if (state.status === 'partial') {
     const pending = pendingProviders(state.result);
-    return pending.length > 0 ? (
-      <p className={styles.note} role="status" aria-busy="true">
-        Still searching {listOf(pending)}…
-      </p>
-    ) : null;
+    return (
+      <>
+        <p className={styles.status} role="status" aria-busy={pending.length > 0}>
+          {pending.length > 0 && <>Still searching {listOf(pending)}…</>}
+        </p>
+        {pending.length > 0 && props.candidates.length === 0 && (
+          <SkeletonCards count={SKELETON_COUNT} />
+        )}
+      </>
+    );
   }
   if (state.status === 'error') {
     return (
@@ -269,7 +281,6 @@ export function OnlineResults(props: OnlineResultsProps) {
   return (
     <div className={styles.online}>
       {showCommunity && <CommunityLinks query={query} />}
-      <OnlineStatus {...props} />
 
       {showFresh && (
         <Section
@@ -325,9 +336,9 @@ export function OnlineResults(props: OnlineResultsProps) {
           )}
           <div aria-live="polite">
             {props.newCount > 0 && (
-              <button type="button" className={styles.secondary} onClick={props.onShowNew}>
-                {props.newCount === 1 ? '1 new result' : `${props.newCount} new results`}
-                {props.newLead && <>, including &ldquo;{props.newLead}&rdquo;</>}, tap to show
+              <button type="button" className={styles.showNew} onClick={props.onShowNew}>
+                Show {props.newCount === 1 ? '1 new result' : `${props.newCount} new results`}
+                {props.newLead && <>, including &ldquo;{props.newLead}&rdquo;</>}
               </button>
             )}
           </div>
@@ -336,6 +347,9 @@ export function OnlineResults(props: OnlineResultsProps) {
           )}
         </Section>
       )}
+
+      {/* Below the fresh results: when the lookup ends and its line goes, nothing above moves. */}
+      <OnlineStatus {...props} />
 
       <SavedOnlineResults saved={saved} onOpen={props.onOpen} favouriteOf={props.favouriteOf} />
     </div>

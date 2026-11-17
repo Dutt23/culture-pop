@@ -51,6 +51,10 @@
     100% repeat-x;
 }
 
+.feature.hasFavourite::before {
+  inset-inline-end: calc(var(--tap-min) + var(--space-4));
+}
+
 /* With a heart: the card's own wrapper anchors it, and the card leaves room so text stays clear. */
 /* A grid, so the card fills the whole slot: cards side by side end at the same height. */
 .wrapper {

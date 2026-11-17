@@ -40,9 +40,12 @@
   grid-auto-columns: min(var(--size-card-row), 80%);
   gap: var(--space-3);
   overflow-x: auto;
-  padding: var(--space-1) var(--space-1) var(--space-3);
+  /* Even padding wide enough for the focus ring, pulled back out so cards line up with headings.
+     No scrollbar: the next card peeking in shows the shelf scrolls. */
+  margin-inline: calc(-1 * var(--space-2));
+  padding: var(--space-2);
   scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 
 .rowItem {

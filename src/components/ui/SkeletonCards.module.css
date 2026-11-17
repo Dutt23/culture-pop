@@ -1,0 +1,35 @@
+.list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 6rem;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  /* Paused with reduced motion, through the shared ambient switch. */
+  animation: pulse 1.6s ease-in-out infinite;
+  animation-play-state: var(--motion-ambient-state);
+}
+
+.line {
+  block-size: var(--space-3);
+  inline-size: 70%;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.short {
+  inline-size: 40%;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
