@@ -69,6 +69,8 @@ interface WiderWebSearchProps {
   onAccess: (unlocked: boolean) => void;
   /** A question leans to stories and myths ("Stories & myths"). */
   stories: boolean;
+  /** The reader's "on" search tags, sent as a hint ("about anime"); never the search text. */
+  about?: readonly string[];
   /**
    * False once this search finished on this page, or while the online lookup may still answer it:
    * the block moves when results arrive, and a remount must not pay for the same search twice.
@@ -132,7 +134,10 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
     controller.current = current;
     setPhase({ kind: 'loading' });
     try {
-      const results = await webSearch.search(query, current.signal, stories);
+      // Without tags the call is exactly what it was before tags existed.
+      const results = await (props.about
+        ? webSearch.search(query, current.signal, stories, props.about)
+        : webSearch.search(query, current.signal, stories));
       if (current.signal.aborted) return;
       onSearched();
       setPhase({ kind: 'done', results });

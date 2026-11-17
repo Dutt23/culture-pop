@@ -1,4 +1,5 @@
 export type Category =
+  | 'anime'
   | 'cartoon'
   | 'comics'
   | 'games'

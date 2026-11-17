@@ -116,6 +116,7 @@ describe('browse by type', () => {
 
   it('lists the browsable categories with nothing in them, in canonical order, never "other"', () => {
     expect(emptyCategories(refs)).toEqual([
+      'anime',
       'games',
       'film',
       'tv',
@@ -230,6 +231,18 @@ describe('parseSettings', () => {
 
   it('defaults to spoiler-free', () => {
     expect(parseSettings([]).spoilers).toBe('hide');
+  });
+
+  it('leans to taste by default, reads Off, and ignores an invalid value', () => {
+    expect(parseSettings([]).taste).toBe('on');
+    expect(parseSettings([{ key: 'taste', value: 'off' }]).taste).toBe('off');
+    expect(parseSettings([{ key: 'taste', value: 'maybe' }]).taste).toBe('on');
+  });
+
+  it('never reads the stored search tags row as a setting', () => {
+    expect(parseSettings([{ key: 'searchTags', value: '{"types":["anime"]}' }])).toEqual(
+      DEFAULT_SETTINGS,
+    );
   });
 });
 

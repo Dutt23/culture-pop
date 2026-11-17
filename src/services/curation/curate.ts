@@ -49,6 +49,7 @@ const WIKIQUOTE = PUBLISHER.wikiquote;
 const WORK_NOUN: Partial<Record<Category, string>> = {
   film: 'film',
   tv: 'TV programme',
+  anime: 'anime film or series',
   cartoon: 'animated film or series',
   // Wikidata's "comic" class spans series, graphic novels, strips and manga.
   comics: 'comics work',

@@ -123,7 +123,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
@@ -197,7 +197,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     // The built-in meaning is replaced by the current seed (v7), glance lines included.
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
@@ -244,7 +244,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
     expect(await db.references.count()).toBe(buildSeed().references.length);
@@ -269,7 +269,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(db.tables.map((t) => t.name)).toContain('savedLinks');
     expect(await db.savedLinks.count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
@@ -305,7 +305,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       gist: 'Ugh, I just did something stupid.',
       socialMove: "They're laughing at their own mistake.",
@@ -342,7 +342,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['packs', 'packMembers']));
     expect(await db.packs.count()).toBe(0);
     expect(await db.packMembers.count()).toBe(0);
@@ -388,7 +388,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -428,11 +428,53 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
     expect(await db.packMembers.count()).toBe(1);
+    expect(await db.favourites.count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a real v10 database: files the built-in Pokémon entry as anime and nothing else', async () => {
+    const name = `upgrade-v10-${Math.random().toString(36).slice(2)}`;
+    const v10 = new Dexie(name);
+    v10.version(1).stores(SCHEMA_V1);
+    v10.version(2).stores(SCHEMA_V2_CHANGES);
+    v10.version(3).stores({});
+    v10.version(4).stores(SCHEMA_V4_CHANGES);
+    v10.version(5).stores(SCHEMA_V5_CHANGES);
+    v10.version(6).stores(SCHEMA_V6_CHANGES);
+    v10.version(7).stores({});
+    v10.version(8).stores(SCHEMA_V8_CHANGES);
+    v10.version(9).stores({});
+    v10.version(10).stores({});
+    await v10.open();
+    // A v10 install: built-in rows still filed as cartoons, and a saved online result.
+    await v10
+      .table('references')
+      .bulkAdd(
+        buildSeed().references.map((r) =>
+          r.category === 'anime' ? { ...r, category: 'cartoon' } : r,
+        ),
+      );
+    await v10.table('references').add(
+      makeReference('wd:Q239937', 'Saved cartoon', {
+        category: 'cartoon',
+        editorialState: 'source_curated',
+      }),
+    );
+    await v10.table('favourites').add({ referenceId: 'i-choose-you-pokemon', savedAt: 't' });
+    v10.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(11);
+    expect(await db.references.get('i-choose-you-pokemon')).toMatchObject({ category: 'anime' });
+    expect(await db.references.get('doh-simpsons')).toMatchObject({ category: 'cartoon' });
+    // A saved online result can't be re-filed without asking Wikidata again, so it stays.
+    expect(await db.references.get('wd:Q239937')).toMatchObject({ category: 'cartoon' });
     expect(await db.favourites.count()).toBe(1);
     db.close();
   });

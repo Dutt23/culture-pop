@@ -81,6 +81,23 @@ describe('search', () => {
     });
   });
 
+  it('sends the search tags as a hint, at most five, and leaves the query as typed', async () => {
+    const { fetchMock, client } = setup(answer({ storage: 'device', results: [] }));
+    const about = ['anime', 'TV', 'Marvel', 'Bollywood', 'memes', 'music'];
+    await client.search('red pill', undefined, true, about);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      q: 'red pill',
+      question: false,
+      about: ['anime', 'TV', 'Marvel', 'Bollywood', 'memes'],
+    });
+  });
+
+  it('sends no about field when no tag is on', async () => {
+    const { fetchMock, client } = setup(answer({ storage: 'device', results: [] }));
+    await client.search('red pill', undefined, true, []);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).not.toHaveProperty('about');
+  });
+
   it('is covered by the CSP without adding a host', () => {
     for (const path of [WEB_SEARCH_PATH, UNLOCK_PATH, LOCK_PATH]) {
       expect(path.startsWith('/api/')).toBe(true);

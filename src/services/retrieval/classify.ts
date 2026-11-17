@@ -11,6 +11,9 @@ interface Classification {
  * against exactly these IDs.
  */
 const CLASS_PRIORITY: readonly [string, Classification][] = [
+  // Anime series and anime films are both under "anime" (Pokémon, Akira; checked 2026-11-17). Franchise
+  // pages Wikidata files as manga (Naruto, Death Note) match "comic" and stay Comics.
+  ['Q1107', { category: 'anime', kind: 'work' }], // anime
   ['Q581714', { category: 'cartoon', kind: 'work' }], // animated series
   ['Q202866', { category: 'cartoon', kind: 'work' }], // animated film
   ['Q2927074', { category: 'meme', kind: 'meme' }], // internet meme

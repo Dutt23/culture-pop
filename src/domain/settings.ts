@@ -14,6 +14,8 @@ export type WebSearchPreference = 'ask' | 'on' | 'off';
 export type WebAccessState = 'unknown' | 'unlocked';
 /** Question searches lean to films, TV, anime, books, games, myths and legends (owner, D50). */
 export type StoriesPreference = 'on' | 'off';
+/** Favourites and opened results break ties in the library's order (search tags plan; on by default). */
+export type TastePreference = 'on' | 'off';
 /** Search history on this device (D37: on by default, owner decision). */
 export type HistoryPreference = 'on' | 'off';
 
@@ -26,6 +28,7 @@ export interface Settings {
   history: HistoryPreference;
   webAccess: WebAccessState;
   stories: StoriesPreference;
+  taste: TastePreference;
 }
 
 export type SettingKey = keyof Settings;
@@ -39,6 +42,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   history: 'on',
   webAccess: 'unknown',
   stories: 'on',
+  taste: 'on',
 };
 
 /**
@@ -56,6 +60,7 @@ export const SETTING_LABELS: {
   history: { on: 'On', off: 'Off' },
   webAccess: { unknown: 'Not yet', unlocked: 'Unlocked' },
   stories: { on: 'On', off: 'Off' },
+  taste: { on: 'On', off: 'Off' },
 };
 
 function isSettingKey(key: string): key is SettingKey {

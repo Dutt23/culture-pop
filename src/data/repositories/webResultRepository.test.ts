@@ -123,7 +123,7 @@ describe('schema v5', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
     expect(db.tables.map((t) => t.name)).toContain('webResults');
     expect(await db.webResults.count()).toBe(0);
     expect(await db.searchHistory.count()).toBe(1);

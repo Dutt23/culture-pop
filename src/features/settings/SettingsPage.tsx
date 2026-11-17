@@ -25,6 +25,7 @@ const SPOILER_OPTIONS = optionsOf('spoilers');
 const RETRIEVAL_OPTIONS = optionsOf('retrieval');
 const WEB_SEARCH_OPTIONS = optionsOf('webSearch');
 const HISTORY_OPTIONS = optionsOf('history');
+const TASTE_OPTIONS = optionsOf('taste');
 
 const SAVE_ERROR = "Couldn't save that setting. Please try again.";
 
@@ -158,6 +159,20 @@ export function SettingsPage() {
           <button type="button" className={styles.reset} onClick={clearHistory}>
             Clear history
           </button>
+        </div>
+        <div className={styles.withNote}>
+          <SegmentedControl
+            legend="Lean to my taste"
+            name="taste"
+            options={TASTE_OPTIONS}
+            value={settings.taste}
+            onChange={(value) => save(() => setSetting('taste', value))}
+          />
+          <p className={styles.ok}>
+            When library results match equally well, the type you favourite and open most comes
+            first, and the search page says so. It is worked out on this device from your favourites
+            and search history and never sent anywhere.
+          </p>
         </div>
       </div>
 

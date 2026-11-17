@@ -8,10 +8,21 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
+import { Tour } from '../../components/tour/Tour';
+import { useTour } from '../../components/tour/useTour';
 import { filterOptions, matchesFilter, NO_FILTER, type ResultFilter } from '../../domain/discovery';
 import { normalizePhrase } from '../../domain/normalize';
 import { matchReason } from '../../domain/labels';
 import { isExactMatch, looksLikeMessage } from '../../domain/ranking';
+import {
+  aboutHint,
+  hasActiveTags,
+  leanByTaste,
+  liftTagged,
+  matchesTags,
+  orderChanged,
+  tasteNote,
+} from '../../domain/searchTags';
 import {
   looksLikeQuestion,
   splitFolded,
@@ -23,12 +34,15 @@ import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
 import { OnlineResults, SavedOnlineResults } from './OnlineResults';
 import { SearchFilters } from './SearchFilters';
+import { SearchTags } from './SearchTags';
+import { SEARCH_TOUR } from './searchTour';
 import styles from './SearchPage.module.css';
 import { useHeldResults } from './useHeldResults';
 import { useRetrieval } from './useRetrieval';
 import { useSearch } from './useSearch';
 import { useRecentSearches, useRecordSearch } from './useSearchHistory';
 import { useSearchQuery } from './useSearchQuery';
+import { useSearchTags, useTaste } from './useSearchTags';
 import { WiderWebSearch } from './WiderWebSearch';
 
 const EXAMPLE_QUERIES = ['hakuna matata', 'let it go', 'this is fine', 'bazinga', 'all izz well'];
@@ -93,11 +107,25 @@ export function SearchPage() {
 
   // Filters reset whenever the query changes (state adjusted during render, React's documented pattern).
   const [filter, setFilter] = useState<ResultFilter>(NO_FILTER);
+  const [onlyTagged, setOnlyTagged] = useState(false);
   const [filterQuery, setFilterQuery] = useState(query);
   if (filterQuery !== query) {
     setFilterQuery(query);
     setFilter(NO_FILTER);
+    setOnlyTagged(false);
   }
+  // Tags lift matching results; only "Only these" hides the rest (docs/SEARCH_TAGS_PLAN.md).
+  const tags = useSearchTags();
+  const tour = useTour('search', true);
+  // Until stored settings load, `taste` reads its default, which may not be the reader's choice.
+  const taste = useTaste(
+    settingsLoaded && settings.taste === 'on',
+    settingsLoaded && settings.history === 'on',
+  );
+  // With every tag off, "Only these" has nothing to keep and its chip is gone, so it lets go.
+  const onlyThese = onlyTagged && hasActiveTags(tags.state);
+  const shows = (item: Parameters<typeof matchesFilter>[0], tagged: boolean) =>
+    matchesFilter(item, filter) && (!onlyThese || tagged);
 
   const { state: onlineState } = online;
   const localIds = new Set(search.matches.map((m) => m.reference.id));
@@ -115,7 +143,15 @@ export function SearchPage() {
     ...onlineCandidates,
     ...savedOnline.map((m) => m.reference),
   ]);
-  const localShown = search.matches.filter((m) => matchesFilter(m.reference, filter));
+  const libraryTagged = (m: (typeof search.matches)[number]) =>
+    matchesTags(m.reference, tags.state, search.summaries.get(m.reference.id)?.teaser);
+  const libraryShown = (matches: typeof search.matches) =>
+    liftTagged(matches, libraryTagged, isExactMatch).filter((m) =>
+      shows(m.reference, libraryTagged(m)),
+    );
+  const localShown = libraryShown(leanByTaste(search.matches, taste?.lean));
+  // Said only when the lean moved something on screen.
+  const tasteMoved = orderChanged(libraryShown(search.matches), localShown);
   // A page named exactly like the search, or like the topic of a request ("Gundam" for "give me
   // history of gundam"), is the likely answer.
   const rewrite =
@@ -127,12 +163,21 @@ export function SearchPage() {
     isExactTitle(query, c) || (topic !== undefined && isExactTitle(topic, c));
   // Later online answers wait behind "N new results" instead of moving cards already on screen.
   const fresh = useHeldResults(onlineCandidates, query, isAnswer);
-  const onlineShown = fresh.shown.filter((c) => matchesFilter(c, filter));
-  const heldShown = fresh.held.filter((c) => matchesFilter(c, filter));
+  const onlineTagged = (c: RetrievedCandidate) => matchesTags(c, tags.state, c.sources[0]?.excerpt);
+  const onlineShown = liftTagged(fresh.shown, onlineTagged, isAnswer).filter((c) =>
+    shows(c, onlineTagged(c)),
+  );
+  const heldShown = fresh.held.filter((c) => shows(c, onlineTagged(c)));
   const heldCount = heldShown.length;
   // A late likely answer gets named on the button.
   const heldLead = heldShown.find(isAnswer)?.title;
-  const savedShown = savedOnline.filter((m) => matchesFilter(m.reference, filter));
+  const savedTagged = (m: (typeof savedOnline)[number]) =>
+    matchesTags(m.reference, tags.state, m.teaser);
+  const savedShown = liftTagged(
+    savedOnline,
+    savedTagged,
+    (m) => m.reference.normalizedTitle === normalizePhrase(query),
+  ).filter((m) => shows(m.reference, savedTagged(m)));
   const stories = settings.stories === 'on';
   const isQuestion = looksLikeQuestion(query);
   // Folded pages (real-world pages for a question) don't count: nothing visible answers the search.
@@ -165,6 +210,7 @@ export function SearchPage() {
         void setSetting('webAccess', unlocked ? 'unlocked' : 'unknown').catch(() => {})
       }
       stories={stories}
+      about={hasActiveTags(tags.state) ? aboutHint(tags.state) : undefined}
       // A pasted message is someone's private text: the wider web gets it only on a tap.
       mayAutoSearch={lookupSettled && !webSearched.has(webKey) && !looksLikeMessage(query)}
       onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
@@ -187,8 +233,21 @@ export function SearchPage() {
     onlineState.status !== 'partial';
 
   return (
-    <Page title="Search" eyebrow="Decode a reference">
-      <SearchBar value={query} autoFocus={!hasQuery} onChange={setQuery} onSubmit={recordSearch} />
+    <Page title="Search" eyebrow="Decode a reference" wide>
+      <div data-tour="search-bar">
+        <SearchBar
+          value={query}
+          autoFocus={!hasQuery}
+          onChange={setQuery}
+          onSubmit={recordSearch}
+        />
+      </div>
+      <div data-tour="search-tags">
+        <SearchTags
+          tags={tags}
+          onlyThese={hasQuery ? { value: onlyTagged, onChange: setOnlyTagged } : undefined}
+        />
+      </div>
 
       {!hasQuery && recent.length > 0 && (
         <Section title="Recent searches">
@@ -221,6 +280,10 @@ export function SearchPage() {
             library
           </p>
 
+          {taste && tasteMoved && (
+            <p className={styles.count}>{tasteNote(taste.lean, taste.usesHistory)}</p>
+          )}
+
           {search.isAmbiguous && (
             <p className={styles.disambiguation}>
               <strong>
@@ -250,12 +313,8 @@ export function SearchPage() {
             </label>
           )}
 
-          <SearchFilters
-            categories={options.categories}
-            eras={options.eras}
-            value={filter}
-            onChange={setFilter}
-          />
+          {/* The tag row above replaces the category chips; eras stay here. */}
+          <SearchFilters categories={[]} eras={options.eras} value={filter} onChange={setFilter} />
 
           {localShown.length > 0 && (
             <ul className={styles.results}>
@@ -356,6 +415,7 @@ export function SearchPage() {
           </Section>
         </>
       )}
+      {tour.open && <Tour steps={SEARCH_TOUR} onClose={tour.close} />}
     </Page>
   );
 }

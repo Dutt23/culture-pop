@@ -138,7 +138,7 @@ describe('query validation', () => {
     ['not JSON', 'q=why are ferrari fans depressed'],
     ['an empty body', ''],
     ['a number for q', JSON.stringify({ q: 42 })],
-    ['a body over 1 KB', JSON.stringify({ q: QUERY, padding: 'x'.repeat(2000) })],
+    ['a body over 2 KB', JSON.stringify({ q: QUERY, padding: 'x'.repeat(3000) })],
   ])('rejects %s with 400', async (_label, body) => {
     const { fetchMock, handle } = setup();
     expect(await read(await handle(rawRequest(body)))).toEqual({
@@ -241,6 +241,46 @@ describe('question searches', () => {
       expect(sentOf(fetchMock).search_queries).toEqual([QUERY]);
     },
   );
+});
+
+describe('search tags hint', () => {
+  const withAbout = (about: unknown) => rawRequest(JSON.stringify({ q: 'red pill', about }));
+
+  it('adds the tags to what it asks for, never to the search text', async () => {
+    const { fetchMock, handle } = setup();
+    expect((await handle(withAbout(['anime', 'Marvel']))).status).toBe(200);
+    const { objective, search_queries } = sentOf(fetchMock);
+    expect(objective).toMatch(/Prefer results about anime, Marvel\.$/);
+    expect(search_queries).toEqual(['red pill']);
+  });
+
+  it('drops bad tags and keeps at most five, without failing the search', async () => {
+    const { fetchMock, handle } = setup();
+    const bad = ['x', 'a'.repeat(31), 'ok<script>', 42, 'a'];
+    const good = ['  Bolly  wood ', 'b1', 'c2', 'd3', 'e4', 'f5'];
+    expect((await handle(withAbout([...bad, ...good]))).status).toBe(200);
+    expect(sentOf(fetchMock).objective).toMatch(
+      /Prefer results about Bolly wood, b1, c2, d3, e4\.$/,
+    );
+  });
+
+  it.each([['anime'], [null], [{ 0: 'anime' }], [[]]])(
+    'ignores an about that is not a list of tags (%j)',
+    async (about) => {
+      const { fetchMock, handle } = setup();
+      expect((await handle(withAbout(about))).status).toBe(200);
+      expect(sentOf(fetchMock).objective).not.toMatch(/Prefer results/);
+    },
+  );
+
+  it('accepts a full-length query with five full-length tags in four-byte letters', async () => {
+    const { fetchMock, handle } = setup();
+    // "𝒜" is a letter that takes two UTF-16 units and four UTF-8 bytes.
+    const tag = '𝒜'.repeat(30);
+    const body = JSON.stringify({ q: '𝒜'.repeat(100), question: true, about: Array(5).fill(tag) });
+    expect((await handle(rawRequest(body))).status).toBe(200);
+    expect(sentOf(fetchMock).objective).toContain(`about ${tag}, ${tag}`);
+  });
 });
 
 describe('curation', () => {

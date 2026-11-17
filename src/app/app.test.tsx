@@ -833,9 +833,14 @@ describe('online search (phase 2)', () => {
   it('filters combined results by type', async () => {
     const retrieval = fixtureRetrievalService('hakuna matata');
     const { user } = renderApp('/search?q=hakuna%20matata%20song', await withConsent(), retrieval);
-    // The Music chip only appears once Wikidata has classified the candidates.
+    // Wait for Wikidata's types: the Music tag lifts and "Only these" hides the rest (D51).
+    const song = /Hakuna Matata \(song\)/;
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: song })).toHaveTextContent('Music'),
+    );
     await user.click(await screen.findByRole('button', { name: 'Music' }));
-    expect(screen.getByRole('link', { name: /Hakuna Matata \(song\)/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Only these' }));
+    expect(screen.getByRole('link', { name: song })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Lion King 1½/ })).not.toBeInTheDocument();
   });
 

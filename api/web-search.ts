@@ -22,8 +22,18 @@ const MAX_EXCERPT = 4000;
 const MAX_URL = 2048;
 /** Parallel's answers are a few KB; anything bigger is refused unread. */
 const MAX_UPSTREAM_BYTES = 256 * 1024;
-/** `{ "q": "…", "question": true }` with a 200-character query fits; anything bigger is refused. */
-const MAX_REQUEST_BYTES = 1024;
+/**
+ * `{ "q": "…", "question": true, "about": […] }` with a 200-character query and five 30-character
+ * tags fits, even in four-byte characters; anything bigger is refused.
+ */
+const MAX_REQUEST_BYTES = 2048;
+/** Search tags sent as a hint (docs/SEARCH_TAGS_PLAN.md); the same caps as the app's. */
+const MAX_ABOUT = 5;
+const MIN_TAG = 2;
+const MAX_TAG = 30;
+// Marks (\p{M}) keep Indic tags whole: "बॉलीवुड" has vowel signs. At least one letter or number,
+// so "&&" or "--" (nothing once normalized) is refused.
+const TAG_TEXT = /^(?=.*[\p{L}\p{N}])[\p{L}\p{M}\p{N} &'-]+$/u;
 /** What we send the phone stays small; results are dropped from the end until it fits. */
 const MAX_RESPONSE_BYTES = 16 * 1024;
 const TIMEOUT_MS = 8000;
@@ -58,20 +68,44 @@ export interface HandlerOptions {
   checkAccess?: (request: Request) => AccessResult;
 }
 
+interface SearchBody {
+  q: string | null;
+  question: boolean;
+  about: string[];
+}
+
 /**
- * The raw `q` and the `question` flag from a JSON body `{ "q": "…", "question": true }`. `q` is
- * null when the body is oversized, not JSON or has no string `q`; any `question` that is not
- * exactly `true` counts as false, so a bad flag never blocks a search.
+ * The raw `q`, the `question` flag and the `about` tags from a JSON body
+ * `{ "q": "…", "question": true, "about": ["anime"] }`. `q` is null when the body is oversized, not
+ * JSON or has no string `q`; any `question` that is not exactly `true` counts as false, and any bad
+ * tag is dropped, so a bad flag or tag never blocks a search.
  */
-async function readBody(request: Request): Promise<{ q: string | null; question: boolean }> {
+async function readBody(request: Request): Promise<SearchBody> {
   try {
     const body: unknown = JSON.parse(await readCapped(request, MAX_REQUEST_BYTES));
     const fields = typeof body === 'object' && body !== null ? body : {};
-    const { q, question } = fields as { q?: unknown; question?: unknown };
-    return { q: typeof q === 'string' ? q : null, question: question === true };
+    const { q, question, about } = fields as { q?: unknown; question?: unknown; about?: unknown };
+    return {
+      q: typeof q === 'string' ? q : null,
+      question: question === true,
+      about: validAbout(about),
+    };
   } catch {
-    return { q: null, question: false };
+    return { q: null, question: false, about: [] };
   }
+}
+
+/** Up to five tags, each 2–30 letters, numbers, spaces, `&`, `'` or `-`; anything else is dropped. */
+export function validAbout(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((tag): tag is string => typeof tag === 'string')
+    .map((tag) => tag.trim().replace(/\s+/g, ' '))
+    .filter((tag) => {
+      const length = Array.from(tag).length;
+      return length >= MIN_TAG && length <= MAX_TAG && TAG_TEXT.test(tag);
+    })
+    .slice(0, MAX_ABOUT);
 }
 
 /** Trimmed, single-spaced query, or undefined when it breaks the length or character rules. */
@@ -130,7 +164,13 @@ function safeUrl(value: unknown): URL | undefined {
  * committed the worst genocides" with real-world history.
  * `q` is already validated (≤200 characters, no control characters).
  */
-export function objective(q: string, question = false): string {
+export function objective(q: string, question = false, about: readonly string[] = []): string {
+  // A hint only: the search text itself never changes with tags.
+  const hint = about.length > 0 ? ` Prefer results about ${about.join(', ')}.` : '';
+  return baseObjective(q, question) + hint;
+}
+
+function baseObjective(q: string, question: boolean): string {
   if (question) {
     return `Answer "${q}" about fiction, myths and pop culture: characters, events and works in films, TV, anime, books, comics, games, myths, legends and folklore — not real-world history or news. Name the characters and works.`;
   }
@@ -215,7 +255,7 @@ export function createHandler(
     if (allowed === 'not_configured') return json(503, { error: 'not_configured' });
     if (allowed === 'locked') return json(401, { error: 'locked' });
 
-    const { q: rawQuery, question } = await readBody(request);
+    const { q: rawQuery, question, about } = await readBody(request);
     const q = validQuery(rawQuery);
     if (!q) return json(400, { error: 'bad_query' });
 
@@ -242,7 +282,7 @@ export function createHandler(
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         // No session_id: Parallel can't link one search to the next.
         body: JSON.stringify({
-          objective: objective(q, question),
+          objective: objective(q, question, about),
           search_queries: [searchQuery(q, question)],
           mode: 'fast',
           max_chars_total: 6000,

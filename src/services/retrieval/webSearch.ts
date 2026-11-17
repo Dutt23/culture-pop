@@ -1,4 +1,5 @@
 import { safeHref } from '../../components/ui/safeHref';
+import { MAX_HINT_TAGS } from '../../domain/searchTags';
 import { looksLikeQuestion } from './community';
 import { isRecord, stringField } from './validate';
 
@@ -70,8 +71,16 @@ export class WebSearchError extends Error {
 }
 
 export interface WebSearchClient {
-  /** `stories`: a question leans to fiction and myths (the "Stories & myths" box); on by default. */
-  search: (query: string, signal?: AbortSignal, stories?: boolean) => Promise<WebResult[]>;
+  /**
+   * `stories`: a question leans to fiction and myths (the "Stories & myths" box); on by default.
+   * `about`: the reader's search tags, a hint only; the server checks them again.
+   */
+  search: (
+    query: string,
+    signal?: AbortSignal,
+    stories?: boolean,
+    about?: readonly string[],
+  ) => Promise<WebResult[]>;
   /** Sends the code once; the server answers with the cookie. Throws `wrong_code` if it's wrong. */
   unlock: (code: string) => Promise<void>;
   /** Asks the server to clear the cookie ("Forget access code"). */
@@ -195,8 +204,14 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
     // POST, so the search text is never part of a URL that request logs could record. The server
     // can't import the page's question rule, so it is told whether this search is a question that
     // leans to stories; with "Stories & myths" unticked it is searched like any other text.
-    search: async (query, signal, stories = true) => {
-      const body = { q: query.trim(), question: stories && looksLikeQuestion(query) };
+    // Tags go only as a short hint; with none, the body is exactly what it was before tags.
+    search: async (query, signal, stories = true, about = []) => {
+      const hint = about.slice(0, MAX_HINT_TAGS);
+      const body = {
+        q: query.trim(),
+        question: stories && looksLikeQuestion(query),
+        ...(hint.length > 0 && { about: hint }),
+      };
       return parseWebResults(await call(WEB_SEARCH_PATH, post(body), signal));
     },
     unlock: async (code) => {

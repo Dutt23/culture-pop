@@ -502,6 +502,24 @@ Owner decision 2026-11-15: only step 1 is in Phase 2; steps 2–5 start in Phase
    results (see D42); a local semantic search needs its own benchmark. Orama only if hybrid search
    is needed; all benchmark-gated.
 
+## Tags and taste (Phase 5, D51)
+Plan: `docs/SEARCH_TAGS_PLAN.md`. Code: `src/domain/searchTags.ts`, applied in `SearchPage.tsx` when the
+lists are shown, so `rankReferences` and `rerank.ts` are unchanged and the evaluation numbers above
+still describe them.
+
+1. **Likely answers stay first.** Library: exact title and exact "also known as". Online: a page
+   named like the search or its topic. Saved online results: an exact title.
+2. **Tagged results next**, then the rest, each in the order the ranker gave. Nothing is removed;
+   only "Only these" hides untagged results. A type tag matches the category; a custom tag matches
+   whole words in the title, creators, "From:" works, library tags, origin or first source sentence.
+3. **Taste breaks ties only**, in the library list, within one match kind (several "Possible match"
+   results, say). It never touches the online order and never beats a tag. It leans to one category:
+   the most common among favourites and results opened from a search, with at least three of them
+   and at least half. The page says so only when it moved something.
+
+Not measured against the evaluation set: tags are the reader's choice, not a ranking signal, and
+the taste lean is too small to show up there.
+
 ## Library roles (owner question, 2026-11-15)
 
 | Library | Role | Decision |

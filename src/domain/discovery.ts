@@ -4,6 +4,7 @@ import { isFromOnline, type Category, type Decade, type Reference } from './type
 
 /** Canonical category order for every screen; `labels.ts` derives `CATEGORIES` from it. */
 export const CATEGORY_ORDER: readonly Category[] = [
+  'anime',
   'cartoon',
   'comics',
   'games',

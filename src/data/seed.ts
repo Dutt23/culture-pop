@@ -366,7 +366,7 @@ const SEED_DEFINITIONS: readonly SeedDefinition[] = [
     id: 'i-choose-you-pokemon',
     kind: 'quote',
     title: '“I choose you!” (Pokémon)',
-    category: 'cartoon',
+    category: 'anime',
     decade: '1990s',
     origin: 'The Pokémon animated series',
     tags: ['animation', 'anime', 'games'],

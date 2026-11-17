@@ -209,6 +209,11 @@ describe('wikidata', () => {
     ['Minecraft', ['Q7889'], { category: 'games', kind: 'work' }],
     ['The Legend of Zelda', ['Q7058673'], { category: 'games', kind: 'work' }],
     ['a fictional character outside comics', ['Q95074'], { category: 'other', kind: 'character' }],
+    // Checked live 2026-11-17: anime series and films also carry the animated and film classes.
+    ['Cowboy Bebop', ['Q1107', 'Q581714', 'Q5398426'], { category: 'anime', kind: 'work' }],
+    ['Akira', ['Q1107', 'Q202866', 'Q11424'], { category: 'anime', kind: 'work' }],
+    ['Avatar: The Last Airbender', ['Q581714', 'Q5398426'], { category: 'cartoon', kind: 'work' }],
+    ['Naruto (filed as manga)', ['Q1004'], { category: 'comics', kind: 'work' }],
   ])('classes %s', (_name, classes, expected) => {
     expect(classify(new Set(classes))).toEqual(expected);
   });

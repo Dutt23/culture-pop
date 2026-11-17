@@ -168,6 +168,11 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
   // v10: the "you'll hear this" pack, batch 2 (30 more built-in cards). No index changes.
   db.version(10).stores({}).upgrade(refreshBuiltIns);
 
+  // v11: anime is its own category (search tags). Built-in entries the seed now files as anime are
+  // refreshed like any built-in batch; saved online results keep their category until a new lookup
+  // of that search refreshes them.
+  db.version(11).stores({}).upgrade(refreshBuiltIns);
+
   db.on('populate', (tx) => {
     const seed = buildSeed();
     void tx.table('references').bulkAdd(seed.references);

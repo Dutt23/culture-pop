@@ -15,6 +15,7 @@ import {
 } from './types';
 
 export const CATEGORY_LABEL: Readonly<Record<Category, string>> = {
+  anime: 'Anime',
   cartoon: 'Cartoon',
   comics: 'Comics',
   games: 'Games',
@@ -42,6 +43,7 @@ export const CEILING_HINT: Readonly<Record<PackCeiling, string>> = {
 export const PINNED_LABEL = 'Pinned';
 
 export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
+  anime: 'Anime',
   cartoon: 'Cartoons',
   comics: 'Comics',
   games: 'Games',
@@ -56,6 +58,7 @@ export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
 
 /** How to find something for an empty category: one example search each. */
 export const SEARCH_HINT: Readonly<Record<BrowsableCategory, string>> = {
+  anime: 'Search a series, like Cowboy Bebop, to find one.',
   cartoon: 'Search a show, like SpongeBob SquarePants, to find one.',
   comics: 'Search a character, like Doctor Doom, to find one.',
   games: 'Search a game, like Among Us, to find one.',
