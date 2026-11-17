@@ -30,6 +30,19 @@
   animation: flip var(--duration) linear var(--start) forwards;
 }
 
+/* The genre place sits behind the costume, tinted by the panel's own text colour. */
+.place {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0.2;
+}
+
+.panel > :not(.place) {
+  position: relative;
+}
+
 .line {
   font-family: var(--font-display);
   font-size: clamp(2rem, 9vw, 3.5rem);

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { OPEN_PACK_KEY } from '../../components/reference-card/openPack';
 import { createRepositories } from '../../data/repositories';
@@ -291,7 +291,9 @@ describe('reference page: same-world chips', () => {
     const chips = await screen.findByRole('list', { name: 'Also inspired by The Matrix' });
     await user.click(within(chips).getByRole('link', { name: 'Digital rain' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Digital rain' })).toBeVisible();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Digital rain' });
+    // The page header fades in: it is in the document a moment before it is visible.
+    await waitFor(() => expect(heading).toBeVisible());
     expect(
       screen.getByText('Filed for before you watch. The ending stays hidden.'),
     ).toBeInTheDocument();
@@ -309,7 +311,8 @@ describe('reference page: same-world chips', () => {
     const chips = await screen.findByRole('list', { name: 'Also inspired by The Matrix' });
     await user.click(within(chips).getByRole('link', { name: 'Digital rain' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Digital rain' })).toBeVisible();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Digital rain' });
+    await waitFor(() => expect(heading).toBeVisible());
     expect(screen.queryByText(/The ending stays hidden/)).not.toBeInTheDocument();
     expect(sessionStorage.getItem(OPEN_PACK_KEY)).toBe(pack.id);
   });

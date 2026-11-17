@@ -1,0 +1,108 @@
+/*
+ * The mascot lives in a clipped window sitting on the bar's top edge, at its right end, so it
+ * rises from behind the bar and never over the text being typed.
+ */
+.peek {
+  --peek-end: var(--space-4);
+  --peek-size: 4.5rem;
+  --peek-skin: #6a3df0;
+  position: relative;
+  max-inline-size: var(--layout-max);
+}
+
+.window {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-end: var(--peek-end);
+  inline-size: var(--peek-size);
+  block-size: var(--peek-size);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mascot {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  transform: translateY(100%);
+  transition: transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* A little of it stays behind the bar. */
+.peek:not([data-peek='hidden']) .mascot {
+  transform: translateY(22%);
+}
+
+.pupils {
+  transition: transform 200ms ease-out;
+}
+
+.hand,
+.arm {
+  position: absolute;
+  inset-block-start: -0.3rem;
+  background: var(--peek-skin);
+  pointer-events: none;
+}
+
+.hand {
+  inline-size: 0.8rem;
+  block-size: 0.6rem;
+  border-radius: 0.3rem;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.nearHand {
+  inset-inline-end: calc(var(--peek-end) + 0.5rem);
+}
+
+.farHand {
+  inset-inline-end: calc(var(--peek-end) + var(--peek-size) - 1.3rem);
+}
+
+.peek:not([data-peek='hidden']) .hand {
+  opacity: 1;
+}
+
+/*
+ * The far hand becomes the pointing arm: short and shallow, down and away toward the results, so
+ * it only touches the bar's top edge.
+ */
+.peek[data-peek='pointing'] .farHand {
+  opacity: 0;
+}
+
+.arm {
+  inset-inline-end: calc(var(--peek-end) + var(--peek-size) - 1.3rem);
+  inline-size: 1.6rem;
+  block-size: 0.55rem;
+  border-radius: 0.3rem;
+  transform-origin: right center;
+  transform: rotate(-28deg) scaleX(0);
+  transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.arm::before {
+  position: absolute;
+  inset-inline-start: -0.2rem;
+  inset-block-start: -0.15rem;
+  inline-size: 0.85rem;
+  block-size: 0.85rem;
+  border-radius: 50%;
+  background: var(--peek-skin);
+  content: '';
+}
+
+.peek[data-peek='pointing'] .arm {
+  transform: rotate(-28deg) scaleX(1);
+}
+
+/* Switched off mid-peek (reduced motion, a tour): gone at once, no duck. */
+.still .mascot,
+.still .pupils,
+.still .hand,
+.still .arm {
+  transition: none;
+}

@@ -7,6 +7,8 @@
 /* Anchor for AnimatePresence popLayout so the outgoing card overlaps the incoming one. */
 .stage {
   position: relative;
+  /* Depth for the card flip. */
+  perspective: 75rem;
 }
 
 .stageCard {

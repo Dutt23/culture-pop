@@ -1,7 +1,8 @@
-import { AnimatePresence, m } from 'motion/react';
+import { AnimatePresence, m, type Variants } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
+import { MascotDen } from '../../components/mascot/MascotDen';
 import {
   ReferenceCard,
   type ReferenceCardFavourite,
@@ -51,6 +52,20 @@ const BROWSE_OPTIONS: readonly SegmentedOption<BrowseView>[] = [
   { value: 'type', label: 'By type' },
 ];
 
+/**
+ * "Show another" turns the card over: the old one turns to its edge while the new one, already in
+ * place but edge-on, turns in once the old is out of sight.
+ */
+const FLIP_TURN_S = 0.24;
+const FLIP: Variants = {
+  hidden: { rotateY: -90 },
+  visible: {
+    rotateY: 0,
+    transition: { duration: FLIP_TURN_S, delay: FLIP_TURN_S, ease: [0.2, 0.8, 0.2, 1] },
+  },
+  exit: { rotateY: 90, transition: { duration: FLIP_TURN_S, ease: [0.5, 0, 0.75, 0] } },
+};
+
 function randomSeed(): number {
   return Math.floor(Math.random() * 2 ** 32);
 }
@@ -90,7 +105,7 @@ export function DiscoverPage() {
   const data = useDiscovery();
   const regulars = useRegulars(REGULARS);
   const recordSearch = useRecordSearch();
-  const { reveal } = useMotionPresets();
+  const { reveal, reduced } = useMotionPresets();
   const [draft, setDraft] = useState('');
   const isOnline = useOnlineStatus();
   const favourites = useFavourites();
@@ -123,6 +138,7 @@ export function DiscoverPage() {
       eyebrow="Pop Culture Decoder"
       intro="Quotes, memes, shows and sayings — explained in plain language, spoiler-free."
       wide
+      scene={<MascotDen still={reduced} />}
     >
       <SearchBar
         value={draft}
@@ -157,7 +173,7 @@ export function DiscoverPage() {
                 <m.div
                   key={surprise.id}
                   className={styles.stageCard}
-                  variants={reveal}
+                  variants={reduced ? reveal : FLIP}
                   initial="hidden"
                   animate="visible"
                   exit="exit"

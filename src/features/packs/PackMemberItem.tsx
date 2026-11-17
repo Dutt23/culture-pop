@@ -3,6 +3,9 @@ import { useRepositories } from '../../app/RepositoriesContext';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { classNames } from '../../components/ui/classNames';
 import type { Pack, Reference } from '../../domain/types';
+import { cardElement } from '../../motion/cardElement';
+import { dissolve } from '../../motion/dissolve';
+import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { PackChips } from './PackChips';
 import styles from './Packs.module.css';
 import { PackSheet } from './PackSheet';
@@ -42,6 +45,8 @@ export function PackMemberItem({
 }: PackMemberItemProps) {
   const { packs } = useRepositories();
   const { error, attempt } = useAttempt();
+  const { reduced } = useMotionPresets();
+  const itemRef = useRef<HTMLLIElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [over, setOver] = useState(false);
   const upRef = useRef<HTMLButtonElement>(null);
@@ -61,14 +66,19 @@ export function PackMemberItem({
   };
 
   const markDone = async () => {
-    // The card leaves the list, buttons and all: the page heading takes focus instead.
+    // The card crumbles out of the list, buttons and all: the page heading takes focus instead.
+    // "Put back" in "Cards you get" is its undo.
+    const dust = dissolve(cardElement(itemRef.current, reference.id), reduced);
     if (await attempt(() => packs.markDone(packId, reference.id))) {
       document.querySelector<HTMLElement>('#main h1')?.focus();
+    } else {
+      dust.restore();
     }
   };
 
   return (
     <li
+      ref={itemRef}
       className={classNames(styles.card, over && styles.dropOver)}
       draggable={draggable}
       onDragStart={(event) => {

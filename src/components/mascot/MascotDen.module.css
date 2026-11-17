@@ -1,0 +1,139 @@
+/* Short enough that the search bar below stays on a phone's first screen. */
+.den {
+  display: block;
+  block-size: clamp(9rem, 30vh, 13rem);
+  aspect-ratio: 300 / 250;
+  max-inline-size: 100%;
+  margin-inline: auto;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Movement and fades only, so the phone never repaints the room. */
+.twinkle {
+  animation: twinkle 2.8s ease-in-out infinite;
+}
+
+.note {
+  opacity: 0;
+  animation: note 2.6s ease-out infinite;
+}
+
+.dial {
+  animation: dial 5s ease-in-out infinite;
+}
+
+.screen {
+  opacity: 0;
+  animation: screen 8s linear infinite;
+}
+
+.scan {
+  animation: scan 1.8s linear infinite;
+}
+
+.glow {
+  opacity: 0.1;
+  animation: glow 3s ease-in-out infinite;
+}
+
+.bob {
+  animation: bob 3.5s ease-in-out infinite;
+}
+
+.steam {
+  opacity: 0;
+  animation: steam 2.4s ease-out infinite;
+}
+
+.sway {
+  transform-origin: 27px 214px;
+  animation: sway 4s ease-in-out infinite;
+}
+
+.still,
+.still * {
+  animation: none !important;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes note {
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(12px, -28px);
+    opacity: 0;
+  }
+}
+
+@keyframes dial {
+  50% {
+    transform: translateX(14px);
+  }
+}
+
+/* Each of the four screens holds for a quarter of the loop. */
+@keyframes screen {
+  0% {
+    opacity: 0;
+  }
+  5%,
+  25% {
+    opacity: 1;
+  }
+  30%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes scan {
+  to {
+    transform: translateY(40px);
+  }
+}
+
+@keyframes glow {
+  40% {
+    opacity: 0.17;
+  }
+  60% {
+    opacity: 0.06;
+  }
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes steam {
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}

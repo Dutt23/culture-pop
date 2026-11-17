@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
+import { SearchPeek } from '../../components/mascot/SearchPeek';
+import type { PeekOutcome } from '../../components/mascot/usePeek';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { SearchBar } from '../../components/search-bar/SearchBar';
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
@@ -28,6 +30,7 @@ import {
   splitFolded,
   suggestCommunityLinks,
 } from '../../services/retrieval/community';
+import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { isExactTitle } from '../../services/retrieval/rerank';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import { useFavourites } from '../favourites/useFavourites';
@@ -117,6 +120,7 @@ export function SearchPage() {
   // Tags lift matching results; only "Only these" hides the rest (docs/SEARCH_TAGS_PLAN.md).
   const tags = useSearchTags();
   const tour = useTour('search', true);
+  const { reduced } = useMotionPresets();
   // Until stored settings load, `taste` reads its default, which may not be the reader's choice.
   const taste = useTaste(
     settingsLoaded && settings.taste === 'on',
@@ -231,16 +235,27 @@ export function SearchPage() {
     savedShown.length === 0 &&
     onlineState.status !== 'loading' &&
     onlineState.status !== 'partial';
+  // The mascot points only at an answer on screen; a waiting "Search online?" card isn't one.
+  const peekOutcome: PeekOutcome =
+    !hasQuery || search.loading
+      ? 'pending'
+      : localShown.length > 0 || hasOnlineResults
+        ? 'found'
+        : showEmpty || asksConsent
+          ? 'none'
+          : 'pending';
 
   return (
     <Page title="Search" eyebrow="Decode a reference" wide>
       <div data-tour="search-bar">
-        <SearchBar
-          value={query}
-          autoFocus={!hasQuery}
-          onChange={setQuery}
-          onSubmit={recordSearch}
-        />
+        <SearchPeek query={query} outcome={peekOutcome} enabled={!reduced && !tour.open}>
+          <SearchBar
+            value={query}
+            autoFocus={!hasQuery}
+            onChange={setQuery}
+            onSubmit={recordSearch}
+          />
+        </SearchPeek>
       </div>
       <div data-tour="search-tags">
         <SearchTags

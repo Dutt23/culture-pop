@@ -2,6 +2,7 @@ import { useReducedMotion } from 'motion/react';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useSettings } from '../../features/settings/SettingsContext';
 import styles from './IntroSplash.module.css';
+import { GenrePlace } from '../mascot/GenrePlace';
 import { Mascot, type Costume } from '../mascot/Mascot';
 
 type Panel =
@@ -118,6 +119,7 @@ export function IntroSplash() {
                 </>
               ) : (
                 <>
+                  <GenrePlace costume={panel.costume} className={styles.place} />
                   <Mascot costume={panel.costume} />
                   <span className={styles.caption}>{panel.caption}</span>
                 </>

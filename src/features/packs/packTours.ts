@@ -27,7 +27,7 @@ export const PACK_TOUR: readonly TourStep[] = [
   },
   {
     target: 'pack-cards',
-    text: 'Each card has buttons: Move sends it to another pack, Up and Down change the order.',
+    text: 'Each card has buttons: Move sends it to another pack, Up and Down change the order, and “I get this now” folds it into “Cards you get”.',
   },
   {
     target: 'pack-spoilers',

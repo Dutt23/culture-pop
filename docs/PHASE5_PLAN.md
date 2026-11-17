@@ -85,7 +85,10 @@ message and the share target, packs (Move takes a card out, "Pin to top"), the o
 the costumed mascot, mascot tours (Packs, a pack, Search), the wide-screen layout, and search tags
 (merged in, Dexie v11). Done in the `phase5-rest` worktree, not yet merged: "I get this now",
 same-world chips. In progress: backup, then polish, then accessibility (`phase5-rest`); pack
-batch 3 (draft for the owner). Next here: the snap-to-dust removal effect (demo first).
+batch 3 (draft for the owner). Since then: the snap-to-dust removal (committed), the "Surprise
+me" flip, and the mascot den on Discover, genre places in the intro and the mascot's peek over the
+Search bar (`docs/superpowers/specs/2026-11-17-mascot-den-design.md`), built, not yet run or
+committed.
 
 **Dropped or paused:** "Linked to N" is now optional. (Desktop layout and the type tags were first
 paused here; the owner brought both back on 2026-11-17 and they are done.)

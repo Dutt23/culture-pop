@@ -8,7 +8,7 @@ const INK = '#0d0b1f';
 const LIGHT = '#f3efff';
 const PEACH = '#ffb27a';
 
-function Antennae() {
+export function Antennae() {
   return (
     <>
       <path d="M50 30 L40 14 M70 30 L82 12" stroke={LIGHT} strokeWidth="5" strokeLinecap="round" />
@@ -18,7 +18,7 @@ function Antennae() {
   );
 }
 
-function Body() {
+export function Body() {
   return (
     <>
       <rect x="34" y="98" width="12" height="8" rx="4" fill="#6a3df0" />
@@ -42,7 +42,7 @@ function Eyes() {
   );
 }
 
-function Smile() {
+export function Smile() {
   return (
     <path d="M44 78 q16 12 32 0" stroke={INK} strokeWidth="5" fill="none" strokeLinecap="round" />
   );

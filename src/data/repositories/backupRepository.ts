@@ -131,10 +131,12 @@ export function createBackupRepository(
           const stored = (await db.sources.bulkGet(cited.map((s) => s.id))).filter(isDefined);
           const storedById = new Map(stored.map((s) => [s.id, s]));
           const storedByUrl = new Map(
-            (await db.sources.where('url').anyOf(cited.map((s) => s.url)).toArray()).map((s) => [
-              s.url,
-              s,
-            ]),
+            (
+              await db.sources
+                .where('url')
+                .anyOf(cited.map((s) => s.url))
+                .toArray()
+            ).map((s) => [s.url, s]),
           );
           // A source already stored is used as stored; one that clashes with a stored source (same
           // ID elsewhere, or same address under another ID) is left out, so no citation changes.

@@ -18,6 +18,7 @@ import {
   type FixtureQuery,
 } from '../test/fakeRetrieval';
 import { createTestDatabase, renderApp } from '../test/renderApp';
+import { PEEK_KEY } from '../components/mascot/peekBudget';
 import { StorageGate } from './StorageGate';
 
 const fetchSpy = vi.fn();
@@ -46,6 +47,11 @@ describe('routing', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Decode any reference' }),
     ).toBeInTheDocument();
+  });
+
+  it("tops Discover with the mascot's den, hidden from screen readers", async () => {
+    renderApp('/');
+    expect(await screen.findByTestId('mascot-den')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('shows a not-found state for unknown references and routes', async () => {
@@ -492,6 +498,39 @@ describe('discover', () => {
       await within(await browseOf()).findByRole('button', { name: /^Favourite D'oh!/ }),
     );
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't update your favourites");
+  });
+});
+
+describe('mascot peek over the search bar', () => {
+  const peek = () => document.querySelector('[data-peek]')?.getAttribute('data-peek');
+  const typeSearch = async (user: ReturnType<typeof renderApp>['user']) =>
+    user.type(await screen.findByRole('searchbox', { name: 'Search references' }), 'ba');
+
+  beforeEach(() => localStorage.removeItem(PEEK_KEY));
+
+  it('rises when a search is typed', async () => {
+    const { user } = renderApp('/search');
+    await typeSearch(user);
+    await waitFor(() => expect(peek()).toMatch(/watching|pointing/));
+  });
+
+  it('stays down with reduced motion, without spending a peek', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    await createRepositories(db).settings.set('motion', 'reduce');
+    const { user } = renderApp('/search', db);
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-motion', 'reduce'));
+    await typeSearch(user);
+    expect(peek()).toBe('hidden');
+    expect(localStorage.getItem(PEEK_KEY)).toBeNull();
+  });
+
+  it('stays down while the search tour is open', async () => {
+    localStorage.removeItem('pcd:tour-seen:search');
+    const { user } = renderApp('/search');
+    await screen.findByRole('dialog', { name: 'Tour' });
+    await typeSearch(user);
+    expect(peek()).toBe('hidden');
   });
 });
 
