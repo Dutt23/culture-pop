@@ -10,6 +10,7 @@ import { groupHits, searchPacks, type PackSearchScope } from '../../domain/packs
 import type { Pack } from '../../domain/types';
 import { useSearch } from '../search/useSearch';
 import { useSearchQuery } from '../search/useSearchQuery';
+import { PackDoneList } from './PackDoneList';
 import { PackHits } from './PackHits';
 import { PackMemberItem } from './PackMemberItem';
 import { PackRow } from './PackRow';
@@ -46,7 +47,7 @@ export function PackPage() {
 
 function PackView({ packId }: { packId: string }) {
   const pack = usePack(packId);
-  const members = usePackMembers(packId);
+  const cards = usePackMembers(packId);
   const data = usePackData();
   const { packs } = useRepositories();
   const [query, setQuery] = useSearchQuery();
@@ -59,7 +60,7 @@ function PackView({ packId }: { packId: string }) {
     return groupHits(searchPacks(query, where, data.index));
   }, [data, query, scope, packId]);
 
-  if (pack === undefined || members === undefined) {
+  if (pack === undefined || cards === undefined) {
     return (
       <p className={styles.muted} role="status">
         Loading…
@@ -78,6 +79,7 @@ function PackView({ packId }: { packId: string }) {
   }
 
   const searching = query.trim() !== '';
+  const members = cards.active;
   const eyebrow = [cardCount(members.length), CEILING_LABEL[pack.ceiling], pack.now && 'Now']
     .filter(Boolean)
     .join(' · ');
@@ -118,7 +120,10 @@ function PackView({ packId }: { packId: string }) {
         />
       )}
 
-      {!searching && members.length === 0 && (
+      {!searching && members.length === 0 && cards.done.length > 0 && (
+        <EmptyState title="You get every card in this pack." />
+      )}
+      {!searching && members.length === 0 && cards.done.length === 0 && (
         <EmptyState title="Nothing in this pack.">
           <p>Add cards from your library below, or use “File in pack…” on any reference.</p>
         </EmptyState>
@@ -148,12 +153,14 @@ function PackView({ packId }: { packId: string }) {
           ))}
         </ol>
       )}
+      {!searching && <PackDoneList packId={pack.id} cards={cards.done} />}
       {error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
 
+      {/* Done cards are offered too: adding one puts it back. */}
       <AddFromLibrary packId={pack.id} memberIds={new Set(members.map((m) => m.id))} />
 
       <PackSettings key={pack.id} pack={pack} />

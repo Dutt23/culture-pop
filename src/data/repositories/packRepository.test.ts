@@ -193,6 +193,75 @@ describe('packs', () => {
     db.close();
   });
 
+  it('moves a card marked done after the cards still to learn, and keeps it filed', async () => {
+    const { db, repos } = await setup();
+    const pack = await repos.packs.create({ name: 'A', ceiling: 'open' });
+    for (const id of ['ok-boomer', 'doh-simpsons', 'the-snap-avengers']) {
+      await repos.packs.fileCard(id, pack.id, Infinity);
+    }
+    await repos.packs.markDone(pack.id, 'ok-boomer');
+
+    const members = await repos.packs.members(pack.id);
+    expect(members.map((m) => [m.referenceId, m.position, Boolean(m.doneAt)])).toEqual([
+      ['doh-simpsons', 0, false],
+      ['the-snap-avengers', 1, false],
+      ['ok-boomer', 2, true],
+    ]);
+    // Still in the pack: its chips and pack search still find it.
+    expect((await repos.packs.packsOf('ok-boomer')).map((p) => p.id)).toEqual([pack.id]);
+    db.close();
+  });
+
+  it('keeps done cards after the rest when cards are reordered or added', async () => {
+    const { db, repos } = await setup();
+    const pack = await repos.packs.create({ name: 'A', ceiling: 'open' });
+    await repos.packs.fileCard('ok-boomer', pack.id, Infinity);
+    await repos.packs.fileCard('doh-simpsons', pack.id, Infinity);
+    await repos.packs.markDone(pack.id, 'ok-boomer');
+    // Added at the end, and moved down past the end of the cards still to learn.
+    await repos.packs.fileCard('the-snap-avengers', pack.id, Infinity);
+    await repos.packs.fileCard('doh-simpsons', pack.id, 2);
+
+    expect((await repos.packs.members(pack.id)).map((m) => [m.referenceId, m.position])).toEqual([
+      ['the-snap-avengers', 0],
+      ['doh-simpsons', 1],
+      ['ok-boomer', 2],
+    ]);
+    db.close();
+  });
+
+  it('puts a done card back at the end of the cards still to learn when filed again', async () => {
+    const { db, repos } = await setup();
+    const pack = await repos.packs.create({ name: 'A', ceiling: 'open' });
+    for (const id of ['ok-boomer', 'doh-simpsons', 'the-snap-avengers']) {
+      await repos.packs.fileCard(id, pack.id, Infinity);
+    }
+    await repos.packs.markDone(pack.id, 'ok-boomer');
+    await repos.packs.markDone(pack.id, 'doh-simpsons');
+    await repos.packs.fileCard('doh-simpsons', pack.id, Infinity);
+
+    expect(
+      (await repos.packs.members(pack.id)).map((m) => [m.referenceId, Boolean(m.doneAt)]),
+    ).toEqual([
+      ['the-snap-avengers', false],
+      ['doh-simpsons', false],
+      ['ok-boomer', true],
+    ]);
+    db.close();
+  });
+
+  it('marks a card done in one pack only', async () => {
+    const { db, repos } = await setup();
+    const a = await repos.packs.create({ name: 'A', ceiling: 'open' });
+    const b = await repos.packs.create({ name: 'B', ceiling: 'open' });
+    await repos.packs.fileCard('ok-boomer', a.id, 0);
+    await repos.packs.fileCard('ok-boomer', b.id, 0);
+    await repos.packs.markDone(a.id, 'ok-boomer');
+    expect((await repos.packs.members(b.id))[0].doneAt).toBeUndefined();
+    await expect(repos.packs.markDone(a.id, 'doh-simpsons')).rejects.toThrow();
+    db.close();
+  });
+
   it('is cleared by Reset, which leaves the built-in references', async () => {
     const { db, repos } = await setup();
     const pack = await repos.packs.create({ name: 'A', ceiling: 'open' });

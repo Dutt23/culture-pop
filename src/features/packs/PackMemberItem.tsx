@@ -19,7 +19,10 @@ interface PackMemberItemProps {
   draggable: boolean;
 }
 
-/** A card in the open pack, with Move, Up and Down. Every control files through `fileCard`. */
+/**
+ * A card in the open pack, with Move, Up, Down and "I get this now". Every move files through
+ * `fileCard`.
+ */
 export function PackMemberItem({
   reference,
   packId,
@@ -46,6 +49,13 @@ export function PackMemberItem({
     if (to < 0 || to >= count) return;
     refocus.current = button;
     void attempt(() => packs.fileCard(reference.id, packId, to));
+  };
+
+  const markDone = async () => {
+    // The card leaves the list, buttons and all: the page heading takes focus instead.
+    if (await attempt(() => packs.markDone(packId, reference.id))) {
+      document.querySelector<HTMLElement>('#main h1')?.focus();
+    }
   };
 
   return (
@@ -97,6 +107,9 @@ export function PackMemberItem({
           onClick={() => moveTo(index + 1, downRef.current)}
         >
           Down
+        </button>
+        <button type="button" className={styles.button} onClick={() => void markDone()}>
+          I get this now
         </button>
       </div>
       {sheetOpen && (

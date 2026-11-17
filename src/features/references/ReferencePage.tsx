@@ -23,6 +23,7 @@ import { PackSheet } from '../packs/PackSheet';
 import { usePacksOf } from '../packs/usePacks';
 import { useSettings } from '../settings/SettingsContext';
 import styles from './ReferencePage.module.css';
+import { SameWorldChips } from './SameWorldChips';
 import { useReference } from './useReference';
 
 export function ReferencePage() {
@@ -129,6 +130,8 @@ export function ReferencePage() {
       {lines.nothingSafe && (
         <p className={styles.note}>No spoiler-free line filed for this card yet.</p>
       )}
+      {/* The pack travels with every hop; each card applies its ceiling only if filed there. */}
+      <SameWorldChips groups={groups} packId={openPackId ?? undefined} />
       <PackChips label="In your packs:" packs={inPacks ?? []} />
       {hidesEnding && (
         <div className={styles.ceiling}>

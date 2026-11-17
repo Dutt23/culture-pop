@@ -266,3 +266,15 @@
   text-align: start;
   overflow-wrap: anywhere;
 }
+
+/* "Cards you get": folded away under the pack's list. */
+.done .list {
+  margin-top: var(--space-2);
+}
+
+.doneSummary {
+  min-height: var(--tap-min);
+  padding-block: var(--space-2);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}

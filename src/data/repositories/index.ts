@@ -1,4 +1,5 @@
 import type { PopCultureDb } from '../db';
+import { createBackupRepository, type BackupRepository } from './backupRepository';
 import { createFavouriteRepository, type FavouriteRepository } from './favouriteRepository';
 import { createPackRepository, type PackRepository } from './packRepository';
 import { createReferenceRepository, type ReferenceRepository } from './referenceRepository';
@@ -23,6 +24,8 @@ export interface Repositories {
   savedLinks: SavedLinkRepository;
   /** The reader's packs of existing references and their member rows. */
   packs: PackRepository;
+  /** Backup files: what the reader made, never search history, kept web results or the code. */
+  backup: BackupRepository;
   /**
    * Clears favourites, packs, saved web links, settings, search history (with the wider-web results
    * kept for it) and cached online results together in one
@@ -44,6 +47,7 @@ export function createRepositories(db: PopCultureDb): Repositories {
     webResults: createWebResultRepository(db),
     savedLinks,
     packs: createPackRepository(db),
+    backup: createBackupRepository(db, retrieval, savedLinks),
     resetUserData: () =>
       db.transaction(
         'rw',

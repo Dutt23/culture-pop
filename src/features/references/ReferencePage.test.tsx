@@ -1,5 +1,6 @@
 import { screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { OPEN_PACK_KEY } from '../../components/reference-card/openPack';
 import { createRepositories } from '../../data/repositories';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import { makeCandidate, makeSource } from '../../test/factories';
@@ -232,5 +233,84 @@ describe('reference page: related references say why', () => {
     expect(
       screen.queryByRole('region', { name: /^Also (in|by|inspired by)/ }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: /^Also/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('reference page: same-world chips', () => {
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  const memeOf = (qid: string, title: string) =>
+    makeCandidate({
+      id: `wd:${qid}`,
+      title,
+      kind: 'meme',
+      category: 'meme',
+      role: 'topic',
+      inspiredBy: [{ qid: 'Q83495', label: 'The Matrix' }],
+      sources: [makeSource(`src:wd:${qid}`, 'Wikidata', { title, sourceType: 'structured_data' })],
+    });
+  const redPill = memeOf('Q99', 'Red pill and blue pill');
+  const rain = memeOf('Q100', 'Digital rain');
+  const spoon = memeOf('Q101', 'There is no spoon');
+  const glitch = memeOf('Q102', 'Glitch in the Matrix');
+  const dejaVu = memeOf('Q103', 'Deja vu cat');
+
+  it('puts up to three cards from the same work at the top of the page', async () => {
+    renderApp(pageOf(redPill.id), await withCached(redPill, rain, spoon, glitch, dejaVu));
+
+    const chips = await screen.findByRole('list', { name: 'Also inspired by The Matrix' });
+    const links = within(chips).getAllByRole('link');
+    expect(links).toHaveLength(3);
+    expect(within(chips).getByRole('link', { name: 'Digital rain' })).toHaveAttribute(
+      'href',
+      pageOf(rain.id),
+    );
+    expect(within(chips).queryByRole('link', { name: /Red pill/ })).not.toBeInTheDocument();
+    // Library order (by title) decides which three: the fourth waits in the section below.
+    expect(
+      within(chips).queryByRole('link', { name: 'There is no spoon' }),
+    ).not.toBeInTheDocument();
+    // At the top: before the longer "Also inspired by" section further down.
+    const section = screen.getByRole('region', { name: 'Also inspired by The Matrix' });
+    expect(chips.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('opens the chosen card and carries the "before you watch" pack along', async () => {
+    const db = await withCached(redPill, rain);
+    const repos = createRepositories(db);
+    const pack = await repos.packs.create({ name: 'Matrix', ceiling: 'before_watching' });
+    await repos.packs.fileCard(redPill.id, pack.id, 0);
+    await repos.packs.fileCard(rain.id, pack.id, 1);
+    const { user } = renderApp(`/packs/${encodeURIComponent(pack.id)}`, db);
+
+    await user.click(await screen.findByRole('link', { name: /Red pill and blue pill/ }));
+    sessionStorage.clear(); // only the chip's own state and storage may carry the pack on
+    const chips = await screen.findByRole('list', { name: 'Also inspired by The Matrix' });
+    await user.click(within(chips).getByRole('link', { name: 'Digital rain' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Digital rain' })).toBeVisible();
+    expect(
+      screen.getByText('Filed for before you watch. The ending stays hidden.'),
+    ).toBeInTheDocument();
+    expect(sessionStorage.getItem(OPEN_PACK_KEY)).toBe(pack.id);
+  });
+
+  it('keeps the pack for later hops but holds back nothing on a card not filed in it', async () => {
+    const db = await withCached(redPill, rain);
+    const repos = createRepositories(db);
+    const pack = await repos.packs.create({ name: 'Matrix', ceiling: 'before_watching' });
+    await repos.packs.fileCard(redPill.id, pack.id, 0);
+    const { user } = renderApp(`/packs/${encodeURIComponent(pack.id)}`, db);
+
+    await user.click(await screen.findByRole('link', { name: /Red pill and blue pill/ }));
+    const chips = await screen.findByRole('list', { name: 'Also inspired by The Matrix' });
+    await user.click(within(chips).getByRole('link', { name: 'Digital rain' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Digital rain' })).toBeVisible();
+    expect(screen.queryByText(/The ending stays hidden/)).not.toBeInTheDocument();
+    expect(sessionStorage.getItem(OPEN_PACK_KEY)).toBe(pack.id);
   });
 });

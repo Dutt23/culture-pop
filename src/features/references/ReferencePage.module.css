@@ -49,3 +49,29 @@
   font-size: var(--text-lg);
   line-height: var(--leading-tight);
 }
+
+/* Same-world chips: other cards from the same work, near the top of the page. */
+.world,
+.worldList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.worldLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Long titles wrap inside their chip instead of pushing the page sideways. */
+.worldList > li {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.worldList > li > a {
+  padding-block: var(--space-2);
+  white-space: normal;
+}
