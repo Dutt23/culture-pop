@@ -49,6 +49,10 @@ const LIBRARY_RESULTS = 5;
 
 /** How long "Undo" stays after a card leaves the pack. */
 const UNDO_MS = 8000;
+/** What "Got it" on a card does, said once at the top instead of on every card. */
+const GOT_IT_HINT =
+  'Tap “Got it” on a card once you understand it. It moves down to “Cards you’ve got”, where you can put it back.';
+
 export function PackPage() {
   const { packId = '' } = useParams();
   return <PackView key={packId} packId={packId} />;
@@ -104,7 +108,12 @@ function PackView({ packId }: { packId: string }) {
   const otherPacks = (data?.index.packs ?? []).filter((other) => other.id !== pack.id);
 
   return (
-    <Page title={pack.name} eyebrow={eyebrow} wide>
+    <Page
+      title={pack.name}
+      eyebrow={eyebrow}
+      intro={members.length > 0 ? GOT_IT_HINT : undefined}
+      wide
+    >
       <div className={styles.stack} data-tour="pack-search-in">
         <SegmentedControl
           legend="Search in"

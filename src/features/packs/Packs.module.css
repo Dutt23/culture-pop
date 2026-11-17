@@ -205,6 +205,8 @@
 
 .card {
   display: grid;
+  /* Rows keep their own height when the card beside them grows (its "More" opened). */
+  align-content: start;
   gap: var(--space-2);
   min-width: 0;
 }
@@ -280,7 +282,7 @@
   overflow-wrap: anywhere;
 }
 
-/* "Cards you get": folded away under the pack's list. */
+/* "Cards you've got": folded away under the pack's list. */
 .done .list {
   margin-top: var(--space-2);
 }

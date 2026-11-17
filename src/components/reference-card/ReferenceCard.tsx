@@ -47,6 +47,8 @@ export function ReferenceCard({
     <Link
       to={`/references/${encodeURIComponent(reference.id)}`}
       className={classNames(styles.card, styles[variant], favourite && styles.hasFavourite)}
+      // Compact cards take the shape of their type (ReferenceCard.module.css); not while it's checked.
+      data-kind={pending ? undefined : reference.category}
       // Always set, so Back to a card opened elsewhere never falls back to the stored pack.
       state={{ packId: packId ?? null }}
       onClick={() => {

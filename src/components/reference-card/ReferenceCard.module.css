@@ -140,3 +140,209 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/*
+ * Compact cards are shaped like the thing their reference comes from, as the props in the room
+ * on Discover are. Each type mixes its colour into the theme's surfaces, so both themes work.
+ * Nothing clips the card (the focus ring stays visible) and no decoration adds text.
+ */
+.compact[data-kind] {
+  --kind-tint: color-mix(in srgb, var(--kind) 12%, var(--color-surface));
+  --kind-tint-deep: color-mix(in srgb, var(--kind) 8%, var(--color-surface-muted));
+  --kind-edge: color-mix(in srgb, var(--kind) 45%, var(--color-border));
+  background: linear-gradient(160deg, var(--kind-tint), var(--kind-tint-deep));
+  border-color: var(--kind-edge);
+}
+
+.compact[data-kind='other'] {
+  background: linear-gradient(160deg, var(--color-surface), var(--color-surface-muted));
+  border-color: var(--color-border);
+}
+
+[data-kind='film'] {
+  --kind: #ffb27a;
+}
+[data-kind='tv'] {
+  --kind: #6fd3ff;
+}
+[data-kind='meme'] {
+  --kind: #ffd27a;
+}
+[data-kind='anime'] {
+  --kind: #ff8ad8;
+}
+[data-kind='cartoon'] {
+  --kind: #7be0a8;
+}
+[data-kind='comics'] {
+  --kind: #ff7a7a;
+}
+[data-kind='games'] {
+  --kind: #9a8cff;
+}
+[data-kind='music'] {
+  --kind: #e8604c;
+}
+[data-kind='catchphrase'] {
+  --kind: #ff7aa2;
+}
+[data-kind='saying'] {
+  --kind: #c99a3a;
+}
+
+/* Film: a cinema ticket. Notches on both sides (the page showing through) and a tear line above
+   the footer, which becomes the stub. */
+.compact[data-kind='film']::before,
+.compact[data-kind='film']::after {
+  content: '';
+  position: absolute;
+  inset-block-end: calc(2.9rem - 9px);
+  inline-size: 9px;
+  block-size: 18px;
+  border: var(--border-width) solid var(--kind-edge);
+  background: var(--color-bg);
+}
+
+/* Half circles sitting just inside each edge, covering the card's own border there. */
+.compact[data-kind='film']::before {
+  inset-inline-start: calc(-1 * var(--border-width));
+  border-inline-start: 0;
+  border-radius: 0 9px 9px 0;
+}
+
+.compact[data-kind='film']::after {
+  inset-inline-end: calc(-1 * var(--border-width));
+  border-inline-end: 0;
+  border-radius: 9px 0 0 9px;
+}
+
+.compact[data-kind='film'] .footer {
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4) 0;
+  border-block-start: 2px dashed color-mix(in srgb, var(--kind) 45%, transparent);
+}
+
+/* TV: a screen in a thick bezel. */
+.compact[data-kind='tv'] {
+  border-width: 6px;
+  border-radius: 26px;
+}
+
+/* Meme: a phone, with its notch. */
+.compact[data-kind='meme'] {
+  border-width: 3px;
+  border-radius: 26px;
+  padding-block-start: var(--space-6);
+}
+
+.compact[data-kind='meme']::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 7px;
+  inset-inline-start: calc(50% - 22px);
+  inline-size: 44px;
+  block-size: 8px;
+  border-radius: 6px;
+  background: var(--kind-edge);
+}
+
+/* Anime: a manga panel, ink border, speed lines in the corner. */
+.compact[data-kind='anime'] {
+  border: 2px solid var(--color-text);
+  border-radius: 4px;
+  background:
+    repeating-conic-gradient(
+      from 0deg at 110% -10%,
+      color-mix(in srgb, var(--color-text) 8%, transparent) 0 2deg,
+      transparent 2deg 7deg
+    ),
+    linear-gradient(160deg, var(--kind-tint), var(--kind-tint-deep));
+}
+
+/* Cartoon: a comic panel, thick ink border, an inner coloured line, halftone dots. */
+.compact[data-kind='cartoon'] {
+  border: 3px solid var(--color-text);
+  border-radius: 10px;
+  /* The inner line is a shadow, so the keyboard focus ring (an outline) still shows. */
+  box-shadow:
+    inset 0 0 0 4px var(--kind-tint),
+    inset 0 0 0 6px var(--kind-edge),
+    var(--shadow-card);
+  background:
+    radial-gradient(color-mix(in srgb, var(--kind) 18%, transparent) 1.2px, transparent 1.5px) 0 0 /
+      9px 9px,
+    linear-gradient(160deg, var(--kind-tint), var(--kind-tint-deep));
+}
+
+/* Comics: a comic book, ink border and a coloured band across the top. */
+.compact[data-kind='comics'] {
+  border: 3px solid var(--color-text);
+  border-radius: 6px;
+  border-block-start: 10px solid var(--kind);
+}
+
+/* Games: a cartridge, ridges along the bottom. */
+.compact[data-kind='games'] {
+  border-radius: 8px 8px 16px 16px;
+  border-width: 3px;
+  background:
+    repeating-linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--kind) 30%, transparent) 0 3px,
+        transparent 3px 9px
+      )
+      bottom / 100% 10px no-repeat,
+    linear-gradient(160deg, var(--kind-tint), var(--kind-tint-deep));
+}
+
+/* Music: a record sleeve, with a record's grooves showing at the edge. */
+.compact[data-kind='music'] {
+  border-radius: 6px;
+  background:
+    repeating-radial-gradient(
+      circle at 115% 50%,
+      color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px,
+      transparent 1px 5px
+    ),
+    linear-gradient(160deg, var(--kind-tint), var(--kind-tint-deep));
+}
+
+/* Catchphrase: a speech bubble with its tail. */
+.compact[data-kind='catchphrase'] {
+  border-radius: 26px 26px 26px 6px;
+}
+
+.compact[data-kind='catchphrase']::after {
+  content: '';
+  position: absolute;
+  inset-block-end: -10px;
+  inset-inline-start: 14px;
+  inline-size: 18px;
+  block-size: 12px;
+  background: var(--kind-tint-deep);
+  border-inline-start: var(--border-width) solid var(--kind-edge);
+  border-block-end: var(--border-width) solid var(--kind-edge);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+/* Saying: a paper note taped up, paper in either theme. */
+.compact[data-kind='saying'] {
+  --color-text: #1b1630;
+  --color-text-muted: #554e6a;
+  --color-warm: #9e451a;
+  --color-accent: #5b2fe0;
+  border: 0;
+  border-radius: 4px;
+  background: #efe6d2;
+}
+
+.compact[data-kind='saying']::before {
+  content: '';
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline-start: calc(50% - 30px);
+  inline-size: 60px;
+  block-size: 18px;
+  background: rgb(201 194 238 / 0.75);
+  transform: rotate(3deg);
+}

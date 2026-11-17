@@ -31,8 +31,8 @@ interface PackMemberItemProps {
 }
 
 /**
- * A card in the open pack, with Move, Up, Down and "I get this now". Every move files through
- * `fileCard`.
+ * A card in the open pack. "Got it" folds it into "Cards you've got"; "More" opens the tidying:
+ * up or down the list, or to another pack. Every move files through `fileCard`.
  */
 export function PackMemberItem({
   reference,
@@ -48,6 +48,7 @@ export function PackMemberItem({
   const { reduced } = useMotionPresets();
   const itemRef = useRef<HTMLLIElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [over, setOver] = useState(false);
   const upRef = useRef<HTMLButtonElement>(null);
   const downRef = useRef<HTMLButtonElement>(null);
@@ -67,7 +68,7 @@ export function PackMemberItem({
 
   const markDone = async () => {
     // The card crumbles out of the list, buttons and all: the page heading takes focus instead.
-    // "Put back" in "Cards you get" is its undo.
+    // "Put back" in "Cards you've got" is its undo.
     const dust = dissolve(cardElement(itemRef.current, reference.id), reduced);
     if (await attempt(() => packs.markDone(packId, reference.id))) {
       document.querySelector<HTMLElement>('#main h1')?.focus();
@@ -100,37 +101,52 @@ export function PackMemberItem({
       <ReferenceCard reference={reference} packId={packId} />
       <PackChips label="Also in:" packs={otherPacks} />
       <div role="group" aria-label={reference.title} className={styles.row}>
-        <button
-          type="button"
-          className={styles.button}
-          aria-expanded={sheetOpen}
-          onClick={() => setSheetOpen((open) => !open)}
-        >
-          Move
-        </button>
-        {/* aria-disabled, not disabled: the button keeps focus when the card reaches an end. */}
-        <button
-          ref={upRef}
-          type="button"
-          className={styles.button}
-          aria-disabled={index === 0}
-          onClick={() => moveTo(index - 1, upRef.current)}
-        >
-          Up
-        </button>
-        <button
-          ref={downRef}
-          type="button"
-          className={styles.button}
-          aria-disabled={index === count - 1}
-          onClick={() => moveTo(index + 1, downRef.current)}
-        >
-          Down
-        </button>
         <button type="button" className={styles.button} onClick={() => void markDone()}>
-          I get this now
+          <span aria-hidden="true">✓ </span>Got it
+        </button>
+        <button
+          type="button"
+          className={styles.button}
+          aria-expanded={moreOpen}
+          onClick={() => {
+            setMoreOpen((open) => !open);
+            setSheetOpen(false);
+          }}
+        >
+          <span aria-hidden="true">⋯ </span>More
         </button>
       </div>
+      {moreOpen && (
+        <div role="group" aria-label={`Arrange ${reference.title}`} className={styles.row}>
+          {/* aria-disabled, not disabled: the button keeps focus when the card reaches an end. */}
+          <button
+            ref={upRef}
+            type="button"
+            className={styles.button}
+            aria-disabled={index === 0}
+            onClick={() => moveTo(index - 1, upRef.current)}
+          >
+            <span aria-hidden="true">↑ </span>Move up the list
+          </button>
+          <button
+            ref={downRef}
+            type="button"
+            className={styles.button}
+            aria-disabled={index === count - 1}
+            onClick={() => moveTo(index + 1, downRef.current)}
+          >
+            <span aria-hidden="true">↓ </span>Move down the list
+          </button>
+          <button
+            type="button"
+            className={styles.button}
+            aria-expanded={sheetOpen}
+            onClick={() => setSheetOpen((open) => !open)}
+          >
+            Move to another pack
+          </button>
+        </div>
+      )}
       {sheetOpen && (
         <PackSheet
           referenceId={reference.id}

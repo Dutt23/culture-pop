@@ -171,7 +171,7 @@ export interface PackMember {
   /** Manual order inside the pack: dense and 0-based. */
   position: number;
   addedAt: string;
-  /** Set by "I get this now": the card leaves the pack's active list but stays filed. */
+  /** Set by "Got it": the card leaves the pack's active list but stays filed. */
   doneAt?: string;
 }
 

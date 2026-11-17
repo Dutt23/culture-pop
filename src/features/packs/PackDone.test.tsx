@@ -13,13 +13,13 @@ async function withPack() {
   return { db, repos, pack, path: `/packs/${encodeURIComponent(pack.id)}` };
 }
 
-describe('"I get this now"', () => {
+describe('"Got it"', () => {
   it('takes the card out of the pack list without counting or scoring anything', async () => {
     const { db, repos, pack, path } = await withPack();
     const { user } = renderApp(path, db);
 
     const controls = await screen.findByRole('group', { name: 'OK boomer' });
-    await user.click(within(controls).getByRole('button', { name: 'I get this now' }));
+    await user.click(within(controls).getByRole('button', { name: 'Got it' }));
 
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: 'OK boomer' })).not.toBeInTheDocument(),
@@ -44,30 +44,31 @@ describe('"I get this now"', () => {
     const { user } = renderApp(path, db);
 
     // Folded away until asked for.
-    const fold = (await screen.findByText('Cards you get')).closest('details');
+    const fold = (await screen.findByText("Cards you've got")).closest('details');
     expect(fold).not.toHaveAttribute('open');
-    await user.click(screen.getByText('Cards you get'));
+    await user.click(screen.getByText("Cards you've got"));
     expect(fold).toHaveAttribute('open');
-    const done = screen.getByRole('list', { name: 'Cards you get' });
+    const done = screen.getByRole('list', { name: "Cards you've got" });
     expect(within(done).getByRole('link', { name: /OK boomer/ })).toBeInTheDocument();
     await user.click(within(done).getByRole('button', { name: 'Put back OK boomer' }));
 
     expect(await screen.findByRole('group', { name: 'OK boomer' })).toBeInTheDocument();
-    expect(screen.queryByText('Cards you get')).not.toBeInTheDocument();
+    expect(screen.queryByText("Cards you've got")).not.toBeInTheDocument();
     expect((await repos.packs.members(pack.id)).map((m) => [m.referenceId, m.doneAt])).toEqual([
       ['doh-simpsons', undefined],
       ['ok-boomer', undefined],
     ]);
   });
 
-  it('moves cards still to learn with Up and Down while a done card stays last', async () => {
+  it('moves cards still to learn up and down the list while a done card stays last', async () => {
     const { db, repos, pack, path } = await withPack();
     await repos.packs.fileCard('the-snap-avengers', pack.id, 0);
     await repos.packs.markDone(pack.id, 'the-snap-avengers');
     const { user } = renderApp(path, db);
 
     const controls = await screen.findByRole('group', { name: 'OK boomer' });
-    await user.click(within(controls).getByRole('button', { name: 'Down' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move down the list' }));
     await waitFor(async () =>
       expect((await repos.packs.members(pack.id)).map((m) => m.referenceId)).toEqual([
         'doh-simpsons',
@@ -77,7 +78,7 @@ describe('"I get this now"', () => {
     );
     // The last card still to learn cannot move down past the done one.
     await waitFor(() =>
-      expect(within(controls).getByRole('button', { name: 'Down' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Move down the list' })).toHaveAttribute(
         'aria-disabled',
         'true',
       ),

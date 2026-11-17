@@ -105,11 +105,11 @@ export function usePack(packId: string): Pack | null | undefined {
 export interface PackCards {
   /** Still to learn, in position order. */
   active: Reference[];
-  /** Marked "I get this now", in the order they were marked. */
+  /** Marked "Got it", in the order they were marked. */
   done: Reference[];
 }
 
-/** The pack's cards in position order, split by "I get this now". */
+/** The pack's cards in position order, split by "Got it". */
 export function usePackMembers(packId: string): PackCards | undefined {
   const { packs, references } = useRepositories();
   return useLiveQuery(async () => {

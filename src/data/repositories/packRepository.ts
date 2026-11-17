@@ -30,7 +30,7 @@ export interface PackRepository {
    */
   fileCard(referenceId: string, packId: string, index: number, fromPackId?: string): Promise<void>;
   /**
-   * "I get this now": the card stays filed but moves after the cards still to learn. Filing it into
+   * "Got it": the card stays filed but moves after the cards still to learn. Filing it into
    * this pack again (`fileCard`) puts it back among them.
    */
   markDone(packId: string, referenceId: string): Promise<void>;

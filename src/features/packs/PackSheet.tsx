@@ -76,7 +76,8 @@ export function PackSheet({ referenceId, title, fromPackId, onLeft, onClose }: P
       }}
     >
       <h3 id={headingId} className={styles.sheetTitle}>
-        {fromPackId ? `Move “${title}” to another pack` : `File “${title}” in a pack`}
+        {/* Titles often carry their own quote marks, so none are added around them. */}
+        {fromPackId ? `Move ${title} to another pack` : `File ${title} in a pack`}
       </h3>
       {list && list.length === 0 && (
         <p className={styles.muted}>

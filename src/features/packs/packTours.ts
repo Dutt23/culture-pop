@@ -27,7 +27,7 @@ export const PACK_TOUR: readonly TourStep[] = [
   },
   {
     target: 'pack-cards',
-    text: 'Each card has buttons: Move sends it to another pack, Up and Down change the order, and “I get this now” folds it into “Cards you get”.',
+    text: 'Once you understand a card, tap “Got it” and it moves down to “Cards you’ve got”. “More” lets you move a card up or down the list, or to another pack.',
   },
   {
     target: 'pack-spoilers',

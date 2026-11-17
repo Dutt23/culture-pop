@@ -46,7 +46,8 @@ describe('packs', () => {
     const { user } = renderApp(packPage(xMen.id), db);
 
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
-    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
     const sheet = screen.getByRole('dialog', { name: /to another pack/ });
     await user.click(await within(sheet).findByRole('button', { name: 'Before the Doom movie' }));
 
@@ -88,7 +89,8 @@ describe('packs', () => {
     const { user } = renderApp(packPage(xMen.id), db);
 
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
-    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
     await user.click(screen.getByRole('button', { name: 'Remove from this pack' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       /Removed “The snap \(Avengers\)” from this pack/,
@@ -110,7 +112,8 @@ describe('packs', () => {
     const { user } = renderApp(packPage(xMen.id), db);
 
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
-    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
     const sheet = screen.getByRole('dialog', { name: /to another pack/ });
     await user.click(await within(sheet).findByRole('button', { name: 'Before the Doom movie' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
@@ -132,7 +135,8 @@ describe('packs', () => {
     const { user } = renderApp(packPage(xMen.id), db);
 
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
-    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
     const sheet = screen.getByRole('dialog', { name: /to another pack/ });
     expect(await within(sheet).findByRole('button', { name: /Filed here/ })).toBeDisabled();
     expect(within(sheet).getByRole('button', { name: 'Before the Doom movie' })).toBeEnabled();
@@ -144,7 +148,8 @@ describe('packs', () => {
     const { user } = renderApp(packPage(xMen.id), db);
 
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
-    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
     await user.click(screen.getByRole('button', { name: 'Remove from this pack' }));
 
     await waitFor(() =>
@@ -192,14 +197,15 @@ describe('packs', () => {
     expect((await repos.packs.list())[0]).toMatchObject({ id: xMen.id, now: true });
   });
 
-  it('reorders with Up and Down', async () => {
+  it('reorders from More, up or down the list', async () => {
     const { db, repos, xMen } = await withPacks();
     await repos.packs.fileCard('ok-boomer', xMen.id, Infinity);
     await repos.packs.fileCard('doh-simpsons', xMen.id, Infinity);
     const { user } = renderApp(packPage(xMen.id), db);
 
     const controls = await screen.findByRole('group', { name: "D'oh! (The Simpsons)" });
-    await user.click(within(controls).getByRole('button', { name: 'Up' }));
+    await user.click(within(controls).getByRole('button', { name: 'More' }));
+    await user.click(screen.getByRole('button', { name: 'Move up the list' }));
     await waitFor(async () =>
       expect((await repos.packs.members(xMen.id)).map((m) => m.referenceId)).toEqual([
         'doh-simpsons',

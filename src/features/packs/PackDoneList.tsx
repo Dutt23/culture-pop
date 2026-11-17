@@ -7,11 +7,11 @@ import { useAttempt } from './usePacks';
 
 interface PackDoneListProps {
   packId: string;
-  /** Cards marked "I get this now". */
+  /** Cards marked "Got it". */
   cards: readonly Reference[];
 }
 
-const TITLE = 'Cards you get';
+const TITLE = "Cards you've got";
 
 /** Done cards, folded away: still filed, and one tap from going back. Deliberately no count. */
 export function PackDoneList({ packId, cards }: PackDoneListProps) {
