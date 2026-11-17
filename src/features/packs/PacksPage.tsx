@@ -3,11 +3,15 @@ import { useRepositories } from '../../app/RepositoriesContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
+import { Tour } from '../../components/tour/Tour';
+import { useTour } from '../../components/tour/useTour';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { CEILING_HINT } from '../../domain/labels';
 import { groupHits, searchPacks } from '../../domain/packs';
 import type { PackCeiling } from '../../domain/types';
 import { useSearchQuery } from '../search/useSearchQuery';
 import { PackHits } from './PackHits';
+import { PACKS_TOUR } from './packTours';
 import { PackRow } from './PackRow';
 import styles from './Packs.module.css';
 import { PackSearchField } from './PackSearchField';
@@ -21,11 +25,14 @@ export function PacksPage() {
     [data, query],
   );
   const searching = query.trim() !== '';
+  const tour = useTour('packs', data !== undefined);
 
   return (
     <Page title="Packs" intro="Folders of cards you file yourself. Saved on this device only.">
       <NewPackForm />
-      <PackSearchField label="Search all packs" value={query} onChange={setQuery} />
+      <div data-tour="pack-search">
+        <PackSearchField label="Search all packs" value={query} onChange={setQuery} />
+      </div>
       {data && searching && groups.length === 0 && <EmptyState title="Nothing in your packs." />}
       {data && searching && groups.length > 0 && (
         <PackHits
@@ -47,6 +54,7 @@ export function PacksPage() {
           ))}
         </ul>
       )}
+      {tour.open && <Tour steps={PACKS_TOUR} onClose={tour.close} />}
     </Page>
   );
 }
@@ -62,6 +70,7 @@ function NewPackForm() {
     <Section title="New pack">
       <form
         className={styles.form}
+        data-tour="new-pack"
         onSubmit={(event) => {
           event.preventDefault();
           if (!name.trim()) return;
@@ -82,13 +91,16 @@ function NewPackForm() {
           autoComplete="off"
           required
         />
-        <SegmentedControl
-          legend="Spoilers"
-          name="new-pack-ceiling"
-          options={CEILING_OPTIONS}
-          value={ceiling}
-          onChange={setCeiling}
-        />
+        <div data-tour="pack-spoilers">
+          <SegmentedControl
+            legend="Spoilers"
+            name="new-pack-ceiling"
+            options={CEILING_OPTIONS}
+            value={ceiling}
+            onChange={setCeiling}
+          />
+          <p className={styles.muted}>{CEILING_HINT[ceiling]}</p>
+        </div>
         <button type="submit" className={styles.primary}>
           Create pack
         </button>

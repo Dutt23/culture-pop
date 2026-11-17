@@ -1,8 +1,8 @@
 # "You'll hear this" pack: batch 2 draft (30 cards)
 
-Status: **draft for the owner's review, not built in yet.** If approved, it would be built in as a
-second pack file next to `src/data/seedPack1.ts`, shipped later by a new database version (the same
-way batch 1 shipped with version 9), and marked as editor-written like the demo cards.
+Status: **approved by the owner 2026-11-17, all 30 as written.** Built in as
+`src/data/seedPack2.ts`, shipped by database version 10, marked as editor-written like the demo
+cards.
 
 How to review: for each card, check that it's right, that the top three lines (Means, When people
 say it, Say back) give nothing away, and that it's a line your circle actually says. Mark a card
@@ -483,7 +483,8 @@ Meme · 2010s & later · meme · also found by: _binod, binod comment, binod mem
   in card 23, and card 26 (the sources are lists, not the film itself).
 - **Card 27 can't fully hide its twist.** The famous question itself says what happens, and it is
   also what people type, so it stays a search word. The card's title and its first meaning never
-  say it. Cut the card if that's not good enough.
+  say it. **Owner decision 2026-11-17: keep as is.** The question is famous enough that most
+  people know it without seeing the film, and people search for it.
 - **Eras to confirm:** card 11 (Unagi, which aired around 2000), card 12 (the episode "Fun Run", 2007, per
   the checker's memory, not a source), card 5 (Iron Man, 2008, so 2000s even though the spoiler meaning
   is from 2019).

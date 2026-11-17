@@ -1,0 +1,68 @@
+/* Sits above the bottom navigation, below the intro splash. */
+.tour {
+  position: fixed;
+  inset-inline: var(--space-gutter);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-3));
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: 34rem;
+  margin-inline: auto;
+}
+
+.bubble {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.text {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.count {
+  margin-right: auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.quiet,
+.next {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.quiet {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.next {
+  border: 0;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+/* The part of the page the current step is about (global: set on page elements by the tour). */
+:global([data-tour-active]) {
+  outline: 3px solid var(--color-warm);
+  outline-offset: 4px;
+  border-radius: var(--radius-md);
+}

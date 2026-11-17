@@ -32,6 +32,15 @@ export const CEILING_LABEL: Readonly<Record<PackCeiling, string>> = {
   open: 'My spoiler setting',
 };
 
+/** What a pack's spoiler choice does, in one plain line under the control. */
+export const CEILING_HINT: Readonly<Record<PackCeiling, string>> = {
+  before_watching: 'Cards opened from this pack hide story spoilers, whatever your Settings say.',
+  open: 'Cards opened from this pack follow your spoiler choice in Settings.',
+};
+
+/** The pinned pack (`Pack.now`): listed first in your packs and in pack search. */
+export const PINNED_LABEL = 'Pinned';
+
 export const CATEGORY_PLURAL_LABEL: Readonly<Record<Category, string>> = {
   cartoon: 'Cartoons',
   comics: 'Comics',

@@ -1,0 +1,150 @@
+/* Always dark, like the installed app's launch screen it follows (manifest background_color). */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #0d0b1f;
+  cursor: pointer;
+}
+
+.playing {
+  animation: fade-out 300ms ease-out var(--fade-out-start) forwards;
+}
+
+.fadeAway {
+  animation: fade-out 200ms ease-out forwards;
+}
+
+.panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  text-align: center;
+  opacity: 0;
+  animation: flip var(--duration) linear var(--start) forwards;
+}
+
+.line {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 9vw, 3.5rem);
+  line-height: 1.1;
+}
+
+.caption {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.from {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+/* The app's own palette, as in the icon. */
+.violet {
+  background: #6a3df0;
+  color: #f3efff;
+}
+.peach {
+  background: #ffb27a;
+  color: #2a1206;
+}
+.night {
+  background: #18153a;
+  color: #ffb27a;
+}
+.lilac {
+  background: #b29bff;
+  color: #120d2b;
+}
+.dusk {
+  background: #221d4a;
+  color: #f3efff;
+}
+.coral {
+  background: #e8604c;
+  color: #2a0b06;
+}
+.paper {
+  background: #f3efff;
+  color: #2a1f6a;
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #f3efff;
+  opacity: 0;
+  animation: flash 450ms ease-out var(--start) forwards;
+}
+
+.logo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  opacity: 0;
+  animation: settle 700ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--start) both;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  color: #f3efff;
+}
+
+.wordmark em {
+  color: #b29bff;
+}
+
+@keyframes flip {
+  0% {
+    opacity: 1;
+    transform: scale(1.08) rotate(var(--tilt));
+  }
+  99% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}

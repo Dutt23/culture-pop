@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/retrievalService';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
+import { resetTours, TOUR_PARAM } from '../../components/tour/useTour';
 import { SETTING_LABELS, type SettingKey, type Settings } from '../../domain/settings';
 import { useSettings } from './SettingsContext';
 import styles from './SettingsPage.module.css';
@@ -30,6 +32,7 @@ export function SettingsPage() {
   const { settings, setSetting, resetLocalData } = useSettings();
   const { history } = useRepositories();
   const { webSearch } = useRetrievalService();
+  const navigate = useNavigate();
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const save = async (action: () => Promise<void>) => {
@@ -173,6 +176,22 @@ export function SettingsPage() {
             {message.text}
           </p>
         )}
+      </Section>
+
+      <Section
+        title="Show me around"
+        description="The mascot walks you through packs: what they are, the spoiler choice and pinning."
+      >
+        <button
+          type="button"
+          className={styles.reset}
+          onClick={() => {
+            resetTours(['packs', 'pack']);
+            void navigate(`/packs?${TOUR_PARAM}=1`);
+          }}
+        >
+          Tour packs
+        </button>
       </Section>
 
       <Section title="About the content">

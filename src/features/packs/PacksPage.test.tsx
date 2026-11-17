@@ -28,6 +28,10 @@ describe('packs', () => {
     const { user } = renderApp('/packs', db);
     await user.type(await screen.findByLabelText('Pack name'), 'Before the finale');
     expect(screen.getByRole('radio', { name: 'Before you watch' })).toBeChecked();
+    expect(screen.getByText(/hide story spoilers, whatever your Settings say/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'My spoiler setting' }));
+    expect(screen.getByText(/follow your spoiler choice in Settings/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Before you watch' }));
     await user.click(screen.getByRole('button', { name: 'Create pack' }));
     expect(await screen.findByRole('link', { name: /Before the finale/ })).toBeInTheDocument();
     expect((await repos.packs.list()).find((p) => p.name === 'Before the finale')).toMatchObject({
@@ -129,6 +133,17 @@ describe('packs', () => {
     await user.type(await screen.findByRole('searchbox', { name: 'Search all packs' }), 'boomer');
     expect(await screen.findByText('Nothing in your packs.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /OK boomer/i })).not.toBeInTheDocument();
+  });
+
+  it('pins a pack to the top of the list', async () => {
+    const { db, repos, xMen } = await withPacks();
+    const { user } = renderApp(packPage(xMen.id), db);
+    await user.click(await screen.findByRole('button', { name: 'Pin to top' }));
+    expect(await screen.findByRole('button', { name: 'Pinned to top' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect((await repos.packs.list())[0]).toMatchObject({ id: xMen.id, now: true });
   });
 
   it('reorders with Up and Down', async () => {

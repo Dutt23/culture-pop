@@ -9,6 +9,7 @@ import type {
   SpoilerLevel,
 } from '../domain/types';
 import { PACK_1_DEFINITIONS } from './seedPack1';
+import { PACK_2_DEFINITIONS } from './seedPack2';
 
 /**
  * Original, editorially written DEMO content (provenance `seed_curated`).
@@ -455,6 +456,7 @@ export interface SeedData {
 const BUILT_IN_DEFINITIONS: readonly SeedDefinition[] = [
   ...SEED_DEFINITIONS,
   ...PACK_1_DEFINITIONS,
+  ...PACK_2_DEFINITIONS,
 ];
 
 export function buildSeed(): SeedData {

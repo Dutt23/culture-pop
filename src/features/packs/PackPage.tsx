@@ -5,13 +5,16 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
-import { CEILING_LABEL } from '../../domain/labels';
+import { Tour } from '../../components/tour/Tour';
+import { useTour } from '../../components/tour/useTour';
+import { CEILING_HINT, CEILING_LABEL, PINNED_LABEL } from '../../domain/labels';
 import { groupHits, searchPacks, type PackSearchScope } from '../../domain/packs';
 import type { Pack } from '../../domain/types';
 import { useSearch } from '../search/useSearch';
 import { useSearchQuery } from '../search/useSearchQuery';
 import { PackHits } from './PackHits';
 import { PackMemberItem } from './PackMemberItem';
+import { PACK_TOUR } from './packTours';
 import { PackRow } from './PackRow';
 import styles from './Packs.module.css';
 import { PackSearchField } from './PackSearchField';
@@ -59,6 +62,8 @@ function PackView({ packId }: { packId: string }) {
     return groupHits(searchPacks(query, where, data.index));
   }, [data, query, scope, packId]);
 
+  const tour = useTour('pack', Boolean(pack) && members !== undefined);
+
   if (pack === undefined || members === undefined) {
     return (
       <p className={styles.muted} role="status">
@@ -78,14 +83,14 @@ function PackView({ packId }: { packId: string }) {
   }
 
   const searching = query.trim() !== '';
-  const eyebrow = [cardCount(members.length), CEILING_LABEL[pack.ceiling], pack.now && 'Now']
+  const eyebrow = [cardCount(members.length), CEILING_LABEL[pack.ceiling], pack.now && PINNED_LABEL]
     .filter(Boolean)
     .join(' · ');
   const otherPacks = (data?.index.packs ?? []).filter((other) => other.id !== pack.id);
 
   return (
     <Page title={pack.name} eyebrow={eyebrow}>
-      <div className={styles.stack}>
+      <div className={styles.stack} data-tour="pack-search-in">
         <SegmentedControl
           legend="Search in"
           name="pack-scope"
@@ -126,6 +131,7 @@ function PackView({ packId }: { packId: string }) {
       {!searching && members.length > 0 && (
         <ol
           className={styles.list}
+          data-tour="pack-cards"
           onDragOver={acceptsCard}
           onDrop={(event) => {
             if (!acceptsCard(event)) return;
@@ -170,6 +176,7 @@ function PackView({ packId }: { packId: string }) {
           </ul>
         </Section>
       )}
+      {tour.open && <Tour steps={PACK_TOUR} onClose={tour.close} />}
     </Page>
   );
 }
@@ -211,25 +218,33 @@ function PackSettings({ pack }: { pack: Pack }) {
           Rename
         </button>
       </form>
-      <SegmentedControl
-        legend="Spoilers"
-        name="pack-ceiling"
-        options={CEILING_OPTIONS}
-        value={pack.ceiling}
-        onChange={(ceiling) => void attempt(() => packs.setCeiling(pack.id, ceiling))}
-      />
-      <div className={styles.row}>
-        <button
-          type="button"
-          className={styles.button}
-          aria-pressed={pack.now}
-          onClick={() => void attempt(() => (pack.now ? packs.clearNow() : packs.setNow(pack.id)))}
-        >
-          {pack.now ? 'Now' : 'Set as Now'}
-        </button>
-        <button type="button" className={styles.danger} onClick={() => void deletePack()}>
-          Delete pack
-        </button>
+      <div data-tour="pack-spoilers">
+        <SegmentedControl
+          legend="Spoilers"
+          name="pack-ceiling"
+          options={CEILING_OPTIONS}
+          value={pack.ceiling}
+          onChange={(ceiling) => void attempt(() => packs.setCeiling(pack.id, ceiling))}
+        />
+        <p className={styles.muted}>{CEILING_HINT[pack.ceiling]}</p>
+      </div>
+      <div data-tour="pack-pin">
+        <div className={styles.row}>
+          <button
+            type="button"
+            className={styles.button}
+            aria-pressed={pack.now}
+            onClick={() =>
+              void attempt(() => (pack.now ? packs.clearNow() : packs.setNow(pack.id)))
+            }
+          >
+            {pack.now ? 'Pinned to top' : 'Pin to top'}
+          </button>
+          <button type="button" className={styles.danger} onClick={() => void deletePack()}>
+            Delete pack
+          </button>
+        </div>
+        <p className={styles.muted}>A pinned pack shows first in your packs and in pack search.</p>
       </div>
       {error && (
         <p className={styles.error} role="alert">

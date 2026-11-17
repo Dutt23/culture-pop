@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
-import { matchReason } from '../../domain/labels';
+import { matchReason, PINNED_LABEL } from '../../domain/labels';
 import type { PackHitGroup } from '../../domain/packs';
 import type { Pack } from '../../domain/types';
 import { PackChips } from './PackChips';
@@ -28,7 +28,7 @@ export function PackHits({ groups, packsByReference, query, limit = Infinity }: 
               <Link to={packPath(pack.id, query)} className={styles.packName}>
                 {pack.name}
               </Link>
-              {pack.now && <span className={styles.nowChip}>Now</span>}
+              {pack.now && <span className={styles.nowChip}>{PINNED_LABEL}</span>}
             </div>
             {shown.length > 0 && (
               <ul className={styles.list}>

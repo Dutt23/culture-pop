@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { classNames } from '../../components/ui/classNames';
-import { CEILING_LABEL } from '../../domain/labels';
+import { CEILING_LABEL, PINNED_LABEL } from '../../domain/labels';
 import type { Pack } from '../../domain/types';
 import styles from './Packs.module.css';
 import {
@@ -47,7 +47,7 @@ export function PackRow({ pack, count }: PackRowProps) {
           {cardCount(count)} · {CEILING_LABEL[pack.ceiling]}
         </span>
       </Link>
-      {pack.now && <span className={styles.nowChip}>Now</span>}
+      {pack.now && <span className={styles.nowChip}>{PINNED_LABEL}</span>}
       {error && (
         <p className={styles.error} role="alert">
           {error}

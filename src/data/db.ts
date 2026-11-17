@@ -165,6 +165,9 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
   // v9: the "you'll hear this" pack, batch 1 (30 built-in cards). No index changes.
   db.version(9).stores({}).upgrade(refreshBuiltIns);
 
+  // v10: the "you'll hear this" pack, batch 2 (30 more built-in cards). No index changes.
+  db.version(10).stores({}).upgrade(refreshBuiltIns);
+
   db.on('populate', (tx) => {
     const seed = buildSeed();
     void tx.table('references').bulkAdd(seed.references);

@@ -172,7 +172,7 @@ Add **Packs** to the nav in `src/app/AppShell.tsx`. Keep Discover, Search, and F
 
 `/packs/:packId`:
 
-- Rename, ceiling, "Set as Now" / "Now".
+- Rename, ceiling, "Pin to top" / "Pinned to top" (the stored flag stays `now`; owner 2026-11-17: "Now" read as a mystery, and pinning is all it does). One plain line under the spoiler control says what the chosen setting does, and one under the pin button says what pinning does. Pack rows and results show a "Pinned" chip.
 - Segmented control: **This pack** | **All packs**. Default **This pack**.
 - **All packs** stays on this page and groups hits from every pack. It does not navigate to `/search`.
 - Empty query: members in `position` order, Move / Up / Down.

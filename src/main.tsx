@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { AppProviders } from './app/AppProviders';
 import { AppRoutes } from './app/AppRoutes';
+import { IntroSplash } from './components/intro-splash/IntroSplash';
 import { createDatabase } from './data/db';
 import './design/tokens.css';
 import './design/themes.css';
@@ -17,6 +18,7 @@ createRoot(root).render(
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
+      <IntroSplash />
     </AppProviders>
   </StrictMode>,
 );
