@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable, type InsertType } from 'dexie';
+import Dexie, { type EntityTable, type InsertType, type Transaction } from 'dexie';
 import type { HistoryEntry } from '../domain/history';
 import type { SavedWebResults } from './repositories/webResultRepository';
 import type {
@@ -84,6 +84,14 @@ export const SCHEMA_V8_CHANGES = {
   packMembers: 'id, packId, referenceId, [packId+position], &[packId+referenceId]',
 } as const;
 
+/** Replaces the app's own built-in rows from the current seed; nothing the reader made is touched. */
+async function refreshBuiltIns(tx: Transaction) {
+  const seed = buildSeed();
+  await tx.table('references').bulkPut(seed.references);
+  await tx.table('interpretations').bulkPut(seed.interpretations);
+  await tx.table('aliases').bulkPut(seed.aliases);
+}
+
 /**
  * Versioned schema. Add a new `db.version(n)` block (with `.upgrade()` when data must move)
  * for every change; never edit a shipped version in place.
@@ -147,20 +155,15 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
   // v6: a new, empty store for saved wider-web links. Nothing to move.
   db.version(6).stores(SCHEMA_V6_CHANGES);
 
-  // v7 (Phase 5): built-in entries gain the glance-card lines (`gist`, `socialMove`). Built-in rows
-  // are the app's own, so they are replaced from the current seed; nothing the reader made is
-  // touched. A later batch of built-in cards ships the same way, with its own version.
-  db.version(7)
-    .stores({})
-    .upgrade(async (tx) => {
-      const seed = buildSeed();
-      await tx.table('references').bulkPut(seed.references);
-      await tx.table('interpretations').bulkPut(seed.interpretations);
-      await tx.table('aliases').bulkPut(seed.aliases);
-    });
+  // v7 (Phase 5): built-in entries gain the glance-card lines (`gist`, `socialMove`). A later batch
+  // of built-in cards ships the same way, with its own version.
+  db.version(7).stores({}).upgrade(refreshBuiltIns);
 
   // v8: new, empty stores for packs and their member rows. Nothing to move.
   db.version(8).stores(SCHEMA_V8_CHANGES);
+
+  // v9: the "you'll hear this" pack, batch 1 (30 built-in cards). No index changes.
+  db.version(9).stores({}).upgrade(refreshBuiltIns);
 
   db.on('populate', (tx) => {
     const seed = buildSeed();

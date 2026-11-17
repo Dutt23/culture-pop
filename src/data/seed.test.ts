@@ -64,6 +64,13 @@ describe('seed content', () => {
     }
   });
 
+  it('opens every reference on a spoiler-free meaning', () => {
+    const first = new Map<string, (typeof seed.interpretations)[number]>();
+    for (const i of seed.interpretations)
+      if (!first.has(i.referenceId)) first.set(i.referenceId, i);
+    for (const [id, interpretation] of first) expect(interpretation.spoiler, id).toBe('none');
+  });
+
   it('gives every reference at least one interpretation', () => {
     const withMeaning = new Set(seed.interpretations.map((i) => i.referenceId));
     expect(seed.references.every((r) => withMeaning.has(r.id))).toBe(true);

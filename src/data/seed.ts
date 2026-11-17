@@ -8,6 +8,7 @@ import type {
   ReferenceKind,
   SpoilerLevel,
 } from '../domain/types';
+import { PACK_1_DEFINITIONS } from './seedPack1';
 
 /**
  * Original, editorially written DEMO content (provenance `seed_curated`).
@@ -15,7 +16,7 @@ import type {
  */
 const SEED_TIMESTAMP = '2026-11-15T00:00:00.000Z';
 
-interface SeedInterpretation {
+export interface SeedInterpretation {
   label: string;
   /** Glance card: what it means when someone says it, one spoiler-free sentence. */
   gist: string;
@@ -29,7 +30,7 @@ interface SeedInterpretation {
   spoiler?: SpoilerLevel;
 }
 
-interface SeedDefinition {
+export interface SeedDefinition {
   id: string;
   title: string;
   category: Category;
@@ -450,8 +451,14 @@ export interface SeedData {
   aliases: Alias[];
 }
 
+/** Every built-in entry: the demo set, then the "you'll hear this" pack batches. */
+const BUILT_IN_DEFINITIONS: readonly SeedDefinition[] = [
+  ...SEED_DEFINITIONS,
+  ...PACK_1_DEFINITIONS,
+];
+
 export function buildSeed(): SeedData {
-  const references = SEED_DEFINITIONS.map<Reference>((def) => ({
+  const references = BUILT_IN_DEFINITIONS.map<Reference>((def) => ({
     id: def.id,
     title: def.title,
     normalizedTitle: normalizePhrase(def.title),
@@ -466,7 +473,7 @@ export function buildSeed(): SeedData {
     updatedAt: SEED_TIMESTAMP,
   }));
 
-  const interpretations = SEED_DEFINITIONS.flatMap((def) =>
+  const interpretations = BUILT_IN_DEFINITIONS.flatMap((def) =>
     def.interpretations.map<Interpretation>((item, index) => ({
       id: `${def.id}.${index + 1}`,
       referenceId: def.id,
@@ -489,7 +496,7 @@ export function buildSeed(): SeedData {
     })),
   );
 
-  const aliases = SEED_DEFINITIONS.flatMap((def) =>
+  const aliases = BUILT_IN_DEFINITIONS.flatMap((def) =>
     def.aliases.map<Alias>((phrase) => {
       const normalizedPhrase = normalizePhrase(phrase);
       return { id: `${def.id}:${normalizedPhrase}`, phrase, normalizedPhrase, referenceId: def.id };

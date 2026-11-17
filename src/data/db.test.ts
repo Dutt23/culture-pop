@@ -15,10 +15,12 @@ import {
   SCHEMA_V4_CHANGES,
   SCHEMA_V5_CHANGES,
   SCHEMA_V6_CHANGES,
+  SCHEMA_V8_CHANGES,
   type PopCultureDb,
 } from './db';
 import { createRepositories } from './repositories';
 import { buildSeed } from './seed';
+import { PACK_1_DEFINITIONS } from './seedPack1';
 
 describe('database', () => {
   it('starts fresh databases with an interpretations store and no meanings store', async () => {
@@ -120,7 +122,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
@@ -194,7 +196,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     // The built-in meaning is replaced by the current seed (v7), glance lines included.
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
@@ -241,7 +243,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
     expect(await db.references.count()).toBe(buildSeed().references.length);
@@ -266,7 +268,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(db.tables.map((t) => t.name)).toContain('savedLinks');
     expect(await db.savedLinks.count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
@@ -302,7 +304,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       gist: 'Ugh, I just did something stupid.',
       socialMove: "They're laughing at their own mistake.",
@@ -339,11 +341,59 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['packs', 'packMembers']));
     expect(await db.packs.count()).toBe(0);
     expect(await db.packMembers.count()).toBe(0);
     expect(await db.references.toArray()).toEqual(before);
+    expect(await db.favourites.count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a real v8 database: adds the pack batch 1 cards, keeps packs and favourites', async () => {
+    const name = `upgrade-v8-${Math.random().toString(36).slice(2)}`;
+    const v8 = new Dexie(name);
+    v8.version(1).stores(SCHEMA_V1);
+    v8.version(2).stores(SCHEMA_V2_CHANGES);
+    v8.version(3).stores({});
+    v8.version(4).stores(SCHEMA_V4_CHANGES);
+    v8.version(5).stores(SCHEMA_V5_CHANGES);
+    v8.version(6).stores(SCHEMA_V6_CHANGES);
+    v8.version(7).stores({});
+    v8.version(8).stores(SCHEMA_V8_CHANGES);
+    await v8.open();
+    const seed = buildSeed();
+    const batch = new Set(PACK_1_DEFINITIONS.map((def) => def.id));
+    // A v8 install: the built-in rows from before batch 1, plus a pack and a favourite.
+    await v8.table('references').bulkAdd(seed.references.filter((r) => !batch.has(r.id)));
+    await v8
+      .table('interpretations')
+      .bulkAdd(seed.interpretations.filter((i) => !batch.has(i.referenceId)));
+    await v8.table('aliases').bulkAdd(seed.aliases.filter((a) => !batch.has(a.referenceId)));
+    await v8.table('packs').add({
+      id: 'pack:1',
+      name: 'Mine',
+      normalizedName: 'mine',
+      ceiling: 'open',
+      now: false,
+      createdAt: 't',
+      updatedAt: 't',
+    });
+    await v8
+      .table('packMembers')
+      .add({ id: 'pm:1', packId: 'pack:1', referenceId: 'ok-boomer', position: 0, addedAt: 't' });
+    await v8.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
+    v8.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(9);
+    expect(await db.references.count()).toBe(seed.references.length);
+    expect(await db.interpretations.count()).toBe(seed.interpretations.length);
+    expect(await db.aliases.count()).toBe(seed.aliases.length);
+    expect(await db.packMembers.toArray()).toEqual([
+      expect.objectContaining({ packId: 'pack:1', referenceId: 'ok-boomer' }),
+    ]);
     expect(await db.favourites.count()).toBe(1);
     db.close();
   });

@@ -59,7 +59,7 @@ describe('rankReferences with typo tolerance', () => {
     for (const query of [
       'xylophone',
       'quantum physics lecture',
-      'cat',
+      'tax',
       'zzz',
       'pizza recipe',
       'bazaar',
@@ -68,6 +68,8 @@ describe('rankReferences with typo tolerance', () => {
     ]) {
       expect(ids(query), query).toEqual([]);
     }
+    // A short word that is in a title still finds it.
+    expect(ids('cat')).toEqual(['woman-yelling-at-a-cat-meme']);
   });
 
   it('builds its index once per library array, however many searches run', () => {

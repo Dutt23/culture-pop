@@ -1,8 +1,8 @@
 # "You'll hear this" pack: batch 1 draft (30 cards)
 
-Status: **draft for the owner's review.** Nothing here is in the app yet. After you approve it, the
-cards ship as built-in entries through a new database version (the same way v7 refreshed the
-built-in cards), marked as editor-written like the demo cards are today.
+Status: **approved by the owner 2026-11-17, all 30 as written.** Built in as
+`src/data/seedPack1.ts`, shipped by database version 9 (which refreshes the built-in cards the same
+way v7 did), marked as editor-written like the demo cards.
 
 How to review: for each card, check that it's right, that the top three lines (Means, When people
 say it, Say back) give nothing away, and that it's a line your circle actually says. Mark a card
@@ -182,7 +182,7 @@ Film · 2000s · quote · also found by: _you're a wizard harry, you are a wizar
 
 ### 12. "Mischief managed" (Harry Potter)
 
-Film · 2000s · quote · also found by: _mischief managed, marauder's map, marauders map_
+Film · 2000s · quote · also found by: _mischief managed, marauder's map_
 
 - **Means:** Done, and nobody caught us.
 - **When people say it:** They're wrapping up a small, sneaky win.
