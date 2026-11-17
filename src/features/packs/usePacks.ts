@@ -13,6 +13,16 @@ export const REFERENCE_DRAG_TYPE = 'application/x-culture-pop-ref';
 /** Drag data: the pack the card was dragged out of, so dropping it on another pack moves it. */
 export const FROM_PACK_DRAG_TYPE = 'application/x-culture-pop-from-pack';
 
+/** A card that just left the open pack, kept so the reader can undo it. */
+export interface LeftCard {
+  referenceId: string;
+  title: string;
+  /** Its place in the pack, to put it back there. */
+  index: number;
+  /** Set when it was moved to another pack rather than removed. */
+  movedTo?: { id: string; name: string };
+}
+
 /** Cards shown per pack in all-packs results before "N more". */
 export const CARDS_PER_GROUP = 3;
 

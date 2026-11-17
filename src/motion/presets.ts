@@ -17,6 +17,8 @@ const STAGGER_MAX_ITEMS = 8;
 export const MOTION_ATTRIBUTE = 'data-motion';
 
 export interface MotionPresets {
+  /** The reader's motion setting (or their device's) asks for less movement. */
+  reduced: boolean;
   /** Variants `hidden` → `visible` → `exit`. Pass the item index as `custom` to stagger. */
   reveal: Variants;
   /** Spread onto a motion element inside <AnimatePresence> for height expand/collapse. */
@@ -35,6 +37,7 @@ export function createMotionPresets(reduced: boolean): MotionPresets {
   const step = reduced ? 0 : STAGGER_STEP;
 
   return {
+    reduced,
     reveal: {
       hidden: { opacity: 0, y: distance, scale },
       visible: (index: number = 0) => ({

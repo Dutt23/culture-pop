@@ -93,7 +93,8 @@ export function ReferenceCard({
   // Always the same wrapper, so a heart arriving later (online results once saved) adds a button
   // instead of replacing the link: the card keeps its place and any keyboard focus.
   return (
-    <div className={styles.wrapper}>
+    // `data-card`: the snap effect (motion/dissolve.ts) finds a card leaving a list by it.
+    <div className={styles.wrapper} data-card={reference.id}>
       {card}
       {/* A sibling of the link, never inside it: a link can't contain a button. */}
       {favourite && (

@@ -2,6 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { cardElement } from '../../motion/cardElement';
+import { dissolve } from '../../motion/dissolve';
+import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import styles from './Packs.module.css';
 import { useAttempt, usePacksOf } from './usePacks';
 
@@ -10,6 +13,8 @@ interface PackSheetProps {
   title: string;
   /** Opened on a card inside this pack: a tap moves it out, and "Remove from this pack" shows. */
   fromPackId?: string;
+  /** The card left this pack (removed, or moved to `movedTo`). */
+  onLeft?: (movedTo?: { id: string; name: string }) => void;
   onClose: () => void;
 }
 
@@ -18,11 +23,12 @@ interface PackSheetProps {
  * file the card at the end of it, or, opened from a pack, to move it there. Packs the card is
  * already in are listed but can't be tapped.
  */
-export function PackSheet({ referenceId, title, fromPackId, onClose }: PackSheetProps) {
+export function PackSheet({ referenceId, title, fromPackId, onLeft, onClose }: PackSheetProps) {
   const { packs } = useRepositories();
   const list = useLiveQuery(() => packs.list(), [packs]);
   const filedIn = usePacksOf(referenceId);
   const { error, attempt } = useAttempt();
+  const { reduced } = useMotionPresets();
   const headingId = useId();
   const sheetRef = useRef<HTMLElement>(null);
 
@@ -43,11 +49,16 @@ export function PackSheet({ referenceId, title, fromPackId, onClose }: PackSheet
   const run = async (action: () => Promise<unknown>) => {
     if (await attempt(action)) onClose();
   };
-  // The card leaves this pack's list, Move button and all: the page heading takes focus instead.
-  const leave = async (action: () => Promise<unknown>) => {
-    if (!(await attempt(action))) return;
+  // The card crumbles out of this pack's list, Move button and all: the page heading takes focus.
+  const leave = async (action: () => Promise<unknown>, movedTo?: { id: string; name: string }) => {
+    const dust = dissolve(cardElement(sheetRef.current?.closest('li'), referenceId), reduced);
+    if (!(await attempt(action))) {
+      dust.restore();
+      return;
+    }
     returnFocus.current = false;
     document.querySelector<HTMLElement>('#main h1')?.focus();
+    onLeft?.(movedTo);
     onClose();
   };
   const fileIn = (packId: string) => () =>
@@ -81,7 +92,11 @@ export function PackSheet({ referenceId, title, fromPackId, onClose }: PackSheet
                 type="button"
                 className={styles.sheetButton}
                 disabled={filed.has(pack.id)}
-                onClick={() => void (fromPackId ? leave : run)(fileIn(pack.id))}
+                onClick={() =>
+                  void (fromPackId
+                    ? leave(fileIn(pack.id), { id: pack.id, name: pack.name })
+                    : run(fileIn(pack.id)))
+                }
               >
                 {pack.name}
                 {filed.has(pack.id) && <span className={styles.muted}> · Filed here</span>}

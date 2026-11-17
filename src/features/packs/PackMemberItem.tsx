@@ -6,7 +6,13 @@ import type { Pack, Reference } from '../../domain/types';
 import { PackChips } from './PackChips';
 import styles from './Packs.module.css';
 import { PackSheet } from './PackSheet';
-import { acceptsCard, FROM_PACK_DRAG_TYPE, REFERENCE_DRAG_TYPE, useAttempt } from './usePacks';
+import {
+  acceptsCard,
+  FROM_PACK_DRAG_TYPE,
+  REFERENCE_DRAG_TYPE,
+  useAttempt,
+  type LeftCard,
+} from './usePacks';
 
 interface PackMemberItemProps {
   reference: Reference;
@@ -17,6 +23,8 @@ interface PackMemberItemProps {
   otherPacks: readonly Pack[];
   /** Fine pointers only: touch files and reorders with the buttons. */
   draggable: boolean;
+  /** The card left this pack through the Move sheet. */
+  onLeft: (left: LeftCard) => void;
 }
 
 /** A card in the open pack, with Move, Up and Down. Every control files through `fileCard`. */
@@ -27,6 +35,7 @@ export function PackMemberItem({
   count,
   otherPacks,
   draggable,
+  onLeft,
 }: PackMemberItemProps) {
   const { packs } = useRepositories();
   const { error, attempt } = useAttempt();
@@ -104,6 +113,9 @@ export function PackMemberItem({
           referenceId={reference.id}
           title={reference.title}
           fromPackId={packId}
+          onLeft={(movedTo) =>
+            onLeft({ referenceId: reference.id, title: reference.title, index, movedTo })
+          }
           onClose={() => setSheetOpen(false)}
         />
       )}

@@ -75,10 +75,20 @@ one clear note, offline empty-state wording).
    text, loading slots), "Linked to N in your library" (only if still useful after 7), backup
    export/import, accessibility pass, one small signature effect, docs, the owner's phone check,
    final gate.
+9. **Security review (owner, 2026-11-17), after the accessibility pass and before the final gate.**
+   Covers the server endpoint (`api/web-search.ts`) and the access-code cookie, what leaves the
+   device (search text, messages shared in from WhatsApp, wider-web queries), the backup file as an
+   untrusted input on restore, the content-security policy and the share target.
 
-**Dropped or paused:** desktop layout work (the reader is on a phone; desktop only has to not
-break); type tags and the taste lean (owner restarted that session, 2026-11-17; it plans first and
-waits, and is lower value once the pack exists); "Linked to N" is now optional.
+**Status, 2026-11-17:** done and committed: glance card, pack batches 1–2 (60 cards), paste a
+message and the share target, packs (Move takes a card out, "Pin to top"), the opening intro with
+the costumed mascot, mascot tours (Packs, a pack, Search), the wide-screen layout, and search tags
+(merged in, Dexie v11). Done in the `phase5-rest` worktree, not yet merged: "I get this now",
+same-world chips. In progress: backup, then polish, then accessibility (`phase5-rest`); pack
+batch 3 (draft for the owner). Next here: the snap-to-dust removal effect (demo first).
+
+**Dropped or paused:** "Linked to N" is now optional. (Desktop layout and the type tags were first
+paused here; the owner brought both back on 2026-11-17 and they are done.)
 
 Leave alone (the review agrees): the on-device model, the wider-web button, streaming lookups.
 

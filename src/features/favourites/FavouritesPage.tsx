@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
@@ -7,13 +8,35 @@ import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { hostOf } from '../../components/ui/safeHref';
+import { UndoNotice } from '../../components/ui/UndoNotice';
+import { cardElement } from '../../motion/cardElement';
+import { dissolve } from '../../motion/dissolve';
+import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import styles from './FavouritesPage.module.css';
 import { useFavourites, useFavouriteReferences } from './useFavourites';
 import { useSavedLinks } from './useSavedLinks';
 
+/** How long "Undo" stays after a card leaves Favourites. */
+const UNDO_MS = 8000;
+
 export function FavouritesPage() {
   const references = useFavouriteReferences();
   const favourites = useFavourites();
+  const { reduced } = useMotionPresets();
+  const listRef = useRef<HTMLUListElement>(null);
+  const [removed, setRemoved] = useState<{ id: string; title: string } | null>(null);
+  useEffect(() => {
+    if (!removed) return;
+    const timer = setTimeout(() => setRemoved(null), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [removed]);
+
+  // On this page the heart only ever removes: the card crumbles away and can be put back.
+  const unfavourite = async (id: string, title: string) => {
+    const dust = dissolve(cardElement(listRef.current, id), reduced);
+    if (await favourites.toggle(id)) setRemoved({ id, title });
+    else dust.restore();
+  };
   const savedLinks = useSavedLinks();
   const links = savedLinks.links;
   const hasReferences = references !== undefined && references.length > 0;
@@ -33,19 +56,28 @@ export function FavouritesPage() {
         </p>
       )}
       {hasReferences && (
-        <ul className={styles.list}>
+        <ul className={styles.list} ref={listRef}>
           {references.map((reference, index) => (
             <AnimatedItem key={reference.id} index={index}>
               <ReferenceCard
                 reference={reference}
                 favourite={{
                   isFavourite: favourites.ids.has(reference.id),
-                  onToggle: () => void favourites.toggle(reference.id),
+                  onToggle: () => void unfavourite(reference.id, reference.title),
                 }}
               />
             </AnimatedItem>
           ))}
         </ul>
+      )}
+      {removed && (
+        <UndoNotice
+          message={`Removed “${removed.title}” from Favourites.`}
+          onUndo={() => {
+            setRemoved(null);
+            void favourites.toggle(removed.id);
+          }}
+        />
       )}
       {hasLinks && (
         <Section title="Saved web links">

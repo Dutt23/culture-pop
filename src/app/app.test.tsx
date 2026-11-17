@@ -195,6 +195,22 @@ describe('favourites from cards and saved web links', () => {
     expect(screen.getByText(/web links/)).toBeInTheDocument();
   });
 
+  it('puts an unfavourited card back with Undo', async () => {
+    const db = createTestDatabase();
+    await db.open();
+    await createRepositories(db).favourites.toggle('doh-simpsons');
+    const { user } = renderApp('/favourites', db);
+
+    await user.click(await screen.findByRole('button', { name: /^Favourite D'oh!/ }));
+    expect(await screen.findByRole('status')).toHaveTextContent(/Removed “D'oh! \(The Simpsons\)”/);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByRole('link', { name: /D'oh! \(The Simpsons\)/ })).toBeInTheDocument();
+    expect((await createRepositories(db).favourites.list()).map((f) => f.referenceId)).toEqual([
+      'doh-simpsons',
+    ]);
+  });
+
   it('lists a saved web link under "Saved web links", where it can be removed', async () => {
     const db = createTestDatabase();
     await db.open();

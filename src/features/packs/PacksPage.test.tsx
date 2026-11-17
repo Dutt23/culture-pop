@@ -80,6 +80,52 @@ describe('packs', () => {
     );
   });
 
+  it('puts a removed card back in its place with Undo', async () => {
+    const { db, repos, xMen } = await withPacks();
+    for (const id of ['ok-boomer', 'the-snap-avengers', 'doh-simpsons']) {
+      await repos.packs.fileCard(id, xMen.id, Infinity);
+    }
+    const { user } = renderApp(packPage(xMen.id), db);
+
+    const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
+    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    await user.click(screen.getByRole('button', { name: 'Remove from this pack' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /Removed “The snap \(Avengers\)” from this pack/,
+    );
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(async () =>
+      expect((await repos.packs.members(xMen.id)).map((m) => m.referenceId)).toEqual([
+        'ok-boomer',
+        'the-snap-avengers',
+        'doh-simpsons',
+      ]),
+    );
+  });
+
+  it('moves a card back with Undo after moving it to another pack', async () => {
+    const { db, repos, xMen, doom } = await withPacks();
+    await repos.packs.fileCard('the-snap-avengers', xMen.id, 0);
+    const { user } = renderApp(packPage(xMen.id), db);
+
+    const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
+    await user.click(within(controls).getByRole('button', { name: 'Move' }));
+    const sheet = screen.getByRole('dialog', { name: /to another pack/ });
+    await user.click(await within(sheet).findByRole('button', { name: 'Before the Doom movie' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /Moved “The snap \(Avengers\)” to Before the Doom movie/,
+    );
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(async () =>
+      expect((await repos.packs.members(xMen.id)).map((m) => m.referenceId)).toEqual([
+        'the-snap-avengers',
+      ]),
+    );
+    expect(await repos.packs.members(doom.id)).toEqual([]);
+  });
+
   it('lists the packs a card is already in without letting it be filed there again', async () => {
     const { db, repos, xMen } = await withPacks();
     await repos.packs.fileCard('the-snap-avengers', xMen.id, 0);

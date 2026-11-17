@@ -8,7 +8,8 @@ const TOGGLE_ERROR = "Couldn't update your favourites. Please try again.";
 
 export interface FavouritesState {
   ids: ReadonlySet<string>;
-  toggle: (referenceId: string) => Promise<void>;
+  /** Resolves false when the change couldn't be saved (the message is in `error`). */
+  toggle: (referenceId: string) => Promise<boolean>;
   error: string | null;
 }
 
@@ -25,8 +26,10 @@ export function useFavourites(): FavouritesState {
         const added = await favourites.toggle(referenceId);
         // The first favourite is the first thing worth keeping: ask the browser not to evict it.
         if (added && ids.size === 0) void requestPersistentStorage();
+        return true;
       } catch {
         setError(TOGGLE_ERROR);
+        return false;
       }
     },
     [favourites, ids],
