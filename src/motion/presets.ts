@@ -1,7 +1,8 @@
 import type { Transition, Variants } from 'motion/react';
 
 /**
- * Central motion vocabulary (Motion for React): `reveal` = enter + stagger + exit, `expand`.
+ * Central motion vocabulary (Motion for React): `reveal` = enter + stagger + exit, `deal` = a card
+ * reaching the screen, `expand`.
  * `reduced` swaps every value for a short, transform-free fade. CSS micro-interactions
  * (hover, press, ambient drift) use the matching tokens in design/tokens.css.
  */
@@ -13,6 +14,12 @@ const DISTANCE_PX = 14;
 const SCALE_FROM = 0.97;
 const STAGGER_STEP = 0.055;
 const STAGGER_MAX_ITEMS = 8;
+/** Cards dealt onto Browse: slow enough to notice, one after another along a row. */
+const DEAL_DURATION = 0.9;
+const DEAL_DISTANCE_PX = 48;
+const DEAL_SCALE_FROM = 0.92;
+const DEAL_TILT_DEG = -1.5;
+const DEAL_STEP = 0.11;
 
 export const MOTION_ATTRIBUTE = 'data-motion';
 
@@ -21,6 +28,8 @@ export interface MotionPresets {
   reduced: boolean;
   /** Variants `hidden` → `visible` → `exit`. Pass the item index as `custom` to stagger. */
   reveal: Variants;
+  /** Variants `hidden` → `visible` for a card reaching the screen. Pass its column as `custom`. */
+  deal: Variants;
   /** Spread onto a motion element inside <AnimatePresence> for height expand/collapse. */
   expand: {
     initial: { height: number; opacity: number };
@@ -52,6 +61,20 @@ export function createMotionPresets(reduced: boolean): MotionPresets {
         scale,
         transition: { duration: reduced ? DURATION_REDUCED : DURATION_EXIT, ease: EASE_OUT },
       },
+    },
+    deal: {
+      hidden: reduced
+        ? { opacity: 0 }
+        : { opacity: 0, y: DEAL_DISTANCE_PX, scale: DEAL_SCALE_FROM, rotate: DEAL_TILT_DEG },
+      visible: (column: number = 0) => ({
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        rotate: 0,
+        transition: reduced
+          ? { duration: DURATION_REDUCED }
+          : { duration: DEAL_DURATION, ease: EASE_OUT, delay: column * DEAL_STEP },
+      }),
     },
     expand: {
       initial: { height: 0, opacity: 0 },

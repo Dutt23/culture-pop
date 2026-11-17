@@ -20,7 +20,9 @@
   --shadow-raised: 0 2px 4px rgb(27 22 48 / 0.1), 0 16px 36px rgb(27 22 48 / 0.12);
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+/* The mascot's room is a night room in either theme. */
+[data-scene='night'] {
   color-scheme: dark;
   --color-bg: #0d0b1f;
   --color-surface: #18153a;

@@ -9,16 +9,17 @@ interface PageProps {
   intro?: ReactNode;
   /** A browsing page (cards, lists) that uses the full width on big screens. */
   wide?: boolean;
-  /** A decorative picture above the title. */
-  scene?: ReactNode;
+  /** Shown right under the title, and inside the scene with it (e.g. a search bar). */
+  lead?: ReactNode;
+  /** Wraps the title and `lead` in a scene, e.g. the mascot's room. */
+  scene?: (top: ReactNode) => ReactNode;
   children?: ReactNode;
 }
 
-export function Page({ title, eyebrow, intro, wide = false, scene, children }: PageProps) {
+export function Page({ title, eyebrow, intro, wide = false, lead, scene, children }: PageProps) {
   const { reveal } = useMotionPresets();
-  return (
-    <div className={wide ? `${styles.page} ${styles.wide}` : styles.page}>
-      {scene}
+  const top = (
+    <>
       <m.header className={styles.header} variants={reveal} initial="hidden" animate="visible">
         {eyebrow && <p className={styles.eyebrow}>{eyebrow}</p>}
         {/* Focusable by script only: focus lands here when the control that had it disappears. */}
@@ -27,6 +28,12 @@ export function Page({ title, eyebrow, intro, wide = false, scene, children }: P
         </h1>
         {intro && <div className={styles.intro}>{intro}</div>}
       </m.header>
+      {lead}
+    </>
+  );
+  return (
+    <div className={wide ? `${styles.page} ${styles.wide}` : styles.page}>
+      {scene ? scene(top) : top}
       {children}
     </div>
   );
