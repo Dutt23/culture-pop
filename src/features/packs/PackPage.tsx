@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -45,14 +45,11 @@ const SCOPE_OPTIONS: readonly SegmentedOption<Scope>[] = [
 // shortcut: the first few library matches only; add paging if readers file from long result lists.
 const LIBRARY_RESULTS = 5;
 
-/** Keyed on the pack, so every pack opens fresh on "This pack" even when one links to another. */
-
-/** How long "Undo" stays after a card leaves the pack. */
-const UNDO_MS = 8000;
 /** What "Got it" on a card does, said once at the top instead of on every card. */
 const GOT_IT_HINT =
   'Tap “Got it” on a card once you understand it. It moves down to “Cards you’ve got”, where you can put it back.';
 
+/** Keyed on the pack, so every pack opens fresh on "This pack" even when one links to another. */
 export function PackPage() {
   const { packId = '' } = useParams();
   return <PackView key={packId} packId={packId} />;
@@ -75,11 +72,6 @@ function PackView({ packId }: { packId: string }) {
 
   const tour = useTour('pack', Boolean(pack) && cards !== undefined);
   const [left, setLeft] = useState<LeftCard | null>(null);
-  useEffect(() => {
-    if (!left) return;
-    const timer = setTimeout(() => setLeft(null), UNDO_MS);
-    return () => clearTimeout(timer);
-  }, [left]);
 
   if (pack === undefined || cards === undefined) {
     return (
@@ -189,6 +181,7 @@ function PackView({ packId }: { packId: string }) {
               ? `Moved “${left.title}” to ${left.movedTo.name}.`
               : `Removed “${left.title}” from this pack.`
           }
+          onExpire={() => setLeft(null)}
           onUndo={() => {
             setLeft(null);
             void attempt(() =>

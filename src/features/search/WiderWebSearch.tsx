@@ -244,7 +244,7 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
         </p>
       )}
       {phase.kind === 'loading' && (
-        <p className={styles.note} role="status" aria-busy="true">
+        <p className={styles.note} role="status">
           Searching the wider web…
         </p>
       )}

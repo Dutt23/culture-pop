@@ -8,6 +8,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Tabbing to something near the bottom stops it short of the fixed navigation. */
+  scroll-padding-block-end: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-4));
 }
 
 body {

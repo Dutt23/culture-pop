@@ -36,7 +36,9 @@
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  padding-bottom: var(--space-1);
+  /* Padding wide enough for the focus ring, pulled back out so the chips line up. */
+  margin: calc(-1 * var(--space-2));
+  padding: var(--space-2);
   scrollbar-width: none;
 }
 

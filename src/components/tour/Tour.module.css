@@ -40,7 +40,7 @@
 
 .quiet,
 .next {
-  min-height: 2.25rem;
+  min-height: var(--tap-min);
   padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
   font: inherit;

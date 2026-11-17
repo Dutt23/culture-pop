@@ -36,6 +36,8 @@ describe('mascot tours', () => {
     const first = renderApp('/packs');
     await first.user.click(within(await tour()).getByRole('button', { name: 'Skip' }));
     expect(screen.queryByRole('dialog', { name: 'Tour' })).not.toBeInTheDocument();
+    // Skip went with the tour: focus lands on the page, not lost.
+    expect(screen.getByRole('heading', { level: 1, name: 'Packs' })).toHaveFocus();
     first.unmount();
 
     renderApp('/packs');
@@ -43,9 +45,10 @@ describe('mascot tours', () => {
     expect(screen.queryByRole('dialog', { name: 'Tour' })).not.toBeInTheDocument();
   });
 
-  it('closes with Escape', async () => {
+  it('closes with Escape, even with focus out on the page', async () => {
     const { user } = renderApp('/packs');
     await tour();
+    await user.click(screen.getByRole('textbox', { name: 'Pack name' }));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Tour' })).not.toBeInTheDocument();
   });

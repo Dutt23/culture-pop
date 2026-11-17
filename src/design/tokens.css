@@ -64,7 +64,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root[data-motion='system'] {
+  /* No data-motion yet: settings are still loading, so the device decides. */
+  :root[data-motion='system'],
+  :root:not([data-motion]) {
     --motion-lift: 0px;
     --motion-scale: 1;
     --motion-ambient-state: paused;

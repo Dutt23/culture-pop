@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
@@ -16,26 +16,24 @@ import styles from './FavouritesPage.module.css';
 import { useFavourites, useFavouriteReferences } from './useFavourites';
 import { useSavedLinks } from './useSavedLinks';
 
-/** How long "Undo" stays after a card leaves Favourites. */
-const UNDO_MS = 8000;
-
 export function FavouritesPage() {
   const references = useFavouriteReferences();
   const favourites = useFavourites();
   const { reduced } = useMotionPresets();
   const listRef = useRef<HTMLUListElement>(null);
   const [removed, setRemoved] = useState<{ id: string; title: string } | null>(null);
-  useEffect(() => {
-    if (!removed) return;
-    const timer = setTimeout(() => setRemoved(null), UNDO_MS);
-    return () => clearTimeout(timer);
-  }, [removed]);
 
   // On this page the heart only ever removes: the card crumbles away and can be put back.
   const unfavourite = async (id: string, title: string) => {
-    const dust = dissolve(cardElement(listRef.current, id), reduced);
-    if (await favourites.toggle(id)) setRemoved({ id, title });
-    else dust.restore();
+    const card = cardElement(listRef.current, id);
+    const dust = dissolve(card, reduced);
+    if (await favourites.toggle(id)) {
+      // Let go of the heart now, not when the list catches up: the Undo bar picks focus up.
+      if (card?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+      setRemoved({ id, title });
+    } else {
+      dust.restore();
+    }
   };
   const savedLinks = useSavedLinks();
   const links = savedLinks.links;
@@ -73,6 +71,7 @@ export function FavouritesPage() {
       {removed && (
         <UndoNotice
           message={`Removed “${removed.title}” from Favourites.`}
+          onExpire={() => setRemoved(null)}
           onUndo={() => {
             setRemoved(null);
             void favourites.toggle(removed.id);

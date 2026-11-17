@@ -299,13 +299,19 @@ export function SearchPage() {
         </Section>
       )}
 
+      {hasQuery && (
+        // Kept in the page while searching: a live region that arrives with its text isn't read.
+        <p className={styles.count} aria-live="polite">
+          {!search.loading && (
+            <>
+              {search.matches.length === 1 ? '1 match' : `${search.matches.length} matches`} in
+              your library
+            </>
+          )}
+        </p>
+      )}
       {hasQuery && !search.loading && (
         <>
-          <p className={styles.count} aria-live="polite">
-            {search.matches.length === 1 ? '1 match' : `${search.matches.length} matches`} in your
-            library
-          </p>
-
           {taste && tasteMoved && (
             <p className={styles.count}>{tasteNote(taste.lean, taste.usesHistory)}</p>
           )}

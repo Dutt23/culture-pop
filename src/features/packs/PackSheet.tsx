@@ -72,7 +72,10 @@ export function PackSheet({ referenceId, title, fromPackId, onLeft, onClose }: P
       tabIndex={-1}
       className={styles.sheet}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') onClose();
+        if (event.key !== 'Escape') return;
+        // Handled: an open tour leaves this Escape alone.
+        event.preventDefault();
+        onClose();
       }}
     >
       <h3 id={headingId} className={styles.sheetTitle}>

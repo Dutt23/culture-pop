@@ -51,7 +51,7 @@ export function PackHits({ groups, packsByReference, query, limit = Infinity }: 
             )}
             {more > 0 && (
               <Link to={packPath(pack.id, query)} className={styles.more}>
-                {more} more
+                {more} more<span className="sr-only"> in {pack.name}</span>
               </Link>
             )}
           </li>

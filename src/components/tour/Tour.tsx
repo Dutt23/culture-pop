@@ -23,11 +23,35 @@ interface TourProps {
 export function Tour({ steps, onClose }: TourProps) {
   const [index, setIndex] = useState(0);
   const nextRef = useRef<HTMLButtonElement>(null);
+  const tourRef = useRef<HTMLElement>(null);
   const step = steps[index];
   const last = index === steps.length - 1;
 
   useEffect(() => {
     nextRef.current?.focus();
+  }, []);
+
+  // The tour's buttons go with it: the page heading takes focus, as when a card leaves a list.
+  // Focus out on the page (typing in a field) stays where it is.
+  const finish = () => {
+    if (tourRef.current?.contains(document.activeElement)) {
+      document.querySelector<HTMLElement>('#main h1')?.focus({ preventScroll: true });
+    }
+    onClose();
+  };
+  const finishRef = useRef(finish);
+  useEffect(() => {
+    finishRef.current = finish;
+  });
+
+  // Not modal, so focus may be on the page: Escape ends the tour from anywhere.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      // A sheet or field that used Escape for itself keeps it.
+      if (event.key === 'Escape' && !event.defaultPrevented) finishRef.current();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
   useEffect(() => {
@@ -42,12 +66,10 @@ export function Tour({ steps, onClose }: TourProps) {
 
   return (
     <section
+      ref={tourRef}
       className={styles.tour}
       role="dialog"
       aria-label="Tour"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') onClose();
-      }}
     >
       <Mascot costume="plain" size={56} />
       <div className={styles.bubble}>
@@ -59,7 +81,7 @@ export function Tour({ steps, onClose }: TourProps) {
             {index + 1} of {steps.length}
           </span>
           {!last && (
-            <button type="button" className={styles.quiet} onClick={onClose}>
+            <button type="button" className={styles.quiet} onClick={finish}>
               Skip
             </button>
           )}
@@ -72,7 +94,7 @@ export function Tour({ steps, onClose }: TourProps) {
             ref={nextRef}
             type="button"
             className={styles.next}
-            onClick={() => (last ? onClose() : setIndex(index + 1))}
+            onClick={() => (last ? finish() : setIndex(index + 1))}
           >
             {last ? 'Done' : 'Next'}
           </button>

@@ -187,6 +187,29 @@ test('Discover browses by type and opens a reference page offline', async ({ pag
   await context.setOffline(false);
 });
 
+test('a Browse card keeps keyboard focus when scrolled away, and Tab goes on from it', async ({
+  page,
+}) => {
+  await page.goto('/discover');
+  const browse = page.getByRole('region', { name: 'Browse' });
+  const links = browse.getByRole('link');
+  await expect(links.nth(1)).toBeAttached();
+  const byHref = async (index: number) =>
+    browse.locator(`a[href="${await links.nth(index).getAttribute('href')}"]`);
+  const card = await byHref(0);
+  const next = await byHref(1);
+  await card.focus();
+
+  for (let step = 0; step < 4; step += 1) await page.mouse.wheel(0, 2000);
+  await expect(card).toBeFocused();
+
+  // Past the card's heart, the very next card: still in the page, and brought into view.
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(next).toBeFocused();
+  await expect(next).toBeInViewport();
+});
+
 test('Browse keeps only the cards near the screen in the page', async ({ page }) => {
   await page.goto('/discover');
   const browse = page.getByRole('region', { name: 'Browse' });
