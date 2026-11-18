@@ -15,7 +15,7 @@ import {
 import { AccessCodeForm, FAILURE_TEXT, WebConsent } from '../search/WiderWebSearch';
 import { useSettings } from '../settings/SettingsContext';
 import { CurationTray } from './CurationTray';
-import { gradeOf, LIMIT_HINTS } from './curationLook';
+import { gradeOf, keptName, LIMIT_HINTS } from './curationLook';
 import { DraftingProjector } from './DraftingProjector';
 import { DraftReveal } from './DraftReveal';
 import { FilmStrip } from './FilmStrip';
@@ -52,16 +52,19 @@ const fromFavourite = ({ reference, interpretation: i }: AppCard): ToneCard => (
   summary: i.summary,
 });
 
-const fromKept = ({ card }: DraftCardRecord): ToneCard => ({
-  label: card.label,
+const fromKept = ({ card, search }: DraftCardRecord, reveal: boolean): ToneCard => ({
+  label: keptName(card, search, reveal),
   gist: card.gist,
   means: card.means,
   reply: card.reply,
   summary: card.summary.map((l) => l.text).join(' '),
 });
 
-/** The reader's favourites (frames and tone cards) and kept drafts (tone cards). */
-function useLibraryCards() {
+/**
+ * The reader's favourites (frames and tone cards) and kept drafts (tone cards). `realLabels` maps
+ * a hidden spoiler's shown name back to its own label, which is what the AI gets.
+ */
+function useLibraryCards(revealSpoilers: boolean) {
   const { favourites, references, drafts } = useRepositories();
   return useLiveQuery(async () => {
     const saved = await references.getByIds((await favourites.list()).map((f) => f.referenceId));
@@ -72,11 +75,15 @@ function useLibraryCards() {
       }),
     );
     const appCards = cards.flat();
-    const tones = [...appCards.map(fromFavourite), ...(await drafts.list()).map(fromKept)];
+    const kept = await drafts.list();
+    const realLabels = new Map(
+      kept.map((k): [string, string] => [keptName(k.card, k.search, revealSpoilers), k.card.label]),
+    );
+    const tones = [...appCards.map(fromFavourite), ...kept.map((k) => fromKept(k, revealSpoilers))];
     // A filter is keyed by its label: the first card with a label wins.
     const toneCards = tones.filter((t, i) => tones.findIndex((u) => u.label === t.label) === i);
-    return { appCards, toneCards };
-  }, [favourites, references, drafts]);
+    return { appCards, toneCards, realLabels };
+  }, [favourites, references, drafts, revealSpoilers]);
 }
 
 type Phase =
@@ -102,7 +109,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   const { drafts } = useRepositories();
   const { settings, setSetting } = useSettings();
   const isOnline = useOnlineStatus();
-  const library = useLibraryCards();
+  const library = useLibraryCards(settings.spoilers === 'show');
   const tray = useCurationTray(search);
   const reelRef = useRef<SVGSVGElement>(null);
   const controller = useRef<AbortController | null>(null);
@@ -146,7 +153,13 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
     setStatus('');
     setPhase({ kind: 'drafting' });
     try {
-      const response = await webSearch.draftCard(tray.body(about && [...about]), current.signal);
+      const body = tray.body(about && [...about]);
+      // A hidden spoiler's filter shows the search; the AI still gets the card's own label.
+      const tones = body.tones?.map((t) => ({
+        ...t,
+        label: library?.realLabels.get(t.label) ?? t.label,
+      }));
+      const response = await webSearch.draftCard(tones ? { ...body, tones } : body, current.signal);
       if (current.signal.aborted) return;
       setPhase({ kind: 'reveal', response, sent });
     } catch (error) {

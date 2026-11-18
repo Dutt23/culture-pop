@@ -1,6 +1,18 @@
 import type { CSSProperties } from 'react';
 import type { ToneCard } from '../../../api/_lib/cardTypes.js';
 
+/**
+ * A kept card's name in lists and filters. A major spoiler hidden by the reader's setting shows
+ * its search instead, since the AI label can give the ending away.
+ */
+export function keptName(
+  card: { label: string; spoiler: string },
+  search: string,
+  reveal: boolean,
+): string {
+  return card.spoiler === 'major' && !reveal ? `${search.trim()} (spoiler)` : card.label;
+}
+
 /** The film's colour with no filter picked. */
 export const UNGRADED = '#b6aed6';
 const FILTER_COLOURS = ['#ffb27a', '#7fd6c2', '#f48fb1', '#b29bff', '#ffd166'];

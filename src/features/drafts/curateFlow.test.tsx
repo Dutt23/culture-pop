@@ -244,6 +244,36 @@ describe('curate a card', () => {
     );
   });
 
+  it('a hidden spoiler filter shows its search, but the AI still gets its label', async () => {
+    const draftCard = vi.fn<WebSearchClient['draftCard']>(async () => RESPONSE);
+    const kept = {
+      id: 'kept-1',
+      search: 'bless your heart',
+      card: { ...RESPONSE.card, label: TONE, spoiler: 'major' as const },
+      sources: [],
+      promptVersion: 'v2',
+      savedAt: '2026-11-01T00:00:00.000Z',
+    };
+    const first = await renderFlow({ webSearch: 'on' }, draftCard);
+    await first.repos.drafts.save(kept);
+    const filter = await screen.findByRole('button', { name: 'bless your heart (spoiler)' });
+    expect(screen.queryByText(TONE)).toBeNull();
+    await first.user.click(filter);
+    const check = await pickAndCheck(first.user, 'What does OK boomer mean');
+    expect(check).toHaveTextContent('bless your heart (spoiler)');
+    expect(check).not.toHaveTextContent(TONE);
+    await first.user.click(makeButton());
+    expect(draftCard.mock.calls[0]?.[0].tones).toEqual([
+      expect.objectContaining({ label: TONE, gist: RESPONSE.card.gist }),
+    ]);
+    first.unmount();
+
+    const second = await renderFlow({ webSearch: 'on', spoilers: 'show' });
+    await second.repos.drafts.save(kept);
+    expect(await screen.findByRole('button', { name: TONE })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /\(spoiler\)/ })).toBeNull();
+  });
+
   it('lists not-used sources with their reason', async () => {
     const { user } = await renderFlow({ webSearch: 'on' }, async () => ({
       ...RESPONSE,

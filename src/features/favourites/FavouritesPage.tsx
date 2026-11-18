@@ -15,6 +15,7 @@ import { cardElement } from '../../motion/cardElement';
 import { dissolve } from '../../motion/dissolve';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { DraftReveal } from '../drafts/DraftReveal';
+import { keptName } from '../drafts/curationLook';
 import type { Frame } from '../drafts/frames';
 import draftStyles from '../drafts/drafts.module.css';
 import { useSettings } from '../settings/SettingsContext';
@@ -95,45 +96,48 @@ export function FavouritesPage() {
       {keptCards && keptCards.length > 0 && (
         <Section title="Your cards" description="Kept AI drafts. They only live on this device.">
           <ul className={styles.list}>
-            {keptCards.map((kept) => (
-              <li key={kept.id} className={styles.keptCard}>
-                <div className={styles.link}>
-                  <button
-                    type="button"
-                    className={styles.keptOpen}
-                    aria-expanded={open === kept.id}
-                    onClick={() => setOpen(open === kept.id ? null : kept.id)}
-                  >
-                    {kept.card.label}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.keptRemove}
-                    aria-label={`Remove ${kept.card.label}`}
-                    onClick={() => void drafts.remove(kept.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-                {open === kept.id && (
-                  // The card's colours live on the flow, as in the card flow itself.
-                  <div className={draftStyles.flow} data-scene="night">
-                    <DraftReveal
-                      readOnly
-                      revealSpoilers={settings.spoilers === 'show'}
-                      search={kept.search}
-                      response={{
-                        card: kept.card,
-                        notUsed: [],
-                        provider: 'fake',
-                        promptVersion: kept.promptVersion,
-                      }}
-                      sent={framesOf(kept.sources)}
-                    />
+            {keptCards.map((kept) => {
+              const name = keptName(kept.card, kept.search, settings.spoilers === 'show');
+              return (
+                <li key={kept.id} className={styles.keptCard}>
+                  <div className={styles.link}>
+                    <button
+                      type="button"
+                      className={styles.keptOpen}
+                      aria-expanded={open === kept.id}
+                      onClick={() => setOpen(open === kept.id ? null : kept.id)}
+                    >
+                      {name}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.keptRemove}
+                      aria-label={`Remove ${name}`}
+                      onClick={() => void drafts.remove(kept.id)}
+                    >
+                      Remove
+                    </button>
                   </div>
-                )}
-              </li>
-            ))}
+                  {open === kept.id && (
+                    // The card's colours live on the flow, as in the card flow itself.
+                    <div className={draftStyles.flow} data-scene="night">
+                      <DraftReveal
+                        readOnly
+                        revealSpoilers={settings.spoilers === 'show'}
+                        search={kept.search}
+                        response={{
+                          card: kept.card,
+                          notUsed: [],
+                          provider: 'fake',
+                          promptVersion: kept.promptVersion,
+                        }}
+                        sent={framesOf(kept.sources)}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </Section>
       )}

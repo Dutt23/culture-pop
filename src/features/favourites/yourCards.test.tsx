@@ -92,7 +92,12 @@ describe('Your cards', () => {
     const { db, repos } = await seed(spoiler);
     const first = renderApp('/favourites', db);
 
-    await first.user.click(await screen.findByRole('button', { name: 'A dismissive comeback' }));
+    // The list shows the search too, never the AI label.
+    const section = await screen.findByRole('region', { name: 'Your cards' });
+    const remove = within(section).getByRole('button', { name: 'Remove ok boomer (spoiler)' });
+    expect(remove).toBeInTheDocument();
+    expect(section).not.toHaveTextContent('A dismissive comeback');
+    await first.user.click(within(section).getByRole('button', { name: 'ok boomer (spoiler)' }));
     const card = await screen.findByRole('article', { name: 'ok boomer' });
     expect(card).toHaveTextContent('Spoiler');
     expect(card).toHaveTextContent('This card gives away the ending of a story.');
@@ -106,7 +111,10 @@ describe('Your cards', () => {
 
     await repos.settings.set('spoilers', 'show');
     const second = renderApp('/favourites', db);
-    await second.user.click(await screen.findByRole('button', { name: 'A dismissive comeback' }));
+    expect(
+      await screen.findByRole('button', { name: 'Remove A dismissive comeback' }),
+    ).toBeInTheDocument();
+    await second.user.click(screen.getByRole('button', { name: 'A dismissive comeback' }));
     const shown = await screen.findByRole('article', { name: 'A dismissive comeback' });
     for (const text of hidden) expect(shown).toHaveTextContent(text);
   });
