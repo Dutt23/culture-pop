@@ -27,7 +27,8 @@ import { cut, validAbout, validQuery } from './_lib/text.js';
  * Provider keys stay on the server. Never logs or stores bodies, answers or keys.
  */
 
-const MAX_REQUEST_BYTES = 16 * 1024;
+// 48 KB: six 1,200-character texts, six 200-character titles and two tones of 4-byte characters.
+const MAX_REQUEST_BYTES = 48 * 1024;
 const MAX_TITLE = 200;
 const MIN_SNIPPET = 40;
 const MODEL_TIMEOUT_MS = 20_000;

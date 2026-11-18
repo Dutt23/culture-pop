@@ -287,10 +287,26 @@ describe('draft-card', () => {
     });
   });
 
-  it('refuses a body over 16 KB', async () => {
+  it('refuses a body over 48 KB', async () => {
     const { handle } = setup();
-    const big = { search: SEARCH, sources: [wiki], pad: 'x'.repeat(17 * 1024) };
+    const big = { search: SEARCH, sources: [wiki], pad: 'x'.repeat(49 * 1024) };
     expect((await handle(post(big))).status).toBe(400);
+  });
+
+  it('does not refuse a full body of 4-byte characters within every field cap', async () => {
+    const { handle } = setup();
+    const c = (n: number) => '𝒜'.repeat(n);
+    const sources = Array.from({ length: 6 }, (_, i) => ({
+      kind: i < 3 ? 'wiki' : 'app',
+      from: i < 3 ? 'wikipedia' : 'app card',
+      title: c(200),
+      text: `${SEARCH} ${i} ${c(1190)}`,
+    }));
+    const full = { label: c(280), gist: c(280), means: c(280), reply: c(280), summary: c(280) };
+    const body = { search: SEARCH, sources, tones: [full, full] };
+    expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeGreaterThan(40 * 1024);
+    // Past the size cap and validation; curation then finds no Latin-script evidence (422), not a 400.
+    expect((await handle(post(body))).status).not.toBe(400);
   });
 
   it('refuses duplicate links and a link with credentials', async () => {

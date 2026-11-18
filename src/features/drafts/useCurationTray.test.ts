@@ -172,8 +172,8 @@ describe('requests the server accepts', () => {
     expect(readDraftBody(tray.body())).not.toBeNull();
   });
 
-  it('keeps a worst-case full tray under 16 KB', () => {
-    const long = 'x'.repeat(5000);
+  it('keeps a worst-case full tray under 48 KB (4-byte characters)', () => {
+    const long = '𝒜'.repeat(5000);
     const hook = renderHook(() => useCurationTray('doctor doom'));
     frames({
       candidates: ['a', 'b', 'c'].map((i) => ({
@@ -183,13 +183,13 @@ describe('requests the server accepts', () => {
       webResults: [1, 2, 3].map((n) => ({ ...web(n), snippet: `doctor doom ${long}` }) as WebResult),
     }).forEach((f) => act(() => void hook.result.current.toggleFrame(f)));
     const longTone = Object.fromEntries(
-      ['label', 'gist', 'means', 'reply', 'summary'].map((k) => [k, 'y'.repeat(500)]),
+      ['label', 'gist', 'means', 'reply', 'summary'].map((k) => [k, '𝒜'.repeat(500)]),
     ) as typeof tone;
-    act(() => void hook.result.current.toggleTone({ ...longTone, label: 'a' }));
-    act(() => void hook.result.current.toggleTone({ ...longTone, label: 'b' }));
+    act(() => void hook.result.current.toggleTone({ ...longTone, label: `${longTone.label}a` }));
+    act(() => void hook.result.current.toggleTone({ ...longTone, label: `${longTone.label}b` }));
     const body = hook.result.current.body(['x']);
     expect(body.sources).toHaveLength(6);
-    expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeLessThan(16 * 1024);
+    expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeLessThan(48 * 1024);
     expect(readDraftBody(body)).not.toBeNull();
   });
 
