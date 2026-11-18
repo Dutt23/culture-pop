@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DraftResponse } from '../../../api/_lib/cardTypes.js';
@@ -10,9 +10,12 @@ import {
   type WebResult,
   type WebSearchClient,
 } from '../../services/retrieval/webSearch';
+import { MotionPreferenceProvider } from '../../motion/MotionPreferenceProvider';
 import { unusedRetrievalService } from '../../test/fakeRetrieval';
 import { createTestDatabase } from '../../test/renderApp';
 import { CurateFlow } from './CurateFlow';
+import { DraftReveal } from './DraftReveal';
+import type { Frame } from './frames';
 
 const SEARCH = 'ok boomer';
 const web = (url: string, title: string, snippet: string): WebResult => ({
@@ -91,19 +94,26 @@ async function pickAndCheck(user: ReturnType<typeof userEvent.setup>, ...titles:
   return screen.findByRole('region', { name: 'Splice check' });
 }
 
-/** A Web Animations stand-in whose animations finish on the next tick. */
-function finishingAnimate() {
+/**
+ * A Web Animations stand-in: animations finish on the next tick (or never, with `finish: false`),
+ * and `cancel()` runs `oncancel` like the real thing.
+ */
+function stubAnimate({ finish = true } = {}) {
   const animate = vi.fn(() => {
-    const animation = { cancel: vi.fn() } as unknown as Animation;
+    let onCancel: (() => void) | null = null;
+    const animation = { cancel: vi.fn(() => onCancel?.()) } as unknown as Animation;
     Object.defineProperty(animation, 'onfinish', {
-      set: (fn: (() => void) | null) => setTimeout(() => fn?.(), 0),
+      set: (fn: (() => void) | null) => finish && setTimeout(() => fn?.(), 0),
     });
-    Object.defineProperty(animation, 'oncancel', { set: () => {} });
+    Object.defineProperty(animation, 'oncancel', {
+      set: (fn: (() => void) | null) => (onCancel = fn),
+    });
     return animation;
   });
   Element.prototype.animate = animate;
   return animate;
 }
+const finishingAnimate = () => stubAnimate();
 
 async function keepACard(settings: Partial<Settings>) {
   const flow = await renderFlow(settings, async () => RESPONSE);
@@ -275,15 +285,37 @@ describe('curate a card', () => {
   });
 
   it('closing during the thumbs-up leaves nothing behind', async () => {
-    const animate = finishingAnimate();
-    const { db, unmount } = await keepACard({ webSearch: 'on' });
-    await screen.findByRole('img', { name: 'Thumbs up' });
-    const flights = animate.mock.results.map((r) => r.value as Animation);
+    // Flights never finish on their own here, so the copy is still in the air at unmount.
+    stubAnimate({ finish: false });
+    vi.useFakeTimers();
+    try {
+      const onDone = vi.fn();
+      const onKeep = vi.fn(async () => {});
+      const sent: Frame[] = [
+        { key: BBC.url, kind: 'web', from: 'bbc.co.uk', title: BBC.title, line: '', url: BBC.url },
+      ];
+      const { unmount } = render(
+        <MotionPreferenceProvider preference="system">
+          <DraftReveal response={RESPONSE} sent={sent} onKeep={onKeep} onDone={onDone} />
+        </MotionPreferenceProvider>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Keep' }));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(onKeep).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('img', { name: 'Thumbs up' })).toBeInTheDocument();
+      expect(document.querySelector('[data-flight]')).not.toBeNull();
 
-    unmount();
+      unmount();
+      act(() => vi.advanceTimersByTime(5000));
 
-    expect(flights.at(-1)?.cancel).toHaveBeenCalled();
-    expect(await db.draftCards.count()).toBe(1);
+      expect(document.querySelector('[data-flight]')).toBeNull();
+      expect(onDone).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('going offline mid-draft cancels it and keeps the tray', async () => {

@@ -474,7 +474,8 @@ export function SearchPage() {
             )}
           </Section>
 
-          {canCurate &&
+          {/* An open flow stays while results come and go: closing it would drop the picks. */}
+          {(canCurate || curating === query) &&
             (curating === query ? (
               <CurateFlow
                 key={query}

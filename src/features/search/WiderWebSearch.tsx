@@ -80,7 +80,10 @@ interface WiderWebSearchProps {
   mayAutoSearch: boolean;
   /** This search finished (answered or failed), not cancelled. */
   onSearched: () => void;
-  /** The results on screen (searched or kept), so the page can offer to make a card from them. */
+  /**
+   * The results on screen (searched or kept), so the page can offer to make a card from them; an
+   * empty list whenever none are (before a search, while one runs, after one fails).
+   */
   onResults?: (results: readonly WebResult[]) => void;
 }
 
@@ -177,10 +180,10 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoReady]);
 
-  const shownResults = phase.kind === 'done' ? phase.results : saved?.results;
-  const reportResults = useEffectEvent(() => {
-    if (shownResults?.length) props.onResults?.(shownResults);
-  });
+  // What `onResults` reports: the list on screen, empty while nothing is (idle, loading, failed).
+  const shownResults =
+    preference === 'off' ? undefined : phase.kind === 'done' ? phase.results : saved?.results;
+  const reportResults = useEffectEvent(() => props.onResults?.(shownResults ?? []));
   // An effect event never goes in the list (see above).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => reportResults(), [shownResults]);
