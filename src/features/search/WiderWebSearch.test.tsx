@@ -42,6 +42,7 @@ function serviceWith(search: WebSearchClient['search']) {
     search: vi.fn(search),
     unlock: vi.fn<WebSearchClient['unlock']>(async () => {}),
     lock: vi.fn<WebSearchClient['lock']>(async () => {}),
+    draftCard: vi.fn(),
   };
   return { ...unusedRetrievalService(), webSearch };
 }

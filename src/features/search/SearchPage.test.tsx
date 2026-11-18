@@ -55,7 +55,9 @@ describe('search page: make a card', () => {
     await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     await screen.findByRole('button', { name: 'Make a card from these' });
 
-    retrieval.webSearch.search.mockRejectedValueOnce(new WebSearchError('failed', 'HTTP 500'));
+    vi.mocked(retrieval.webSearch.search).mockRejectedValueOnce(
+      new WebSearchError('failed', 'HTTP 500'),
+    );
     await user.click(screen.getByRole('button', { name: 'Search videos' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent("didn't answer");
@@ -70,7 +72,9 @@ describe('search page: make a card', () => {
     expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
 
     // A new lean starts the wider web afresh; this time it fails, so nothing is on screen.
-    retrieval.webSearch.search.mockRejectedValue(new WebSearchError('failed', 'HTTP 500'));
+    vi.mocked(retrieval.webSearch.search).mockRejectedValue(
+      new WebSearchError('failed', 'HTTP 500'),
+    );
     await user.click(screen.getByRole('checkbox', { name: /Stories & myths/ }));
     await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(2));
     await screen.findByRole('alert');
