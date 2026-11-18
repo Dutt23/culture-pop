@@ -19,6 +19,9 @@ export interface ExtractDeps {
   timeoutMs?: number;
 }
 
+const allNull = (urls: readonly string[]) =>
+  new Map<string, string | null>(urls.map((url) => [url, null]));
+
 const href = (value: string): string => {
   try {
     return new URL(value).href;
@@ -33,7 +36,7 @@ export async function extractPages(
   search: string,
   deps: ExtractDeps,
 ): Promise<Map<string, string | null>> {
-  const out = new Map<string, string | null>(urls.map((url) => [url, null]));
+  const out = allNull(urls);
   if (devFlag('WEB_SEARCH_FAKE')) {
     for (const url of urls) {
       out.set(url, `Local test page for "${search}": no real page was read.`);
@@ -73,7 +76,7 @@ export async function extractPages(
     return out;
   } catch {
     // Timeout, network failure, oversized or bad JSON. Not logged: the error could echo the request.
-    return new Map(urls.map((url) => [url, null]));
+    return allNull(urls);
   } finally {
     clearTimeout(timer);
   }

@@ -63,7 +63,10 @@ describe('extractPages', () => {
       vi.fn(() => reply({}, 500)),
       vi.fn(() => Promise.reject(new Error('network'))),
       vi.fn(() => Promise.resolve(new Response('not json'))),
-      vi.fn(() => Promise.resolve(new Response('x'.repeat(300 * 1024)))),
+      // Valid JSON that would yield text for A, but is over the 256 KB cap.
+      vi.fn(() =>
+        reply({ results: [{ url: A, excerpts: ['Rizz is charm.'] }], pad: 'x'.repeat(300 * 1024) }),
+      ),
     ];
     for (const f of failing) {
       const out = await run(f as unknown as typeof fetch);
