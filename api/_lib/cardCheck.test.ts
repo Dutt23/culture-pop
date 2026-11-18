@@ -164,3 +164,57 @@ describe('checkAnswer', () => {
     expect(c.summary).toHaveLength(1);
   });
 });
+
+describe('checkAnswer fixes', () => {
+  it('checks the label like the other free lines and falls back to the search', () => {
+    expect(card({ label: 'Says Amitabh' }).label).toBe('kitne aadmi the');
+    expect(card({ label: '   ' }).label).toBe('kitne aadmi the');
+    expect(card({ label: 'x'.repeat(61) }).label).toBe('kitne aadmi the');
+    expect(card({ label: 'Kitne aadmi the' }).label).toBe('Kitne aadmi the');
+    const copy = card({ label: 'a total legend today' }, tones).label;
+    expect(copy).toBe('kitne aadmi the');
+  });
+
+  it('replaces an empty or over-long gist, means or reply', () => {
+    const c = card({ gist: ' ', means: 'x '.repeat(141), reply: 'y '.repeat(41) });
+    expect(c.gist).toBe('Gabbar asks how many men there were.');
+    expect(c.means).toBe('Ask what they mean.');
+    expect(c.reply).toBe('What do you mean?');
+    expect(card({ gist: 'g '.repeat(61) }).gist).toBe('Gabbar asks how many men there were.');
+  });
+
+  const exampleResult = (text: string, example: string, search: string) => {
+    const withText = [items[0]!, { ...items[1]!, text }];
+    return checkAnswer({ ...base, example: { t: example, ids: ['E2'] } }, withText, search, []);
+  };
+
+  it('matches the example on whole words only', () => {
+    const r = exampleResult('The disclosers spoke.', 'The disclosers spoke', 'closer');
+    expect(r.card?.example).toBeNull();
+  });
+
+  it('keeps an example for a short search like "rip"', () => {
+    const text = 'He wrote rip under the post.';
+    const r = exampleResult(text, 'He wrote rip under the post', 'rip');
+    expect(r.card?.example?.text).toBe('He wrote rip under the post');
+  });
+
+  it('drops an example over 280 characters', () => {
+    const text = `kitne aadmi the ${'and '.repeat(70)}`;
+    expect(exampleResult(text, text, 'kitne aadmi the').card?.example).toBeNull();
+  });
+
+  it('gives an empty ignored reason a default and keeps one entry per source', () => {
+    const r = run({
+      ignored: [
+        { id: 'E1', why: '  ' },
+        { id: 'E1', why: 'second' },
+        { id: 'E2', why: 'x'.repeat(100) },
+      ],
+    });
+    expect('notUsed' in r && r.notUsed).toEqual([
+      { source: 3, why: 'about something else' },
+      { source: 5, why: 'x'.repeat(80) },
+    ]);
+  });
+});

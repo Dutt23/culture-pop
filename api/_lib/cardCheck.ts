@@ -14,6 +14,12 @@ const MAX_CONTEXT = 3;
 const MIN_PREFIX_CHARS = 4;
 const TONE_RUN_WORDS = 4;
 const WHY_CHARS = 80;
+const LABEL_CHARS = 60;
+const GIST_CHARS = 120;
+const MEANS_CHARS = 280;
+const REPLY_CHARS = 80;
+const EXAMPLE_CHARS = 280;
+const FALLBACK_WHY = 'about something else';
 const FALLBACK_MEANS = 'Ask what they mean.';
 const FALLBACK_REPLY = 'What do you mean?';
 const GENERIC_REPLY =
@@ -81,18 +87,20 @@ const flatten = (s: string): string =>
     .trim()
     .toLowerCase();
 
-/** The line holds the whole search, or a leading run of its whole words of 4+ characters. */
+/** Whole words only: the full search at any length, or a leading run of 4+ characters. */
 function containsSearch(line: string, search: string): boolean {
-  const words = flatten(search).split(/\s+/).filter(Boolean);
+  const padded = ` ${wordsOf(line).join(' ')} `;
+  const words = wordsOf(search);
   for (let n = words.length; n > 0; n--) {
     const prefix = words.slice(0, n).join(' ');
-    if (prefix.length >= MIN_PREFIX_CHARS && line.includes(prefix)) return true;
+    const longEnough = n === words.length || prefix.length >= MIN_PREFIX_CHARS;
+    if (longEnough && padded.includes(` ${prefix} `)) return true;
   }
   return false;
 }
 
 function keepExample(example: Line | null, byId: ByIdMap, search: string): CitedLine | null {
-  if (!example) return null;
+  if (!example || example.t.length > EXAMPLE_CHARS) return null;
   const cited = citedItems(example.ids, byId);
   const line = flatten(example.t);
   if (!cited || !line || !cited.some((c) => flatten(c.text).includes(line))) return null;
@@ -132,6 +140,17 @@ function copiesTone(text: string, tones: readonly ToneCard[]): boolean {
   );
 }
 
+/** The search cut to whole words that fit the label limit. */
+function searchLabel(search: string): string {
+  let label = '';
+  for (const word of search.trim().split(/\s+/)) {
+    const next = label ? `${label} ${word}` : word;
+    if (next.length > LABEL_CHARS) break;
+    label = next;
+  }
+  return label;
+}
+
 export function checkAnswer(
   answer: unknown,
   items: readonly EvidenceItem[],
@@ -150,17 +169,28 @@ export function checkAnswer(
 
   const evidenceText = items.map((i) => i.text.toLowerCase()).join('\n');
   const bad = (text: string) => hasUnknownName(text, evidenceText) || copiesTone(text, tones);
-  const gist = bad(a.gist) ? (summary[0]?.text ?? '') : a.gist;
-  const means = bad(a.means) ? FALLBACK_MEANS : a.means;
-  const reply = bad(a.reply) || GENERIC_REPLY.test(a.reply.trim()) ? FALLBACK_REPLY : a.reply;
+  const free = (text: string, max: number, fallback: string) => {
+    const t = text.trim();
+    return !t || t.length > max || bad(t) ? fallback : text;
+  };
+  const label = free(a.label, LABEL_CHARS, searchLabel(search));
+  const gist = free(a.gist, GIST_CHARS, summary[0]?.text ?? '');
+  const means = free(a.means, MEANS_CHARS, FALLBACK_MEANS);
+  const reply = GENERIC_REPLY.test(a.reply.trim())
+    ? FALLBACK_REPLY
+    : free(a.reply, REPLY_CHARS, FALLBACK_REPLY);
 
+  const seen = new Set<number>();
   const notUsed = a.ignored.flatMap(({ id, why }) => {
     const item = byId.get(id);
-    return item ? [{ source: item.source, why: why.trim().slice(0, WHY_CHARS) }] : [];
+    if (!item || seen.has(item.source)) return [];
+    seen.add(item.source);
+    const reason = why.trim().slice(0, WHY_CHARS).trim();
+    return [{ source: item.source, why: reason || FALLBACK_WHY }];
   });
 
   return {
-    card: { label: a.label, gist, means, reply, summary, context, example, spoiler: a.spoiler },
+    card: { label, gist, means, reply, summary, context, example, spoiler: a.spoiler },
     notUsed,
   };
 }
