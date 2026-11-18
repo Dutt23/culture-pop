@@ -91,8 +91,31 @@ async function pickAndCheck(user: ReturnType<typeof userEvent.setup>, ...titles:
   return screen.findByRole('region', { name: 'Splice check' });
 }
 
+/** A Web Animations stand-in whose animations finish on the next tick. */
+function finishingAnimate() {
+  const animate = vi.fn(() => {
+    const animation = { cancel: vi.fn() } as unknown as Animation;
+    Object.defineProperty(animation, 'onfinish', {
+      set: (fn: (() => void) | null) => setTimeout(() => fn?.(), 0),
+    });
+    Object.defineProperty(animation, 'oncancel', { set: () => {} });
+    return animation;
+  });
+  Element.prototype.animate = animate;
+  return animate;
+}
+
+async function keepACard(settings: Partial<Settings>) {
+  const flow = await renderFlow(settings, async () => RESPONSE);
+  await pickAndCheck(flow.user, 'What does OK boomer mean');
+  await flow.user.click(makeButton());
+  await flow.user.click(await screen.findByRole('button', { name: 'Keep' }));
+  return flow;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
+  delete (Element.prototype as Partial<Element>).animate;
 });
 
 describe('curate a card', () => {
@@ -222,6 +245,45 @@ describe('curate a card', () => {
     await second.user.click(await screen.findByRole('button', { name: 'Drop' }));
     expect(await screen.findByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
     expect(await second.db.draftCards.count()).toBe(0);
+  });
+
+  it('Keep flies the card to the library with a thumbs-up, then returns to the tray', async () => {
+    const animate = finishingAnimate();
+    const { db } = await keepACard({ webSearch: 'on' });
+
+    expect(await screen.findByRole('img', { name: 'Thumbs up' })).toBeInTheDocument();
+    // The copy that flew (it is removed as soon as its flight ends).
+    const flew = (el: unknown) => (el as HTMLElement).dataset?.flight === 'library';
+    expect(animate.mock.contexts.some(flew)).toBe(true);
+    expect(await screen.findByText('Kept on this device.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
+    expect(await frame('What does OK boomer mean')).toHaveAttribute('aria-pressed', 'true');
+    expect(document.querySelector('[data-flight="library"]')).toBeNull();
+    expect(screen.queryByRole('img', { name: 'Thumbs up' })).toBeNull();
+    expect(await db.draftCards.count()).toBe(1);
+    expect(animate).toHaveBeenCalled();
+  });
+
+  it('under reduced motion Keep fades instead of flying and still saves', async () => {
+    finishingAnimate();
+    const { db } = await keepACard({ webSearch: 'on', motion: 'reduce' });
+
+    expect(await screen.findByText('Kept on this device.')).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Thumbs up' })).toBeNull();
+    expect(document.querySelector('[data-flight="library"]')).toBeNull();
+    expect(await db.draftCards.count()).toBe(1);
+  });
+
+  it('closing during the thumbs-up leaves nothing behind', async () => {
+    const animate = finishingAnimate();
+    const { db, unmount } = await keepACard({ webSearch: 'on' });
+    await screen.findByRole('img', { name: 'Thumbs up' });
+    const flights = animate.mock.results.map((r) => r.value as Animation);
+
+    unmount();
+
+    expect(flights.at(-1)?.cancel).toHaveBeenCalled();
+    expect(await db.draftCards.count()).toBe(1);
   });
 
   it('going offline mid-draft cancels it and keeps the tray', async () => {

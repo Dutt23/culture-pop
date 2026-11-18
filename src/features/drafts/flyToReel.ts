@@ -55,3 +55,48 @@ export function flyToReel(
   };
   flight.oncancel = () => clone.remove();
 }
+
+/** With no target on screen, a kept card flies this far up and away. */
+const LIBRARY_FALLBACK_PX = -340;
+
+/**
+ * Flies a copy of a kept card into `target` (the library link) or up and away. The caller keeps the
+ * returned flight to cancel it on unmount; the copy is removed on finish and on cancel.
+ */
+export function flyToLibrary(
+  from: Element,
+  target: Element | null,
+  colour: string,
+): Animation | undefined {
+  if (typeof from.animate !== 'function') return undefined;
+  const s = from.getBoundingClientRect();
+  const t = target?.getBoundingClientRect();
+  const clone = document.createElement('div');
+  clone.setAttribute('aria-hidden', 'true');
+  clone.dataset.flight = 'library';
+  Object.assign(clone.style, {
+    position: 'fixed',
+    left: `${s.left}px`,
+    top: `${s.top}px`,
+    width: `${s.width}px`,
+    height: `${s.height}px`,
+    zIndex: '9',
+    pointerEvents: 'none',
+    borderRadius: '16px',
+    background: '#221d4a',
+    border: `2px solid ${colour}`,
+  });
+  document.body.append(clone);
+  const dx = t ? t.left + t.width / 2 - s.left - s.width / 2 : 0;
+  const dy = t ? t.top + t.height / 2 - s.top - s.height / 2 : LIBRARY_FALLBACK_PX;
+  const flight = clone.animate(
+    [
+      { transform: 'translate(0,0) scale(1) rotate(0)', opacity: 1 },
+      { transform: `translate(${dx}px,${dy}px) scale(.1) rotate(-8deg)`, opacity: 0.3 },
+    ],
+    { duration: FLY_MS, easing: 'cubic-bezier(.3,.7,.3,1)' },
+  );
+  flight.onfinish = () => clone.remove();
+  flight.oncancel = () => clone.remove();
+  return flight;
+}

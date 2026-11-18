@@ -1,7 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { CitedLine, DraftCard, DraftResponse } from '../../../api/_lib/cardTypes.js';
+import { Antennae, Body, Smile } from '../../components/mascot/Mascot';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { UNGRADED } from './curationLook';
+import { flyToLibrary } from './flyToReel';
 import type { Frame } from './frames';
 import styles from './drafts.module.css';
 
@@ -12,15 +15,15 @@ const FLIP_IN: Keyframe[] = [
   { transform: 'perspective(700px) rotateY(-8deg) scale(1.02)', opacity: 1 },
   { transform: 'perspective(700px) rotateY(0) scale(1)', opacity: 1 },
 ];
-const FLY_OUT: Keyframe[] = [
-  { transform: 'translateY(0) scale(1)', opacity: 1 },
-  { transform: 'translateY(-340px) scale(.2)', opacity: 0 },
-];
 const FOLD: Keyframe[] = [
   { transform: 'scaleY(1)', opacity: 1 },
   { transform: 'scaleY(.05) translateY(400px)', opacity: 0 },
 ];
 const REDUCED_MS = 150;
+/** The flight (560 ms) plus a beat for the thumbs-up, then back to the film. */
+const CHEER_MS = 1100;
+/** Where kept cards go: the Favourites tab in the app's navigation. */
+const LIBRARY_LINK = 'nav a[href="/favourites"]';
 /** Source chips pop in one after another, after the flip. */
 const CHIP_DELAY_S = 0.7;
 const CHIP_STEP_S = 0.15;
@@ -49,6 +52,20 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
   const [busy, setBusy] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
+  const [cheering, setCheering] = useState(false);
+  // Everything still running when the reveal goes: cancelled on unmount, so nothing calls back.
+  const alive = useRef(true);
+  const running = useRef<Animation[]>([]);
+  const cheerTimer = useRef(0);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      running.current.forEach((a) => a.cancel());
+      clearTimeout(cheerTimer.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!canAnimate(ref.current)) return;
     ref.current.animate(reduced ? FADE_IN : FLIP_IN, {
@@ -65,6 +82,19 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
       fill: 'forwards',
     });
     exit.onfinish = () => onDone(kept);
+    running.current.push(exit);
+  };
+
+  // Full motion: a copy flies into the library while the mascot gives a thumbs-up.
+  const flyOut = () => {
+    const el = ref.current;
+    if (reduced || !el) return leave(FADE_OUT, true);
+    const colour = getComputedStyle(el).getPropertyValue('--g1').trim() || UNGRADED;
+    const flight = flyToLibrary(el, document.querySelector(LIBRARY_LINK), colour);
+    if (!flight) return leave(FADE_OUT, true);
+    running.current.push(flight);
+    setCheering(true);
+    cheerTimer.current = window.setTimeout(() => onDone(true), CHEER_MS);
   };
 
   const keep = async () => {
@@ -72,11 +102,13 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
     setSaveFailed(false);
     try {
       await onKeep(card);
-      leave(FLY_OUT, true);
     } catch {
+      if (!alive.current) return;
       setSaveFailed(true);
       setBusy(false);
+      return;
     }
+    if (alive.current) flyOut();
   };
 
   let chip = 0;
@@ -136,7 +168,26 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
 
   return (
     <div className={reduced ? `${styles.reveal} ${styles.still}` : styles.reveal}>
-      <article ref={ref} className={styles.card} aria-labelledby={titleId}>
+      {cheering && (
+        // The mascot's thumbs-up: the usual body with one arm raised.
+        <svg className={styles.cheer} viewBox="-10 -14 150 134" role="img" aria-label="Thumbs up">
+          <Antennae />
+          <Body />
+          <circle cx="46" cy="58" r="11" fill="#f3efff" />
+          <circle cx="74" cy="58" r="11" fill="#f3efff" />
+          <circle cx="48" cy="58" r="5" fill="#0d0b1f" />
+          <circle cx="76" cy="58" r="5" fill="#0d0b1f" />
+          <Smile />
+          <path d="M104 74 L120 56" stroke="#6a3df0" strokeWidth="8" strokeLinecap="round" />
+          <circle cx="122" cy="52" r="7" fill="#b29bff" />
+          <rect x="119" y="34" width="6" height="14" rx="3" fill="#b29bff" />
+        </svg>
+      )}
+      <article
+        ref={ref}
+        className={cheering ? `${styles.card} ${styles.gone}` : styles.card}
+        aria-labelledby={titleId}
+      >
         <span className={styles.stamp}>AI draft · check the sources</span>
         <h2 id={titleId} className={styles.label}>
           {card.label}
@@ -167,11 +218,25 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
         </p>
       )}
       <div className={styles.actions}>
-        <button type="button" className={styles.small} onClick={() => leave(FOLD, false)}>
+        {/* Busy from the Keep tap on: a drop or edit can't race the save or the flight. */}
+        <button
+          type="button"
+          className={styles.small}
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            leave(FOLD, false);
+          }}
+        >
           Drop
         </button>
         {!editing && (
-          <button type="button" className={styles.small} onClick={() => setEditing(true)}>
+          <button
+            type="button"
+            className={styles.small}
+            disabled={busy}
+            onClick={() => setEditing(true)}
+          >
             Edit
           </button>
         )}
