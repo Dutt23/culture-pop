@@ -1,5 +1,4 @@
 import { safeHref } from '../../components/ui/safeHref';
-import { normalizePhrase } from '../../domain/normalize';
 import { RetrievalError } from './types';
 
 /** Narrowing helpers for untrusted provider JSON. */
@@ -63,11 +62,7 @@ export function htmlToText(value: string): string {
     .replace(/&(#\d{1,7}|#x[0-9a-f]{1,6}|[a-z]{2,8});/gi, decodeEntity);
 }
 
-/** True when `text` contains the query as a whole phrase, ignoring case, accents and punctuation. */
-export function containsPhrase(text: string, query: string): boolean {
-  const phrase = normalizePhrase(query);
-  return phrase.length > 0 && ` ${normalizePhrase(text)} `.includes(` ${phrase} `);
-}
+export { containsPhrase } from '../../../api/_lib/grounding.js';
 
 const MAX_EXCERPT_CHARS = 320;
 
