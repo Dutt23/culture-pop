@@ -18,7 +18,7 @@
     "test:e2e": "playwright test",
     "audit:gate": "node scripts/audit-gate.js",
     "check:dist": "node scripts/check-dist.js",
-    "deploy:check": "npm run audit:gate && npm run typecheck && npm run lint && prettier --check src api scripts e2e && npm test && CI=1 npm run test:e2e && npm run check:dist",
+    "deploy:check": "npm run audit:gate && npm run typecheck && npm run lint && prettier --check src api shared scripts e2e && npm test && CI=1 npm run test:e2e && npm run check:dist",
     "deploy:preview": "npm run deploy:check && npx --yes vercel@65.9.0 deploy",
     "deploy": "npm run deploy:check && npx --yes vercel@65.9.0 deploy --prod"
   },

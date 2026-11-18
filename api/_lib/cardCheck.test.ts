@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { EvidenceItem, ToneCard } from './cardTypes.js';
+import type { EvidenceItem, ToneCard } from '../../shared/cardTypes.js';
 import type { ModelAnswer } from './cardPrompt.js';
 import { checkAnswer } from './cardCheck.js';
 

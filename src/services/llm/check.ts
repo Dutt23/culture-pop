@@ -1,4 +1,4 @@
-import { isGrounded } from '../../../api/_lib/grounding.js';
+import { isGrounded } from '../../../shared/grounding.js';
 import { normalizePhrase, tokenize } from '../../domain/normalize';
 import { containsPhrase, isRecord } from '../retrieval/validate';
 import type { EvidenceItem } from './evidence';
@@ -31,7 +31,7 @@ export function parseJson(text: string): unknown {
 
 // ── Grounding ───────────────────────────────────────────────────────────────
 
-export { isGrounded, MIN_SHARED_WORDS } from '../../../api/_lib/grounding.js';
+export { isGrounded, MIN_SHARED_WORDS } from '../../../shared/grounding.js';
 
 // ── Job 1: explanation ──────────────────────────────────────────────────────
 

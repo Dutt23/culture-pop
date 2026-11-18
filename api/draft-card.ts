@@ -1,6 +1,6 @@
 import { checkAccess, type AccessResult } from './_lib/access.js';
 import { checkAnswer } from './_lib/cardCheck.js';
-import { curateEvidence } from './_lib/cardCurate.js';
+import { curateEvidence } from '../shared/cardCurate.js';
 import { ANSWER_SCHEMA, PREFIX, PROMPT_VERSION, requestText } from './_lib/cardPrompt.js';
 import {
   ProviderError,
@@ -16,11 +16,11 @@ import {
   type EvidenceItem,
   type NotUsed,
   type ToneCard,
-} from './_lib/cardTypes.js';
+} from '../shared/cardTypes.js';
 import { devFlag } from './_lib/devFlags.js';
 import { isCrossSite, json, readCapped } from './_lib/http.js';
 import { extractPages } from './_lib/parallelExtract.js';
-import { cut, validAbout, validQuery } from './_lib/text.js';
+import { cut, validAbout, validQuery } from '../shared/text.js';
 
 /**
  * Curates the reader's picked search results and app cards into one AI-drafted, checked card.

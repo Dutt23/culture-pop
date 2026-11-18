@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ToneCard } from '../../../api/_lib/cardTypes.js';
+import type { ToneCard } from '../../../shared/cardTypes.js';
 import { MotionPreferenceProvider } from '../../motion/MotionPreferenceProvider';
 import { CurationTray } from './CurationTray';
 import { gradeOf, LIMIT_HINTS } from './curationLook';

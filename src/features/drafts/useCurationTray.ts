@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { validQuery } from '../../../api/_lib/text.js';
-import { flagSources, type FlagReason } from '../../../api/_lib/cardCurate.js';
+import { validQuery } from '../../../shared/text.js';
+import { flagSources, type FlagReason } from '../../../shared/cardCurate.js';
 import {
   type DraftRequestBody,
   type DraftSourceInput,
   LIMITS,
   type ToneCard,
-} from '../../../api/_lib/cardTypes.js';
+} from '../../../shared/cardTypes.js';
 import type { Frame } from './frames';
 
 const cut = (s: string, n: number) => Array.from(s).slice(0, n).join('');

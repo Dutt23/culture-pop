@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import type { CitedLine, DraftCard, DraftResponse } from '../../../api/_lib/cardTypes.js';
+import type { CitedLine, DraftCard, DraftResponse } from '../../../shared/cardTypes.js';
 import { Antennae, Body, Smile } from '../../components/mascot/Mascot';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';

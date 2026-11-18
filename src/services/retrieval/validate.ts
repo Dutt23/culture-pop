@@ -62,7 +62,7 @@ export function htmlToText(value: string): string {
     .replace(/&(#\d{1,7}|#x[0-9a-f]{1,6}|[a-z]{2,8});/gi, decodeEntity);
 }
 
-export { containsPhrase } from '../../../api/_lib/grounding.js';
+export { containsPhrase } from '../../../shared/grounding.js';
 
 const MAX_EXCERPT_CHARS = 320;
 

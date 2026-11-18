@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { DraftCard, DraftResponse, ToneCard } from '../../../api/_lib/cardTypes.js';
+import type { DraftCard, DraftResponse, ToneCard } from '../../../shared/cardTypes.js';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/retrievalService';
 import { useOnlineStatus } from '../../app/useOnlineStatus';

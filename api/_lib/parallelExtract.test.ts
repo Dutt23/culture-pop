@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { extractPages } from './parallelExtract.js';
-import { objective } from './text.js';
+import { objective } from '../../shared/text.js';
 
 const A = 'https://a.example/page';
 const B = 'https://b.example/page';

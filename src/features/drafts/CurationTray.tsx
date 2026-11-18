@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, type RefObject } from 'react';
-import { LIMITS, type ToneCard } from '../../../api/_lib/cardTypes.js';
+import { LIMITS, type ToneCard } from '../../../shared/cardTypes.js';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { filterColour } from './curationLook';
 import styles from './CurationTray.module.css';

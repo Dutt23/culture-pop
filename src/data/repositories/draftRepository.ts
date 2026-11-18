@@ -1,4 +1,4 @@
-import type { DraftCard } from '../../../api/_lib/cardTypes.js';
+import type { DraftCard } from '../../../shared/cardTypes.js';
 import type { PopCultureDb } from '../db';
 
 export interface DraftCardRecord {

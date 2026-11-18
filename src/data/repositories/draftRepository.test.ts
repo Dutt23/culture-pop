@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DraftCard } from '../../../api/_lib/cardTypes.js';
+import type { DraftCard } from '../../../shared/cardTypes.js';
 import { createTestDatabase } from '../../test/renderApp';
 import type { DraftCardRecord } from './draftRepository';
 import { createRepositories } from './index';

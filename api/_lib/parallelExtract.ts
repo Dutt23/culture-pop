@@ -1,6 +1,6 @@
 import { devFlag } from './devFlags.js';
 import { readCapped } from './http.js';
-import { objective, plainText } from './text.js';
+import { objective, plainText } from '../../shared/text.js';
 
 /**
  * Reads the text inside web links with Parallel's Extract API. The key stays on the server; nothing

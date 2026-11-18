@@ -1,8 +1,14 @@
 // Server checks run on every model answer before anything reaches the reader: they drop
 // unsupported sentences, bad examples and made-up names, and map evidence ids to request sources.
 import type { ModelAnswer } from './cardPrompt.js';
-import type { CitedLine, DraftCard, EvidenceItem, NotUsed, ToneCard } from './cardTypes.js';
-import { COMMON_WORDS, isGrounded } from './grounding.js';
+import type {
+  CitedLine,
+  DraftCard,
+  EvidenceItem,
+  NotUsed,
+  ToneCard,
+} from '../../shared/cardTypes.js';
+import { COMMON_WORDS, isGrounded } from '../../shared/grounding.js';
 
 export type CheckResult =
   | { card: DraftCard; notUsed: NotUsed[] }

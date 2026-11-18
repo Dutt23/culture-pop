@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DraftResponse } from '../../../api/_lib/cardTypes.js';
+import type { DraftResponse } from '../../../shared/cardTypes.js';
 import { AppProviders } from '../../app/AppProviders';
 import { createRepositories } from '../../data/repositories';
 import type { Settings } from '../../domain/settings';

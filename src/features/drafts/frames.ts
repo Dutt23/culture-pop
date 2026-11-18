@@ -1,4 +1,4 @@
-import type { SourceKind } from '../../../api/_lib/cardTypes.js';
+import type { SourceKind } from '../../../shared/cardTypes.js';
 import type { Interpretation, Reference } from '../../domain/types';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import type { WebResult } from '../../services/retrieval/webSearch';

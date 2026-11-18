@@ -6,7 +6,7 @@ import type {
   DraftRequestBody,
   DraftResponse,
   NotUsed,
-} from '../../../api/_lib/cardTypes.js';
+} from '../../../shared/cardTypes.js';
 import { isRecord, stringField } from './validate';
 
 /**

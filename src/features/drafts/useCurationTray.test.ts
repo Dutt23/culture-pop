@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { readDraftBody } from '../../../api/draft-card.js';
-import { LIMITS } from '../../../api/_lib/cardTypes.js';
+import { LIMITS } from '../../../shared/cardTypes.js';
 import type { Interpretation, Reference } from '../../domain/types';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import type { WebResult } from '../../services/retrieval/webSearch';

@@ -10,7 +10,7 @@ import {
   validAbout,
   validQuery,
   type SearchKind,
-} from './_lib/text.js';
+} from '../shared/text.js';
 import { bestSnippet, pageKey } from './_lib/snippet.js';
 
 /**

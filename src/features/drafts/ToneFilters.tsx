@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { ToneCard } from '../../../api/_lib/cardTypes.js';
+import type { ToneCard } from '../../../shared/cardTypes.js';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { filterColour } from './curationLook';
 import { flyToReel, spinReel } from './flyToReel';

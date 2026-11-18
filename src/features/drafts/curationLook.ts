@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { ToneCard } from '../../../api/_lib/cardTypes.js';
+import type { ToneCard } from '../../../shared/cardTypes.js';
 
 /**
  * A kept card's name in lists and filters. A major spoiler hidden by the reader's setting shows

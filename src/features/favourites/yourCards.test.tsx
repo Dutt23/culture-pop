@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DraftCard } from '../../../api/_lib/cardTypes.js';
+import type { DraftCard } from '../../../shared/cardTypes.js';
 import { AppProviders } from '../../app/AppProviders';
 import { createRepositories } from '../../data/repositories';
 import type { DraftCardRecord } from '../../data/repositories/draftRepository';

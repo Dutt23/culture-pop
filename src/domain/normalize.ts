@@ -1,4 +1,4 @@
-export { normalizePhrase, tokenize } from '../../api/_lib/grounding.js';
+export { normalizePhrase, tokenize } from '../../shared/grounding.js';
 
 // Wikipedia-style disambiguators only: a year or a kind of work, e.g. "(2015 film)", "(TV series)".
 // Brackets that belong to the title, like "(Part 2)", are kept.

@@ -2,7 +2,7 @@
 // the answer schema. Worked examples are our own text and never use the five answer-key topics
 // (bazinga, winter is coming, ok boomer, stonks, kitne aadmi the).
 import { encode } from '@toon-format/toon';
-import type { EvidenceItem, EvidenceRole, ToneCard } from './cardTypes.js';
+import type { EvidenceItem, EvidenceRole, ToneCard } from '../../shared/cardTypes.js';
 
 export const PROMPT_VERSION = 'card-draft-v8';
 
