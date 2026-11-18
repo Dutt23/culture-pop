@@ -118,6 +118,7 @@ export function unusedWebSearch() {
     search: vi.fn<WebSearchClient['search']>(unused),
     unlock: vi.fn<WebSearchClient['unlock']>(unused),
     lock: vi.fn<WebSearchClient['lock']>(unused),
+    draftCard: vi.fn<WebSearchClient['draftCard']>(unused),
   } satisfies WebSearchClient;
 }
 

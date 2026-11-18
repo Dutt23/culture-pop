@@ -1,6 +1,12 @@
 import { safeHref } from '../../components/ui/safeHref';
 import { MAX_HINT_TAGS } from '../../domain/searchTags';
 import { looksLikeQuestion } from './community';
+import type {
+  CitedLine,
+  DraftRequestBody,
+  DraftResponse,
+  NotUsed,
+} from '../../../api/_lib/cardTypes.js';
 import { isRecord, stringField } from './validate';
 
 /**
@@ -11,6 +17,7 @@ import { isRecord, stringField } from './validate';
 export const WEB_SEARCH_PATH = '/api/web-search';
 export const UNLOCK_PATH = '/api/unlock';
 export const LOCK_PATH = '/api/lock';
+export const DRAFT_CARD_PATH = '/api/draft-card';
 
 /**
  * How far a provider's terms let the app keep its results (D45), set per provider on the server:
@@ -58,6 +65,7 @@ export type WebSearchFailure =
   | 'out_of_credit'
   | 'not_configured'
   | 'blocked'
+  | 'no_card'
   | 'failed'
   | 'aborted';
 
@@ -88,6 +96,8 @@ export interface WebSearchClient {
   unlock: (code: string) => Promise<void>;
   /** Asks the server to clear the cookie ("Forget access code"). */
   lock: () => Promise<void>;
+  /** Asks the server to curate the reader's picks into one checked card. */
+  draftCard: (body: DraftRequestBody, signal?: AbortSignal) => Promise<DraftResponse>;
 }
 
 export interface WebSearchDependencies {
@@ -103,6 +113,8 @@ const MAX_TITLE = 120;
 const MAX_SNIPPET = 300;
 // The server allows Parallel 8 s; a little more covers the hop to Vercel.
 const DEFAULT_TIMEOUT_MS = 12_000;
+// A draft makes a model call and a check, so it waits longer than a search.
+const DRAFT_TIMEOUT_MS = 25_000;
 
 function failureFor(status: number, code: string | undefined): WebSearchFailure {
   // Unlock answers 400 for an over-long code: to the reader that is just a wrong code.
@@ -111,6 +123,7 @@ function failureFor(status: number, code: string | undefined): WebSearchFailure 
   if (status === 429) return code === 'daily_cap' ? 'daily_cap' : 'rate_limited';
   if (status === 503) return code === 'out_of_credit' ? 'out_of_credit' : 'not_configured';
   if (status === 403) return 'blocked';
+  if (status === 422 && code === 'no_card') return 'no_card';
   return 'failed';
 }
 
@@ -140,6 +153,68 @@ export function parseWebResults(body: unknown): WebResult[] {
   return results.slice(0, MAX_RESULTS);
 }
 
+const PROVIDERS = ['openai', 'cloudflare', 'fake'];
+
+function badDraft(): never {
+  throw new WebSearchError('failed', 'Unexpected response');
+}
+
+function sourceIndex(value: unknown, sent: number): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value >= sent) {
+    return badDraft();
+  }
+  return value;
+}
+
+function citedLine(value: unknown, sent: number): CitedLine {
+  if (!isRecord(value) || typeof value.text !== 'string' || !Array.isArray(value.sources)) {
+    return badDraft();
+  }
+  return { text: value.text, sources: value.sources.map((i: unknown) => sourceIndex(i, sent)) };
+}
+
+function citedLines(value: unknown, sent: number): CitedLine[] {
+  return Array.isArray(value) ? value.map((line: unknown) => citedLine(line, sent)) : badDraft();
+}
+
+/** Re-checks a drafted card off the network: types, and that every cited source was one we sent. */
+export function parseDraftResponse(body: unknown, sentSources: number): DraftResponse {
+  if (!isRecord(body) || !isRecord(body.card) || !Array.isArray(body.notUsed)) return badDraft();
+  const { card } = body;
+  const { label, gist, means, reply, spoiler } = card;
+  if (
+    typeof label !== 'string' ||
+    typeof gist !== 'string' ||
+    typeof means !== 'string' ||
+    typeof reply !== 'string' ||
+    (spoiler !== 'none' && spoiler !== 'major') ||
+    typeof body.promptVersion !== 'string' ||
+    typeof body.provider !== 'string' ||
+    !PROVIDERS.includes(body.provider)
+  ) {
+    return badDraft();
+  }
+  const notUsed = body.notUsed.map((item: unknown): NotUsed => {
+    if (!isRecord(item) || typeof item.why !== 'string') return badDraft();
+    return { source: sourceIndex(item.source, sentSources), why: item.why };
+  });
+  return {
+    card: {
+      label,
+      gist,
+      means,
+      reply,
+      summary: citedLines(card.summary, sentSources),
+      context: citedLines(card.context, sentSources),
+      example: card.example === null ? null : citedLine(card.example, sentSources),
+      spoiler,
+    },
+    notUsed,
+    provider: body.provider as DraftResponse['provider'],
+    promptVersion: body.promptVersion,
+  };
+}
+
 /** Run-time half of the device lock: only well-formed `device` results pass. */
 export function isDeviceResult(value: unknown): value is DeviceResult {
   return (
@@ -155,12 +230,17 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   /** One same-origin call: timeout, cancellation, a size cap, and typed failures. */
-  async function call(url: string, init: RequestInit, signal?: AbortSignal): Promise<unknown> {
+  async function call(
+    url: string,
+    init: RequestInit,
+    signal?: AbortSignal,
+    limitMs = timeoutMs,
+  ): Promise<unknown> {
     if (signal?.aborted) throw new WebSearchError('aborted', 'Request cancelled');
     if (!deps.isOnline()) throw new WebSearchError('offline', 'Device is offline');
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), limitMs);
     const forwardAbort = () => controller.abort();
     signal?.addEventListener('abort', forwardAbort, { once: true });
     try {
@@ -224,5 +304,10 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
     lock: async () => {
       await call(LOCK_PATH, post());
     },
+    draftCard: async (body, signal) =>
+      parseDraftResponse(
+        await call(DRAFT_CARD_PATH, post(body), signal, DRAFT_TIMEOUT_MS),
+        body.sources.length,
+      ),
   };
 }

@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { connectSrc } from './hosts';
 import {
   createWebSearch,
+  DRAFT_CARD_PATH,
   LOCK_PATH,
+  parseDraftResponse,
   parseWebResults,
   UNLOCK_PATH,
   WEB_SEARCH_PATH,
@@ -246,5 +248,100 @@ describe('parseWebResults', () => {
 
   it('rejects a body without a results list', () => {
     expect(() => parseWebResults({ nope: 1 })).toThrow(WebSearchError);
+  });
+});
+
+const DRAFT_BODY = {
+  search: 'ok boomer',
+  sources: [
+    { kind: 'wiki', title: 'Ok boomer', url: 'https://en.wikipedia.org/wiki/OK_boomer', text: 'a' },
+    { kind: 'web', title: 'Ok boomer', url: 'https://example.com/a', text: 'b' },
+  ],
+} as unknown as Parameters<ReturnType<typeof createWebSearch>['draftCard']>[0];
+
+const DRAFT_RESPONSE = {
+  card: {
+    label: 'Ok boomer',
+    gist: 'A dismissive reply.',
+    means: 'Dismissal.',
+    reply: 'Fair.',
+    summary: [{ text: 'Used by younger people.', sources: [0, 1] }],
+    context: [{ text: 'Spread in 2019.', sources: [1] }],
+    example: null,
+    spoiler: 'none',
+  },
+  notUsed: [{ source: 1, why: 'Off topic' }],
+  provider: 'openai',
+  promptVersion: 'v1',
+};
+
+describe('draftCard', () => {
+  it('posts the picks to /api/draft-card, never in the URL', async () => {
+    const { fetchMock, client } = setup(answer(DRAFT_RESPONSE));
+    expect(await client.draftCard(DRAFT_BODY)).toEqual(DRAFT_RESPONSE);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe(DRAFT_CARD_PATH);
+    expect(String(url)).not.toContain('boomer');
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual(DRAFT_BODY);
+  });
+
+  it.each([
+    [422, { error: 'no_card', reason: 'x', notUsed: [] }, 'no_card'],
+    [429, { error: 'daily_cap' }, 'daily_cap'],
+    [503, { error: 'out_of_credit' }, 'out_of_credit'],
+  ])('maps %s %j to %s', async (status, body, failure) => {
+    const { client } = setup(answer(body, status));
+    expect(await failureOf(client.draftCard(DRAFT_BODY))).toBe(failure);
+  });
+
+  it('rejects a response with a source index that was not sent', async () => {
+    const bad = {
+      ...DRAFT_RESPONSE,
+      card: { ...DRAFT_RESPONSE.card, summary: [{ text: 'x', sources: [2] }] },
+    };
+    const { client } = setup(answer(bad));
+    expect(await failureOf(client.draftCard(DRAFT_BODY))).toBe('failed');
+  });
+
+  it('never calls the network when offline', async () => {
+    const { fetchMock, client } = setup(answer(DRAFT_RESPONSE), false);
+    expect(await failureOf(client.draftCard(DRAFT_BODY))).toBe('offline');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('waits up to 25 seconds, longer than a search', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }),
+    );
+    const client = createWebSearch({ fetch: fetchMock, isOnline: () => true });
+    const pending = failureOf(client.draftCard(DRAFT_BODY));
+    await vi.advanceTimersByTimeAsync(24_999);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(2);
+    expect(await pending).toBe('failed');
+  });
+});
+
+describe('parseDraftResponse', () => {
+  it('returns a fresh object with only the known fields', () => {
+    const parsed = parseDraftResponse({ ...DRAFT_RESPONSE, extra: 1 }, 2);
+    expect(parsed).toEqual(DRAFT_RESPONSE);
+    expect(parsed).not.toBe(DRAFT_RESPONSE);
+  });
+
+  it.each([
+    ['unknown provider', { ...DRAFT_RESPONSE, provider: 'other' }],
+    ['non-array lines', { ...DRAFT_RESPONSE, card: { ...DRAFT_RESPONSE.card, summary: 'x' } }],
+    ['bad spoiler', { ...DRAFT_RESPONSE, card: { ...DRAFT_RESPONSE.card, spoiler: 'minor' } }],
+    ['fractional index', { ...DRAFT_RESPONSE, notUsed: [{ source: 0.5, why: 'x' }] }],
+    ['negative index', { ...DRAFT_RESPONSE, notUsed: [{ source: -1, why: 'x' }] }],
+    ['not an object', 'nope'],
+  ])('rejects %s', (_label, body) => {
+    expect(() => parseDraftResponse(body, 2)).toThrow(WebSearchError);
   });
 });
