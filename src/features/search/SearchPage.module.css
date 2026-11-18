@@ -76,3 +76,47 @@
   display: block;
   color: var(--color-text-muted);
 }
+
+/* "Make a card from these": the page's one filled call to action, above the results. */
+.curate {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.curateButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: var(--weight-bold);
+}
+
+.curateIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.curateHint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 600px) {
+  .curate {
+    justify-items: stretch;
+  }
+
+  .curateButton {
+    justify-content: center;
+  }
+}

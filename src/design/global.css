@@ -8,6 +8,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* The scrollbar's room stays when an open sheet locks the page, so nothing shifts sideways. */
+  scrollbar-gutter: stable;
   /* Tabbing to something near the bottom stops it short of the fixed navigation. */
   scroll-padding-block-end: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-4));
 }

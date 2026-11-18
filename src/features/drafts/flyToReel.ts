@@ -1,6 +1,9 @@
 const FLY_MS = 560;
 const SPIN_MS = 700;
 
+/** A modal dialog sits in the top layer and covers the body: a flight from inside it stays in it. */
+const layerOf = (from: Element): Element => from.closest('dialog') ?? document.body;
+
 /** Spins the tray's reel by `deg` (negative winds it back). */
 export function spinReel(reel: Element | null, deg: number): void {
   if (!reel || typeof reel.animate !== 'function') return; // jsdom has no Web Animations
@@ -36,7 +39,7 @@ export function flyToReel(
     background: round ? colour : '#3a2f7a',
     border: round ? 'none' : `1px solid ${colour}`,
   });
-  document.body.append(clone);
+  layerOf(from).append(clone);
   const dx = t.left + t.width / 2 - s.left - s.width / 2;
   const dy = t.top + t.height / 2 - s.top - s.height / 2;
   const flight = clone.animate(
@@ -70,7 +73,9 @@ export function flyToLibrary(
 ): Animation | undefined {
   if (typeof from.animate !== 'function') return undefined;
   const s = from.getBoundingClientRect();
-  const t = target?.getBoundingClientRect();
+  const layer = layerOf(from);
+  // A target under the dialog can't be seen, so the card flies up and away instead.
+  const t = target && layer.contains(target) ? target.getBoundingClientRect() : undefined;
   const clone = document.createElement('div');
   clone.setAttribute('aria-hidden', 'true');
   clone.dataset.flight = 'library';
@@ -86,7 +91,7 @@ export function flyToLibrary(
     background: '#221d4a',
     border: `2px solid ${colour}`,
   });
-  document.body.append(clone);
+  layer.append(clone);
   const dx = t ? t.left + t.width / 2 - s.left - s.width / 2 : 0;
   const dy = t ? t.top + t.height / 2 - s.top - s.height / 2 : LIBRARY_FALLBACK_PX;
   const flight = clone.animate(

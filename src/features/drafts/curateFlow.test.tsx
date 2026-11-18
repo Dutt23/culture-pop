@@ -461,6 +461,67 @@ describe('curate a card', () => {
     }
   });
 
+  it('in a dialog, Keep flies inside it and up and away from the hidden library link', async () => {
+    const animate = stubAnimate({ finish: false });
+    const sent: Frame[] = [
+      { key: BBC.url, kind: 'web', from: 'bbc.co.uk', title: BBC.title, line: '', url: BBC.url },
+    ];
+    render(
+      <MotionPreferenceProvider preference="system">
+        <nav>
+          <a href="/favourites">Favourites</a>
+        </nav>
+        <dialog open>
+          <DraftReveal response={RESPONSE} sent={sent} onKeep={async () => {}} />
+        </dialog>
+      </MotionPreferenceProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }));
+
+    // The page under a modal dialog is covered: a copy on the body, or flying to the nav, is unseen.
+    const dialog = screen.getByRole('dialog');
+    await waitFor(() => expect(dialog.querySelector('[data-flight="library"]')).not.toBeNull());
+    const i = animate.mock.contexts.indexOf(dialog.querySelector('[data-flight="library"]'));
+    expect(JSON.stringify((animate.mock.calls as unknown[][])[i]?.[0])).toContain(
+      'translate(0px,-340px)',
+    );
+  });
+
+  it("the browser's cancel (Escape, a back gesture) closes like Close and keeps the dialog", async () => {
+    const { onClose } = await renderFlow();
+    const dialog = await screen.findByRole('dialog', { name: `Make a card from “${SEARCH}”` });
+
+    const cancel = new Event('cancel', { cancelable: true });
+    fireEvent(dialog, cancel);
+
+    // Prevented: the dialog stays until the page unmounts it, so its exit can play.
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('a press on the backdrop closes; a drag from the panel out onto it does not', async () => {
+    const { onClose } = await renderFlow();
+    const dialog = await screen.findByRole('dialog', { name: `Make a card from “${SEARCH}”` });
+    vi.spyOn(dialog, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      bottom: 500,
+      left: 100,
+      right: 500,
+    } as DOMRect);
+    // jsdom has no PointerEvent: a mouse event of that type carries the coordinates.
+    const pressThenClick = (target: Element, x: number, y: number) => {
+      fireEvent(target, new MouseEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+      // The click lands on the dialog, outside the panel, either way.
+      fireEvent.click(dialog, { clientX: 20, clientY: 20 });
+    };
+
+    pressThenClick(screen.getByRole('heading', { name: `Make a card from “${SEARCH}”` }), 200, 200);
+    expect(onClose).not.toHaveBeenCalled();
+
+    pressThenClick(dialog, 20, 20);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('going offline mid-draft cancels it and keeps the tray', async () => {
     let sent: AbortSignal | undefined;
     const { user } = await renderFlow(

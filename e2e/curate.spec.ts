@@ -66,25 +66,34 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
     .getByRole('region', { name: 'Search the wider web?' })
     .getByRole('button', { name: 'Search the wider web' })
     .click();
-  await page.getByRole('button', { name: 'Make a card from these' }).click();
+  // The entry sits above the results; the flow opens over the page as a dialog.
+  const entry = page.getByRole('button', { name: 'Make a card from these' });
+  await entry.click();
+  const flow = page.getByRole('dialog', { name: `Make a card from “${SEARCH}”` });
+  await expect(flow).toBeVisible();
 
   // A frame's name includes its snippet; the result's heart button ("Save link …") doesn't.
-  await page.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
-  await page.getByRole('button', { name: WEB_RESULTS[1].snippet }).click();
-  await page.getByRole('button', { name: 'Hakuna matata (Swahili phrase)', exact: true }).click();
-  await page.getByRole('button', { name: 'Review 2 frames' }).click();
+  await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
+  await flow.getByRole('button', { name: WEB_RESULTS[1].snippet }).click();
+  await flow.getByRole('button', { name: 'Hakuna matata (Swahili phrase)', exact: true }).click();
+  await flow.getByRole('button', { name: 'Review 2 frames' }).click();
 
-  const check = page.getByRole('region', { name: 'Splice check' });
+  const check = flow.getByRole('region', { name: 'Splice check' });
   await expect(check).toBeVisible();
-  await page.getByRole('button', { name: 'Make a card' }).click();
+  await flow.getByRole('button', { name: 'Make a card' }).click();
 
-  await expect(page.getByText('AI draft · check the sources')).toBeVisible();
-  await expect(page.getByRole('article', { name: DRAFT.card.label })).toBeVisible();
+  await expect(flow.getByText('AI draft · check the sources')).toBeVisible();
+  await expect(flow.getByRole('article', { name: DRAFT.card.label })).toBeVisible();
   expect(draftBody.sources).toHaveLength(2);
   expect(draftBody.tones).toHaveLength(1);
 
-  await page.getByRole('button', { name: 'Keep' }).click();
-  await expect(page.getByText('Kept on this device.')).toBeVisible();
+  await flow.getByRole('button', { name: 'Keep' }).click();
+  await expect(flow.getByText('Kept on this device.')).toBeVisible();
+
+  // Escape closes the dialog and hands focus back to the entry.
+  await page.keyboard.press('Escape');
+  await expect(flow).toBeHidden();
+  await expect(entry).toBeFocused();
 
   await page.goto('/favourites');
   await expect(page.getByRole('heading', { name: 'Your cards' })).toBeVisible();

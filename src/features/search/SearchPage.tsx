@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { AnimatePresence, m } from 'motion/react';
+import { useId, useState, type ReactNode } from 'react';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { SearchPeek } from '../../components/mascot/SearchPeek';
 import type { PeekOutcome } from '../../components/mascot/usePeek';
@@ -127,7 +128,7 @@ export function SearchPage() {
   // Tags lift matching results; only "Only these" hides the rest (docs/SEARCH_TAGS_PLAN.md).
   const tags = useSearchTags();
   const tour = useTour('search', true);
-  const { reduced } = useMotionPresets();
+  const { reduced, reveal } = useMotionPresets();
   // Until stored settings load, `taste` reads its default, which may not be the reader's choice.
   const taste = useTaste(
     settingsLoaded && settings.taste === 'on',
@@ -213,6 +214,9 @@ export function SearchPage() {
   const [webFound, setWebFound] = useState<{ key: string; results: readonly WebResult[] }>();
   const webShown = webFound?.key === webKey ? webFound.results : [];
   const [curating, setCurating] = useState<string | null>(null);
+  // The entry slides in once per search, not again each time results come back.
+  const [curateShown, setCurateShown] = useState<string | null>(null);
+  const curateHintId = useId();
   const canCurate =
     settingsLoaded &&
     settings.webSearch !== 'off' &&
@@ -365,6 +369,54 @@ export function SearchPage() {
             onChange={setFilter}
           />
 
+          {/* Above the first results, so it's on screen as soon as they arrive. It stays while the
+              flow is open: focus comes back to it. */}
+          {canCurate && (
+            <m.div
+              key={query}
+              className={styles.curate}
+              variants={reveal}
+              initial={curateShown === query ? false : 'hidden'}
+              animate="visible"
+              onAnimationComplete={() => setCurateShown(query)}
+            >
+              <button
+                type="button"
+                className={styles.curateButton}
+                aria-describedby={curateHintId}
+                onClick={(event) => {
+                  // Safari doesn't focus a tapped button; the flow returns focus here on close.
+                  event.currentTarget.focus();
+                  setCurating(query);
+                }}
+              >
+                <svg className={styles.curateIcon} viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="6.5" r="2.5" />
+                  <circle cx="16.8" cy="14.8" r="2.5" />
+                  <circle cx="7.2" cy="14.8" r="2.5" />
+                </svg>
+                Make a card from these
+              </button>
+              <p id={curateHintId} className={styles.curateHint}>
+                Pick the results you trust and get one card.
+              </p>
+            </m.div>
+          )}
+          {/* An open flow stays while results come and go: closing it would drop the picks. */}
+          <AnimatePresence>
+            {curating === query && (
+              <CurateFlow
+                key={query}
+                search={query}
+                about={hasActiveTags(tags.state) ? aboutHint(tags.state) : undefined}
+                candidates={onlineShown}
+                webResults={webShown}
+                onClose={() => setCurating(null)}
+              />
+            )}
+          </AnimatePresence>
+
           {localShown.length > 0 && (
             <ul className={styles.results}>
               {localShown.map((match, index) => {
@@ -473,23 +525,6 @@ export function SearchPage() {
               </>
             )}
           </Section>
-
-          {/* An open flow stays while results come and go: closing it would drop the picks. */}
-          {(canCurate || curating === query) &&
-            (curating === query ? (
-              <CurateFlow
-                key={query}
-                search={query}
-                about={hasActiveTags(tags.state) ? aboutHint(tags.state) : undefined}
-                candidates={onlineShown}
-                webResults={webShown}
-                onClose={() => setCurating(null)}
-              />
-            ) : (
-              <button type="button" className={styles.toggle} onClick={() => setCurating(query)}>
-                Make a card from these
-              </button>
-            ))}
         </>
       )}
       {tour.open && <Tour steps={SEARCH_TOUR} onClose={tour.close} />}

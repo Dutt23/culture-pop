@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createRepositories } from '../../data/repositories';
 import type { Settings } from '../../domain/settings';
@@ -29,7 +29,7 @@ async function setUp(webSearch: Settings['webSearch']) {
   retrieval.webSearch.search.mockImplementation(
     vi.fn<WebSearchClient['search']>(async () => [RESULT]),
   );
-  return renderApp(ROUTE, db, retrieval);
+  return { ...renderApp(ROUTE, db, retrieval), repos };
 }
 
 describe('search page: make a card', () => {
@@ -42,6 +42,28 @@ describe('search page: make a card', () => {
     // A frame's name starts with the site on its film edge (the heart's starts with "Save link").
     const frame = await screen.findByRole('button', { name: /^reddit\.com\s*Why are Ferrari/ });
     expect(frame).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('puts the entry above the results and opens the flow in a dialog', async () => {
+    const { user } = await setUp('on');
+    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    const result = await screen.findByRole('link', { name: /Why are Ferrari fans always sad/ });
+
+    // One entry, before the first result: on screen as the results arrive, not under them.
+    const [entry, ...others] = screen.getAllByRole('button', { name: 'Make a card from these' });
+    expect(others).toHaveLength(0);
+    expect(entry!.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(entry!);
+    const dialog = await screen.findByRole('dialog', { name: `Make a card from “${QUESTION}”` });
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    // The page under the sheet doesn't scroll while it's open.
+    expect(document.documentElement).toHaveAttribute('data-sheet-open');
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(entry).toHaveFocus();
+    expect(document.documentElement).not.toHaveAttribute('data-sheet-open');
   });
 
   it('has no entry before any results', async () => {
@@ -65,21 +87,31 @@ describe('search page: make a card', () => {
   });
 
   it('keeps an open flow and its picks when the results on the page go away', async () => {
-    const { user, retrieval } = await setUp('on');
+    const { user, retrieval, repos } = await setUp('on');
     await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     await user.click(await screen.findByRole('button', { name: 'Make a card from these' }));
-    await user.click(await screen.findByRole('button', { name: /^reddit\.com\s*Why are Ferrari/ }));
-    expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
+    const flow = await screen.findByRole('dialog');
+    await user.click(
+      await within(flow).findByRole('button', { name: /^reddit\.com\s*Why are Ferrari/ }),
+    );
+    expect(within(flow).getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
 
-    // A new lean starts the wider web afresh; this time it fails, so nothing is on screen.
+    // A new lean starts the wider web afresh; this time it fails, so nothing is on screen. The
+    // page under the dialog can't be tapped, so the lean changes in storage, as Settings would.
     vi.mocked(retrieval.webSearch.search).mockRejectedValue(
       new WebSearchError('failed', 'HTTP 500'),
     );
-    await user.click(screen.getByRole('checkbox', { name: /Stories & myths/ }));
+    await act(() => repos.settings.set('stories', 'off'));
     await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(2));
     await screen.findByRole('alert');
 
     expect(screen.queryByRole('region', { name: 'Community suggests… (unverified)' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
+    expect(within(flow).getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
+
+    // The entry went with the results: closing hands focus to the search box instead.
+    expect(screen.queryByRole('button', { name: 'Make a card from these' })).toBeNull();
+    await user.click(within(flow).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('searchbox', { name: 'Search references' })).toHaveFocus();
   });
 });

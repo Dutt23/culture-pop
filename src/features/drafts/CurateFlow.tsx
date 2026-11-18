@@ -1,11 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { m, type HTMLMotionProps } from 'motion/react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import type { DraftCard, DraftResponse, ToneCard } from '../../../shared/cardTypes.js';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/retrievalService';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import type { DraftCardRecord } from '../../data/repositories/draftRepository';
 import type { Interpretation, Reference } from '../../domain/types';
+import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import {
   WebSearchError,
@@ -37,6 +46,47 @@ const DRAFT_FAILURE_TEXT: Record<WebSearchFailure, string> = {
   blocked: 'The server refused to make the card.',
   failed: "The card writer didn't answer. Try again.",
 };
+
+const PHONE = '(max-width: 600px)';
+const EASE_OUT: [number, number, number, number] = [0.2, 0.8, 0.2, 1];
+
+/** Where focus goes when the entry that opened the flow went away with its results. */
+const SEARCH_BOX = 'input[type="search"]';
+/** On <html> while the sheet is open: the page under it doesn't scroll. */
+const OPEN_ATTRIBUTE = 'data-sheet-open';
+
+/**
+ * The sheet slides up on phones and scales in on wider screens; reduced motion: a short fade.
+ * `--backdrop` dims the ::backdrop in and out (it inherits from the dialog).
+ */
+function sheetMotion(reduced: boolean): HTMLMotionProps<'dialog'> {
+  if (reduced) {
+    return {
+      initial: { opacity: 0, '--backdrop': 0 },
+      animate: { opacity: 1, '--backdrop': 1 },
+      exit: { opacity: 0, '--backdrop': 0 },
+      transition: { duration: 0.12 },
+    };
+  }
+  const phone = typeof window.matchMedia === 'function' && window.matchMedia(PHONE).matches;
+  const hidden = phone
+    ? { y: '100%', '--backdrop': 0 }
+    : { opacity: 0, scale: 0.97, '--backdrop': 0 };
+  return {
+    initial: hidden,
+    animate: { opacity: 1, y: 0, scale: 1, '--backdrop': 1 },
+    exit: hidden,
+    transition: { duration: 0.32, ease: EASE_OUT },
+  };
+}
+
+/** A press on the backdrop: on the dialog element itself, outside its box. */
+function onBackdrop(event: ReactMouseEvent<HTMLDialogElement>): boolean {
+  const r = event.currentTarget.getBoundingClientRect();
+  const { clientX: x, clientY: y } = event;
+  const outside = x < r.left || x > r.right || y < r.top || y > r.bottom;
+  return event.target === event.currentTarget && outside;
+}
 
 interface AppCard {
   reference: Reference;
@@ -103,7 +153,10 @@ interface CurateFlowProps {
   onClose: () => void;
 }
 
-/** Pick frames and filters, check them, then have the server curate one card from them. */
+/**
+ * Pick frames and filters, check them, then have the server curate one card from them. Opens as a
+ * modal dialog; Escape and a tap on the backdrop close it like Close does.
+ */
 export function CurateFlow({ search, about, candidates, webResults, onClose }: CurateFlowProps) {
   const { webSearch } = useRetrievalService();
   const { drafts } = useRepositories();
@@ -112,6 +165,14 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   const library = useLibraryCards(settings.spoilers === 'show');
   const tray = useCurationTray(search);
   const reelRef = useRef<SVGSVGElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pressedBackdrop = useRef(false);
+  const headingId = useId();
+  const { reduced } = useMotionPresets();
+  // Read once: focus goes back to whatever opened the flow.
+  const [opener] = useState(() =>
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
   const controller = useRef<AbortController | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'tray' });
   const [failure, setFailure] = useState<WebSearchFailure | null>(null);
@@ -129,6 +190,20 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
 
   // Leaving the flow cancels a draft still running.
   useEffect(() => () => controller.current?.abort(), []);
+
+  // Unmounting removes the dialog from the top layer, so the page is live again for the focus.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    dialog?.focus();
+    const html = document.documentElement;
+    html.setAttribute(OPEN_ATTRIBUTE, '');
+    return () => {
+      html.removeAttribute(OPEN_ATTRIBUTE);
+      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>(SEARCH_BOX);
+      back?.focus();
+    };
+  }, [opener]);
 
   // Going offline mid-draft cancels it; the picks stay in the tray.
   useEffect(() => {
@@ -260,6 +335,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
               pickedKeys={new Set(tray.picked.map((f) => f.key))}
               onToggle={(frame) => limit(tray.toggleFrame(frame))}
               reelRef={reelRef}
+              scrollRoot={dialogRef}
             />
             {library && library.toneCards.length > 0 && (
               <>
@@ -289,22 +365,53 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   };
 
   return (
-    <div className={styles.flow} data-scene="night" style={gradeOf(tray.tones)}>
-      <div className={styles.head}>
-        <p className={styles.note}>Make a card from “{search.trim()}”</p>
-        <button type="button" className={styles.small} onClick={onClose}>
-          Close
-        </button>
-      </div>
-      <p className={styles.note} role="status">
-        {status}
-      </p>
-      {failure && (
-        <p className={styles.error} role="alert">
-          {DRAFT_FAILURE_TEXT[failure]}
+    <m.dialog
+      ref={dialogRef}
+      className={styles.dialog}
+      data-scene="night"
+      aria-labelledby={headingId}
+      tabIndex={-1}
+      {...sheetMotion(reduced)}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || event.defaultPrevented) return;
+        event.preventDefault();
+        onClose();
+      }}
+      // The browser's own close (a back gesture) goes through onClose too.
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClose={onClose}
+      // A drag from inside the panel that ends on the backdrop clicks the dialog too: only a press
+      // that began on the backdrop closes.
+      onPointerDown={(event) => {
+        pressedBackdrop.current = onBackdrop(event);
+      }}
+      onClick={(event) => {
+        if (pressedBackdrop.current && onBackdrop(event)) onClose();
+        pressedBackdrop.current = false;
+      }}
+    >
+      <div className={styles.flow} data-scene="night" style={gradeOf(tray.tones)}>
+        <div className={styles.head}>
+          <h2 id={headingId} className={styles.title}>
+            Make a card from “{search.trim()}”
+          </h2>
+          <button type="button" className={styles.small} onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <p className={styles.note} role="status">
+          {status}
         </p>
-      )}
-      {stage()}
-    </div>
+        {failure && (
+          <p className={styles.error} role="alert">
+            {DRAFT_FAILURE_TEXT[failure]}
+          </p>
+        )}
+        {stage()}
+      </div>
+    </m.dialog>
   );
 }

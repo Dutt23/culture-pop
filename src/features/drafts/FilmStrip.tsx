@@ -10,7 +10,7 @@ const PITCH = 20;
 const SPEED = 1.6;
 const SETTLE_AFTER_MS = 90;
 const SETTLE_MS = 160;
-/** The gate stops above the tray pinned at the bottom of the screen. */
+/** The gate stops above the tray pinned at the bottom of the scroll area. */
 const TRAY_INSET = 84;
 const GATE_TOP = 4;
 const MIN_RAIL = 8;
@@ -18,8 +18,13 @@ const MIN_RAIL = 8;
 /**
  * A projector gate: the rails cover the visible part of the strip, their holes run 1.6x the scroll
  * and settle onto the nearest hole once scrolling stops. Reduced motion: 1:1, no settle.
+ * The gate is the window, or `scrollRoot` when the strip scrolls inside it (the flow's dialog).
  */
-function useProjectorGate(stripRef: RefObject<HTMLDivElement | null>, reduced: boolean) {
+function useProjectorGate(
+  stripRef: RefObject<HTMLDivElement | null>,
+  reduced: boolean,
+  scrollRoot?: RefObject<HTMLElement | null>,
+) {
   useEffect(() => {
     const strip = stripRef.current;
     if (!strip) return;
@@ -30,8 +35,12 @@ function useProjectorGate(stripRef: RefObject<HTMLDivElement | null>, reduced: b
     let frame = 0;
     const place = () => {
       const r = strip.getBoundingClientRect();
-      const top = Math.max(0, GATE_TOP - r.top);
-      const height = Math.min(r.height, window.innerHeight - TRAY_INSET - r.top) - top;
+      const view = scrollRoot?.current?.getBoundingClientRect() ?? {
+        top: 0,
+        bottom: window.innerHeight,
+      };
+      const top = Math.max(0, view.top + GATE_TOP - r.top);
+      const height = Math.min(r.height, view.bottom - TRAY_INSET - r.top) - top;
       for (const rail of rails) {
         rail.style.display = height > MIN_RAIL ? '' : 'none';
         rail.style.top = `${top}px`;
@@ -65,13 +74,19 @@ function useProjectorGate(stripRef: RefObject<HTMLDivElement | null>, reduced: b
     place();
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     window.addEventListener('resize', place);
+    // The dialog opens after this first place() (its showModal runs later) and a short strip may
+    // never scroll: place again once the strip or its scroll root gets a size.
+    const sized = typeof ResizeObserver === 'function' ? new ResizeObserver(() => place()) : null;
+    sized?.observe(strip);
+    if (scrollRoot?.current) sized?.observe(scrollRoot.current);
     return () => {
+      sized?.disconnect();
       document.removeEventListener('scroll', onScroll, { capture: true });
       window.removeEventListener('resize', place);
       clearTimeout(timer);
       cancelAnimationFrame(frame);
     };
-  }, [stripRef, reduced]);
+  }, [stripRef, reduced, scrollRoot]);
 }
 
 interface FilmStripProps {
@@ -80,12 +95,14 @@ interface FilmStripProps {
   /** The tray hook's `toggleFrame`: a frame flies to the reel only when it was 'added'. */
   onToggle: (frame: Frame) => string;
   reelRef?: RefObject<Element | null>;
+  /** The element the strip scrolls in, when it isn't the window. */
+  scrollRoot?: RefObject<HTMLElement | null>;
 }
 
-export function FilmStrip({ frames, pickedKeys, onToggle, reelRef }: FilmStripProps) {
+export function FilmStrip({ frames, pickedKeys, onToggle, reelRef, scrollRoot }: FilmStripProps) {
   const { reduced } = useMotionPresets();
   const stripRef = useRef<HTMLDivElement>(null);
-  useProjectorGate(stripRef, reduced);
+  useProjectorGate(stripRef, reduced, scrollRoot);
 
   const tick = (frame: Frame, button: HTMLButtonElement) => {
     if (onToggle(frame) !== 'added' || reduced) return;

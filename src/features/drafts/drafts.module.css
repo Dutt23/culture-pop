@@ -1,5 +1,50 @@
 /* Splice check, drafting projector and reveal, ported from the approved curation demo. The flow's
    root sets --grade-1 / --grade-2 (see curationLook.ts); the fallback is the ungraded film. */
+
+/* The flow opens as a modal sheet: full screen on phones, a centred panel on wider screens. It
+   scrolls on its own; the film strip's rails follow it (FilmStrip's scrollRoot). */
+.dialog {
+  width: 100%;
+  max-width: 760px;
+  /* vh first: older WebView Chrome has no dvh. */
+  max-height: 90vh;
+  max-height: 90dvh;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Focus and scrollIntoView stop clear of the sticky head and the tray pinned at the bottom. */
+  scroll-padding-block: calc(var(--tap-min) + var(--space-6)) 84px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dialog:focus-visible {
+  outline: none;
+}
+
+/* --backdrop runs 0 to 1 with the sheet's own motion (CurateFlow's sheetMotion), reduced or not. */
+.dialog::backdrop {
+  background: rgb(13 11 31 / calc(0.6 * var(--backdrop, 1)));
+}
+
+/* Set by the open flow: the page under the sheet stays put. */
+:global(html[data-sheet-open]) {
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .dialog {
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
 .flow {
   --g1: var(--grade-1, #b6aed6);
   --g2: var(--grade-2, var(--g1));
@@ -16,11 +61,23 @@
   color: var(--color-text);
 }
 
+/* Close stays in reach while the film scrolls under it. */
 .head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding-block: var(--space-2);
+  background: var(--color-bg);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
 }
 
 .note {

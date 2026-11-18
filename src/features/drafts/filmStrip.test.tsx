@@ -146,6 +146,63 @@ describe('film strip, filters and reel', () => {
     expect(screen.getByText('Graded: Stonks + Bazinga!')).toBeInTheDocument();
   });
 
+  it('places the rails once its scroll root opens, without any scrolling', () => {
+    // The dialog is display: none when the strip mounts; it gets a size when showModal runs.
+    let opened = false;
+    const rect = (top: number, height: number) =>
+      ({ top, bottom: top + height, height, left: 0, right: 0, width: 0 }) as DOMRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (!opened) return rect(0, 0);
+      return this.tagName === 'DIALOG' ? rect(50, 600) : rect(120, 300);
+    });
+    const resized: ResizeObserverCallback[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    function InDialog() {
+      const root = useRef<HTMLDialogElement>(null);
+      return (
+        <dialog ref={root} open>
+          <FilmStrip
+            frames={frames}
+            pickedKeys={new Set()}
+            onToggle={() => 'added'}
+            scrollRoot={root}
+          />
+        </dialog>
+      );
+    }
+    try {
+      render(
+        <MotionPreferenceProvider preference="system">
+          <InDialog />
+        </MotionPreferenceProvider>,
+      );
+      const rail = document.querySelector<HTMLElement>('[data-rail]')!;
+      expect(rail.style.display).toBe('none');
+
+      opened = true;
+      act(() => resized.forEach((callback) => callback([], {} as ResizeObserver)));
+
+      // The strip runs from 120 to 420; the dialog's bottom (650) less the tray leaves all of it.
+      expect(rail.style.display).toBe('');
+      expect(rail.style.top).toBe('0px');
+      expect(rail.style.height).toBe('300px');
+    } finally {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    }
+  });
+
   it('renders without motion when reduced motion is on', async () => {
     const animate = vi.fn(() => ({}) as Animation);
     Element.prototype.animate = animate;

@@ -39,6 +39,17 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 100_000 });
   window.scrollTo = () => {};
 }
+// jsdom has no modal dialogs: showModal and close only set `open` (no top layer, no inert page).
+if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+    if (!this.open) return;
+    this.open = false;
+    this.dispatchEvent(new Event('close'));
+  };
+}
 if (typeof IntersectionObserver === 'undefined') {
   Object.assign(globalThis, { IntersectionObserver: OnScreenObserver });
 }
