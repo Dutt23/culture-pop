@@ -108,14 +108,14 @@ function keepExample(example: Line | null, byId: ByIdMap, search: string): Cited
   return { text: example.t, sources: sourcesOf(cited) };
 }
 
-/** A number, or a capitalised word that is not the first token, that no evidence item contains. */
-function hasUnknownName(text: string, evidenceText: string): boolean {
+/** A number or capitalised word (first token exempt unless `checkFirst`) found in no evidence item. */
+function hasUnknownName(text: string, evidenceText: string, checkFirst = false): boolean {
   const raw = text.match(/[\p{L}\p{N}]+(?:['’]s)?/gu) ?? [];
   const tokens = raw.map((t) => t.replace(POSSESSIVE, ''));
   return tokens.some((tok, i) => {
     const isName =
       /\p{N}/u.test(tok) ||
-      (i > 0 && /^\p{Lu}/u.test(tok) && !COMMON_WORDS.has(tok.toLowerCase()));
+      ((checkFirst || i > 0) && /^\p{Lu}/u.test(tok) && !COMMON_WORDS.has(tok.toLowerCase()));
     return isName && !evidenceText.includes(tok.toLowerCase());
   });
 }
@@ -168,12 +168,12 @@ export function checkAnswer(
   const example = keepExample(a.example, byId, search);
 
   const evidenceText = items.map((i) => i.text.toLowerCase()).join('\n');
-  const bad = (text: string) => hasUnknownName(text, evidenceText) || copiesTone(text, tones);
-  const free = (text: string, max: number, fallback: string) => {
+  const free = (text: string, max: number, fallback: string, checkFirst = false) => {
     const t = text.trim();
-    return !t || t.length > max || bad(t) ? fallback : text;
+    const bad = hasUnknownName(t, evidenceText, checkFirst) || copiesTone(t, tones);
+    return !t || t.length > max || bad ? fallback : text;
   };
-  const label = free(a.label, LABEL_CHARS, searchLabel(search));
+  const label = free(a.label, LABEL_CHARS, searchLabel(search), true);
   const gist = free(a.gist, GIST_CHARS, summary[0]?.text ?? '');
   const means = free(a.means, MEANS_CHARS, FALLBACK_MEANS);
   const reply = GENERIC_REPLY.test(a.reply.trim())

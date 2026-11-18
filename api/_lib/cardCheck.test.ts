@@ -175,6 +175,11 @@ describe('checkAnswer fixes', () => {
     expect(copy).toBe('kitne aadmi the');
   });
 
+  it('checks the first word of the label too', () => {
+    expect(card({ label: "Amitabh's famous line" }).label).toBe('kitne aadmi the');
+    expect(card({ label: "Gabbar's famous question" }).label).toBe("Gabbar's famous question");
+  });
+
   it('replaces an empty or over-long gist, means or reply', () => {
     const c = card({ gist: ' ', means: 'x '.repeat(141), reply: 'y '.repeat(41) });
     expect(c.gist).toBe('Gabbar asks how many men there were.');
