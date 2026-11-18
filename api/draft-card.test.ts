@@ -279,6 +279,38 @@ describe('draft-card', () => {
     });
   });
 
+  it('falls back from a hanging provider and still answers within 23 s', async () => {
+    vi.useFakeTimers();
+    try {
+      const hanging = (name: DraftProvider['name']) => {
+        const draft = vi.fn<DraftProvider['draft']>(
+          (_input, signal) =>
+            new Promise((_, reject) =>
+              signal.addEventListener('abort', () => reject(new ProviderError('failed', 'x'))),
+            ),
+        );
+        return { provider: { name, draft } satisfies DraftProvider, draft };
+      };
+      const first = hanging('openai');
+      const second = hanging('cloudflare');
+      const { handle } = setup({ providers: [first.provider, second.provider] });
+      let settled = false;
+      const answer = handle(post({ search: SEARCH, sources: [wiki] })).then((r) => {
+        settled = true;
+        return r;
+      });
+
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(second.draft).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(23_000 - 11_000 - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await read(await answer)).toEqual({ status: 502, body: { error: 'provider_failed' } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('answers 503 not_configured with no providers', async () => {
     const { handle } = setup({ providers: [] });
     expect(await read(await handle(post({ search: SEARCH, sources: [wiki] })))).toEqual({

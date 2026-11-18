@@ -16,6 +16,8 @@ import { dissolve } from '../../motion/dissolve';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { DraftReveal } from '../drafts/DraftReveal';
 import type { Frame } from '../drafts/frames';
+import draftStyles from '../drafts/drafts.module.css';
+import { useSettings } from '../settings/SettingsContext';
 import styles from './FavouritesPage.module.css';
 import { useFavourites, useFavouriteReferences } from './useFavourites';
 import { useSavedLinks } from './useSavedLinks';
@@ -31,6 +33,7 @@ export function FavouritesPage() {
   const references = useFavouriteReferences();
   const favourites = useFavourites();
   const { reduced } = useMotionPresets();
+  const { settings } = useSettings();
   const listRef = useRef<HTMLUListElement>(null);
   const [removed, setRemoved] = useState<{ id: string; title: string } | null>(null);
 
@@ -113,16 +116,20 @@ export function FavouritesPage() {
                   </button>
                 </div>
                 {open === kept.id && (
-                  <DraftReveal
-                    readOnly
-                    response={{
-                      card: kept.card,
-                      notUsed: [],
-                      provider: 'fake',
-                      promptVersion: kept.promptVersion,
-                    }}
-                    sent={framesOf(kept.sources)}
-                  />
+                  // The card's colours live on the flow, as in the card flow itself.
+                  <div className={draftStyles.flow} data-scene="night">
+                    <DraftReveal
+                      readOnly
+                      revealSpoilers={settings.spoilers === 'show'}
+                      response={{
+                        card: kept.card,
+                        notUsed: [],
+                        provider: 'fake',
+                        promptVersion: kept.promptVersion,
+                      }}
+                      sent={framesOf(kept.sources)}
+                    />
+                  </div>
                 )}
               </li>
             ))}

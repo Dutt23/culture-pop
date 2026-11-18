@@ -230,20 +230,34 @@ export function providersFromEnv(env: NodeJS.ProcessEnv, doFetch: typeof fetch):
 }
 
 /** Tries each provider in order; any `ProviderError` moves on, and the last one is thrown if all fail. */
+/** Each provider but the last gets at most this long, so a hanging one leaves time for the next. */
+export const FALLBACK_AFTER_MS = 11_000;
+
+/**
+ * Tries each provider in turn. `signal` is the whole request's deadline (or the reader leaving):
+ * once it aborts, nothing more is tried. The last provider gets whatever time `signal` leaves.
+ */
 export async function draftWithFallback(
   providers: readonly DraftProvider[],
   input: DraftInput,
   signal: AbortSignal,
 ): Promise<{ answer: unknown; provider: DraftProvider['name'] }> {
   let last = new ProviderError('failed', 'no provider configured');
-  for (const provider of providers) {
+  for (const [i, provider] of providers.entries()) {
     // An abort while trying one provider must not start the next.
     if (signal.aborted) throw new ProviderError('failed', 'aborted');
+    const attempt = new AbortController();
+    const stop = () => attempt.abort();
+    signal.addEventListener('abort', stop, { once: true });
+    const timer = i < providers.length - 1 ? setTimeout(stop, FALLBACK_AFTER_MS) : undefined;
     try {
-      return { answer: await provider.draft(input, signal), provider: provider.name };
+      return { answer: await provider.draft(input, attempt.signal), provider: provider.name };
     } catch (error) {
       if (!(error instanceof ProviderError)) throw error;
       last = error;
+    } finally {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', stop);
     }
   }
   throw last;

@@ -11,7 +11,7 @@ import type { Frame } from './frames';
 
 const cut = (s: string, n: number) => Array.from(s).slice(0, n).join('');
 
-// The server's MAX_TITLE; keeps a full tray under its 16 KB body limit.
+// The server's MAX_TITLE; keeps a full tray under its 48 KB body limit.
 const MAX_TITLE = 200;
 
 const toSource = (f: Frame): DraftSourceInput => {

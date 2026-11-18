@@ -37,9 +37,12 @@ interface CurationTrayProps {
   hint?: string;
   /** The reel, so frames and filters can fly into it. */
   reelRef?: RefObject<SVGSVGElement | null>;
+  /** Focus the tray when it appears, e.g. after a card was kept or dropped. */
+  autoFocus?: boolean;
 }
 
-export function CurationTray({ count, tones, onOpen, shakeKey, hint, reelRef }: CurationTrayProps) {
+export function CurationTray(props: CurationTrayProps) {
+  const { count, tones, onOpen, shakeKey, hint, reelRef, autoFocus } = props;
   const { reduced } = useMotionPresets();
   const trayRef = useRef<HTMLButtonElement>(null);
   const hintRef = useRef<HTMLParagraphElement>(null);
@@ -87,6 +90,7 @@ export function CurationTray({ count, tones, onOpen, shakeKey, hint, reelRef }: 
         className={styles.tray}
         aria-label={`Review ${count} ${count === 1 ? 'frame' : 'frames'}`}
         onClick={onOpen}
+        autoFocus={autoFocus}
       >
         <svg ref={reelRef} className={styles.reel} viewBox="0 0 44 44" aria-hidden="true">
           <defs>

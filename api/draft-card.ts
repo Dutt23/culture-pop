@@ -31,7 +31,8 @@ import { cut, validAbout, validQuery } from './_lib/text.js';
 const MAX_REQUEST_BYTES = 48 * 1024;
 const MAX_TITLE = 200;
 const MIN_SNIPPET = 40;
-const MODEL_TIMEOUT_MS = 20_000;
+/** From the request's start: under the app's 25 s wait, so the reader always gets our answer. */
+const DEADLINE_MS = 23_000;
 /** Per instance, same pattern as web-search; the providers' spend limits are the real cap. */
 const DAILY_DRAFT_CAP = 50;
 const KINDS = new Set(['wiki', 'web', 'app']);
@@ -165,6 +166,7 @@ export function createDraftHandler(
   let used = 0;
 
   return async function handle(request) {
+    const started = Date.now();
     if (isCrossSite(request)) return json(403, { error: 'cross_site' });
     const allowed = access(request);
     if (allowed === 'not_configured') return json(503, { error: 'not_configured' });
@@ -216,7 +218,7 @@ export function createDraftHandler(
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), started + DEADLINE_MS - Date.now());
     let drafted;
     try {
       drafted = await draftWithFallback(

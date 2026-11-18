@@ -85,6 +85,19 @@ describe('Your cards', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
+  it('veils a kept major spoiler in the read view until revealed', async () => {
+    const kept = record('a', 'A dismissive comeback', '2026-11-01T00:00:00.000Z');
+    const { db } = await seed({ ...kept, card: { ...kept.card, spoiler: 'major' } });
+    const { user } = renderApp('/favourites', db);
+
+    await user.click(await screen.findByRole('button', { name: 'A dismissive comeback' }));
+    const card = await screen.findByRole('article', { name: 'A dismissive comeback' });
+    expect(card).toHaveTextContent('Spoiler');
+    expect(card).not.toHaveTextContent('A catchphrase used to dismiss older attitudes.');
+    await user.click(within(card).getByRole('button', { name: 'Reveal spoiler' }));
+    expect(card).toHaveTextContent('A catchphrase used to dismiss older attitudes.');
+  });
+
   it('offers kept cards as tone filters but not as frames', async () => {
     const { db } = await seed(record('a', 'Polite brush-off', '2026-11-01T00:00:00.000Z'));
     render(

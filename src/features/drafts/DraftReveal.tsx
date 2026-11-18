@@ -42,15 +42,25 @@ interface DraftRevealProps {
   onDone?: (kept: boolean) => void;
   /** Just the card, to read: no Keep, Edit or Drop. */
   readOnly?: boolean;
+  /** The reader's spoiler setting; a major spoiler is veiled without it. */
+  revealSpoilers?: boolean;
 }
 
 /** The checked card: flips in with its stamp and sources; Keep, Edit or Drop. */
-export function DraftReveal({ response, sent, onKeep, onDone, readOnly }: DraftRevealProps) {
+export function DraftReveal(props: DraftRevealProps) {
+  const { response, sent, onKeep, onDone, readOnly, revealSpoilers = false } = props;
   const { reduced } = useMotionPresets();
   const ref = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const spoilerRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const [card, setCard] = useState(response.card);
   const [editing, setEditing] = useState(false);
+  const [revealedHere, setRevealedHere] = useState(false);
+  const isSpoiler = card.spoiler === 'major';
+  const veiled = isSpoiler && !revealSpoilers && !revealedHere;
+  // Keep saves the card as shown, so the fields a card can't do without must not be blank.
+  const blank = [card.label, card.gist, card.means, card.reply].some((v) => !v.trim());
   const [busy, setBusy] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -67,6 +77,16 @@ export function DraftReveal({ response, sent, onKeep, onDone, readOnly }: DraftR
       clearTimeout(cheerTimer.current);
     };
   }, []);
+
+  // The stage changed under the reader: start them at the card's name. Read-only opens in place.
+  useEffect(() => {
+    if (!readOnly) titleRef.current?.focus();
+  }, [readOnly]);
+
+  // The reveal button goes on tap; hand focus to what it uncovered.
+  useEffect(() => {
+    if (revealedHere) spoilerRef.current?.focus();
+  }, [revealedHere]);
 
   useEffect(() => {
     if (!canAnimate(ref.current)) return;
@@ -191,21 +211,34 @@ export function DraftReveal({ response, sent, onKeep, onDone, readOnly }: DraftR
         aria-labelledby={titleId}
       >
         <span className={styles.stamp}>AI draft · check the sources</span>
-        <h2 id={titleId} className={styles.label}>
+        <h2 ref={titleRef} id={titleId} className={styles.label} tabIndex={-1}>
           {card.label}
         </h2>
+        {isSpoiler && <span className={styles.spoilerTag}>Spoiler</span>}
+        {editing && text('Label', card.label, (label) => setCard((c) => ({ ...c, label })))}
         {text('Gist', card.gist, (gist) => setCard((c) => ({ ...c, gist })))}
         {text('What they mean', card.means, (means) => setCard((c) => ({ ...c, means })))}
         {text('You could say', card.reply, (reply) => setCard((c) => ({ ...c, reply })))}
-        {lines('Summary', 'summary')}
-        {lines('How it’s used', 'context')}
-        {card.example &&
-          text(
-            'Example',
-            card.example.text,
-            (v) => setCard((c) => ({ ...c, example: c.example && { ...c.example, text: v } })),
-            chips(card.example.sources),
-          )}
+        {veiled ? (
+          <div className={styles.veil}>
+            <p>Spoiler ahead: the rest of this card gives the story away.</p>
+            <button type="button" className={styles.small} onClick={() => setRevealedHere(true)}>
+              Reveal spoiler
+            </button>
+          </div>
+        ) : (
+          <div ref={spoilerRef} tabIndex={-1}>
+            {lines('Summary', 'summary')}
+            {lines('How it’s used', 'context')}
+            {card.example &&
+              text(
+                'Example',
+                card.example.text,
+                (v) => setCard((c) => ({ ...c, example: c.example && { ...c.example, text: v } })),
+                chips(card.example.sources),
+              )}
+          </div>
+        )}
         {response.notUsed.length > 0 && (
           <ul className={styles.unused}>
             {response.notUsed.map((n) => (
@@ -243,7 +276,12 @@ export function DraftReveal({ response, sent, onKeep, onDone, readOnly }: DraftR
               Edit
             </button>
           )}
-          <button type="button" className={styles.keep} disabled={busy} onClick={() => void keep()}>
+          <button
+            type="button"
+            className={styles.keep}
+            disabled={busy || blank}
+            onClick={() => void keep()}
+          >
             Keep
           </button>
         </div>

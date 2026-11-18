@@ -304,10 +304,18 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
     lock: async () => {
       await call(LOCK_PATH, post());
     },
-    draftCard: async (body, signal) =>
-      parseDraftResponse(
-        await call(DRAFT_CARD_PATH, post(body), signal, DRAFT_TIMEOUT_MS),
-        body.sources.length,
-      ),
+    draftCard: async (body, signal) => {
+      let answer: unknown;
+      try {
+        answer = await call(DRAFT_CARD_PATH, post(body), signal, DRAFT_TIMEOUT_MS);
+      } catch (error) {
+        // A 400 here is a request the server couldn't use, not a code: there is no code form.
+        if (error instanceof WebSearchError && error.failure === 'wrong_code') {
+          throw new WebSearchError('failed', error.message);
+        }
+        throw error;
+      }
+      return parseDraftResponse(answer, body.sources.length);
+    },
   };
 }

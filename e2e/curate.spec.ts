@@ -66,8 +66,9 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
     .click();
   await page.getByRole('button', { name: 'Make a card from these' }).click();
 
-  await page.getByRole('button', { name: /Zorbo quibble explained/ }).click();
-  await page.getByRole('button', { name: /What a zorbo quibble means/ }).click();
+  // A frame's name includes its snippet; the result's heart button ("Save link …") doesn't.
+  await page.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
+  await page.getByRole('button', { name: WEB_RESULTS[1].snippet }).click();
   await page.getByRole('button', { name: 'Hakuna matata (Swahili phrase)', exact: true }).click();
   await page.getByRole('button', { name: 'Review 2 frames' }).click();
 
@@ -85,6 +86,6 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
 
   await page.goto('/favourites');
   await expect(page.getByRole('heading', { name: 'Your cards' })).toBeVisible();
-  await page.getByRole('button', { name: DRAFT.card.label }).click();
+  await page.getByRole('button', { name: DRAFT.card.label, exact: true }).click();
   await expect(page.getByText('AI draft · check the sources')).toBeVisible();
 });

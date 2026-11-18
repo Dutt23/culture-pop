@@ -141,6 +141,22 @@
 }
 
 /* Wakes up (full colour) once nothing is waiting. */
+.tones {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.tones li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .make {
   width: 100%;
   margin-top: 10px;
@@ -289,6 +305,29 @@
 .field {
   margin: 6px 0;
   font-size: 12px;
+}
+
+.spoilerTag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--warn);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+}
+
+.veil {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.veil p {
+  margin: 0;
 }
 
 .fieldLabel {

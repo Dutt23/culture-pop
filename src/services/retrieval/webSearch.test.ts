@@ -287,6 +287,7 @@ describe('draftCard', () => {
   });
 
   it.each([
+    [400, { error: 'bad_request' }, 'failed'],
     [422, { error: 'no_card', reason: 'x', notUsed: [] }, 'no_card'],
     [429, { error: 'daily_cap' }, 'daily_cap'],
     [503, { error: 'out_of_credit' }, 'out_of_credit'],

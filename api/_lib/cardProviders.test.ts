@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  FALLBACK_AFTER_MS,
   ProviderError,
   cloudflareProvider,
   draftWithFallback,
@@ -172,6 +173,29 @@ describe('draftWithFallback', () => {
 
   it('throws failed for an empty list', async () => {
     expect(await kindOf(draftWithFallback([], input, signal))).toBe('failed');
+  });
+
+  it('moves on to the next provider when the first one hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      // Hangs until its signal aborts, like a fetch that never answers.
+      const hang: DraftProvider['draft'] = (_input, s) =>
+        new Promise((_, reject) =>
+          s.addEventListener('abort', () => reject(new ProviderError('failed', 'aborted'))),
+        );
+      const second = vi.fn(async () => answer);
+      const result = draftWithFallback(
+        [stub('openai', hang), stub('cloudflare', second)],
+        input,
+        signal,
+      );
+      await vi.advanceTimersByTimeAsync(FALLBACK_AFTER_MS - 1);
+      expect(second).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(result).resolves.toEqual({ answer, provider: 'cloudflare' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not try the next provider after an abort', async () => {

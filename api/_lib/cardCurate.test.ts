@@ -10,6 +10,7 @@ describe('roleOf', () => {
     expect(roleOf('your card', 'app')).toBe('usage');
     expect(roleOf('wiktionary', 'wiki')).toBe('meaning');
     expect(roleOf('wikipedia', 'wiki')).toBe('origin');
+    expect(roleOf('wikidata', 'wiki')).toBe('origin');
     expect(roleOf('example.com', 'web')).toBe('usage');
   });
 });

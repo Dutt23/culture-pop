@@ -593,8 +593,8 @@ Spec: `docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md`; decision D63
 
 With `WEB_SEARCH_FAKE=1` Extract also answers locally (inline in `api/_lib/parallelExtract.ts`).
 
-**Providers and fallback.** OpenAI first; if it fails, Cloudflare is tried. A cancelled request does not start the next provider.
+**Providers and fallback.** OpenAI first; if it fails or takes over 11 s, Cloudflare is tried. A cancelled request does not start the next provider.
 
-**Limits.** Request body 48 KB; 50 drafts a day per server instance (the providers' spend limits are the real cap); model call aborted after 20 s; Vercel `maxDuration` 30 s (`vercel.json`); at most 800 output tokens.
+**Limits.** Request body 48 KB; 50 drafts a day per server instance (the providers' spend limits are the real cap); a 23 s deadline from the request's start (OpenAI gets at most 11 s, so Cloudflare is still tried if it hangs; Cloudflare gets the rest; the app waits 25 s); Vercel `maxDuration` 30 s (`vercel.json`); at most 800 output tokens.
 
 **Caching.** OpenAI: explicit prompt cache, 30 m, breakpoint after the fixed prefix, `prompt_cache_key` = the prompt version. Drafts themselves are never cached on the server.

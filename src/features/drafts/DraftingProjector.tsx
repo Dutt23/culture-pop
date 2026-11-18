@@ -21,17 +21,23 @@ interface DraftingProjectorProps {
 export function DraftingProjector({ onStop }: DraftingProjectorProps) {
   const { reduced } = useMotionPresets();
   const [line, setLine] = useState(0);
+  // Filled after mount: a live region's first text is often not read if it arrives with it.
+  const [said, setSaid] = useState('');
   const gradient = `beam${useId().replace(/[^\w-]/g, '')}`;
 
   useEffect(() => {
     const timer = window.setInterval(() => setLine((n) => (n + 1) % LINES.length), LINE_MS);
-    return () => clearInterval(timer);
+    const announce = window.setTimeout(() => setSaid('Making your card…'), 0);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(announce);
+    };
   }, []);
 
   return (
     <div className={reduced ? `${styles.projector} ${styles.still}` : styles.projector}>
       <p className="sr-only" role="status">
-        Making your card…
+        {said}
       </p>
       <div className={styles.rig} aria-hidden="true">
         <svg className={styles.mascot} viewBox="-10 -14 140 134">

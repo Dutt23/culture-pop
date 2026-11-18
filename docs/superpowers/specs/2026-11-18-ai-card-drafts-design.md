@@ -1,6 +1,6 @@
 # AI card drafts (draft for owner review)
 
-Status: **draft v3**, 2026-11-18. Nothing built. The trial has run; decisions below.
+Status: **draft v3**, 2026-11-18. Built on branch `feat/ai-card-drafts`. The trial has run; decisions below.
 
 ## Decisions after the trial (owner, 2026-11-18)
 
@@ -401,8 +401,8 @@ three-example prefix can be tried for it alone.
 
 ## Settings per model
 
-**Temperature:** not set. Thinking models reject it. Steadiness comes from the schema, the
-examples, thinking off, and the checks.
+**Temperature:** 0.2 for OpenAI (`gpt-6-luna` accepts it with thinking off); not sent to
+Cloudflare. Steadiness also comes from the schema, the examples, thinking off, and the checks.
 
 | Provider | Model | Thinking | `max_output_tokens` | Cost per card (est.) |
 |---|---|---|---|---|

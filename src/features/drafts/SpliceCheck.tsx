@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { roleOf, type FlagReason } from '../../../api/_lib/cardCurate.js';
+import type { ToneCard } from '../../../api/_lib/cardTypes.js';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import type { Frame } from './frames';
 import film from './FilmStrip.module.css';
@@ -82,16 +83,17 @@ function CheckFrame({ frame, flag, kept, search, onKeep, onCut }: CheckFrameProp
           {kept ? '⚠ Kept by you: the AI may leave it out' : `⚠ ${reasonText(flag, search)}`}
         </p>
       )}
-      {waiting && (
-        <div className={styles.actions}>
+      {/* Any pick can be cut; a flagged one waits for Keep or Cut. */}
+      <div className={styles.actions}>
+        {waiting && (
           <button type="button" className={styles.small} onClick={onKeep}>
             Keep
           </button>
-          <button type="button" className={styles.small} onClick={cut}>
-            Cut it out
-          </button>
-        </div>
-      )}
+        )}
+        <button type="button" className={styles.small} onClick={cut}>
+          Cut it out
+        </button>
+      </div>
     </li>
   );
 }
@@ -100,17 +102,21 @@ interface SpliceCheckProps {
   frames: readonly Frame[];
   flags: Record<string, FlagReason | null>;
   kept: ReadonlySet<string>;
+  /** The picked colour filters (tone cards). */
+  tones: readonly ToneCard[];
   search: string;
   canMake: boolean;
   onKeep: (key: string) => void;
   onCut: (frame: Frame) => void;
+  onRemoveTone: (tone: ToneCard) => void;
   onMake: () => void;
   onBack: () => void;
 }
 
-/** The review before anything is sent: every pick, its flag, and Make a card. */
+/** The review before anything is sent: every pick and filter, any flag, and Make a card. */
 export function SpliceCheck(props: SpliceCheckProps) {
-  const { frames, flags, kept, search, canMake, onKeep, onCut, onMake, onBack } = props;
+  const { frames, flags, kept, tones, search, canMake, onKeep, onCut, onRemoveTone } = props;
+  const { onMake, onBack } = props;
   const { reduced } = useMotionPresets();
   const ref = useRef<HTMLElement>(null);
   const titleId = useId();
@@ -143,6 +149,23 @@ export function SpliceCheck(props: SpliceCheckProps) {
           />
         ))}
       </ol>
+      {tones.length > 0 && (
+        <ul className={styles.tones} aria-label="Colour filters">
+          {tones.map((tone) => (
+            <li key={tone.label}>
+              <span>{tone.label}</span>
+              <button
+                type="button"
+                className={styles.small}
+                aria-label={`Remove ${tone.label}`}
+                onClick={() => onRemoveTone(tone)}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {frames.length > 0 && !showsUse && (
         <p className={styles.note}>Add a web result to show how people use it.</p>
       )}

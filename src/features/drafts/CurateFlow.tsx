@@ -25,6 +25,19 @@ import { ToneFilters } from './ToneFilters';
 import { useCurationTray } from './useCurationTray';
 import styles from './drafts.module.css';
 
+/** The search copy names the wider web search; a card has its own words. */
+const DRAFT_FAILURE_TEXT: Record<WebSearchFailure, string> = {
+  ...FAILURE_TEXT,
+  offline: "You're offline. Making a card needs a connection.",
+  bad_query: 'This search is too long to make a card from. Try fewer words.',
+  rate_limited: 'Too many cards just now. Try again in a minute.',
+  daily_cap: "Today's cards are used up. Try again tomorrow.",
+  out_of_credit: 'The card writer is paused for now. Try again later.',
+  not_configured: "The card writer isn't set up on the server yet.",
+  blocked: 'The server refused to make the card.',
+  failed: "The card writer didn't answer. Try again.",
+};
+
 interface AppCard {
   reference: Reference;
   interpretation: Interpretation;
@@ -96,6 +109,8 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   const [phase, setPhase] = useState<Phase>({ kind: 'tray' });
   const [failure, setFailure] = useState<WebSearchFailure | null>(null);
   const [status, setStatus] = useState('');
+  // After Keep or Drop the card is gone: focus goes back to the tray, not to the page.
+  const [focusTray, setFocusTray] = useState(false);
   // Hint and shake change together: the tray shows a hint only when the key moves with it.
   const [shake, setShake] = useState({ key: 0, hint: '' });
 
@@ -169,10 +184,12 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
             frames={tray.picked}
             flags={tray.flags}
             kept={tray.kept}
+            tones={tray.tones}
             search={search}
             canMake={tray.canMake}
             onKeep={tray.keepFlagged}
             onCut={(frame) => tray.toggleFrame(frame)}
+            onRemoveTone={(tone) => tray.toggleTone(tone)}
             onMake={make}
             onBack={() => setPhase({ kind: 'tray' })}
           />
@@ -211,9 +228,11 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
           <DraftReveal
             response={phase.response}
             sent={phase.sent}
+            revealSpoilers={settings.spoilers === 'show'}
             onKeep={(card) => keep(card, phase.sent, phase.response.promptVersion)}
             onDone={(kept) => {
               if (kept) setStatus('Kept on this device.');
+              setFocusTray(true);
               setPhase({ kind: 'tray' });
             }}
           />
@@ -248,6 +267,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
               shakeKey={shake.key}
               hint={shake.hint}
               reelRef={reelRef}
+              autoFocus={focusTray}
             />
           </>
         );
@@ -267,7 +287,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
       </p>
       {failure && (
         <p className={styles.error} role="alert">
-          {FAILURE_TEXT[failure]}
+          {DRAFT_FAILURE_TEXT[failure]}
         </p>
       )}
       {stage()}

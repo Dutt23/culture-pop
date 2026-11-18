@@ -24,7 +24,7 @@ const DUPLICATE_OVERLAP = 0.7;
 export type FlagReason = 'off_topic' | 'other_language' | 'duplicate';
 
 const siteOf = (from: string) =>
-  from === 'wikipedia' || from === 'wiktionary' || from === 'wikiquote' ? `${from}.org` : from;
+  ['wikipedia', 'wiktionary', 'wikiquote', 'wikidata'].includes(from) ? `${from}.org` : from;
 
 export function roleOf(from: string, kind: SourceKind): EvidenceRole {
   if (kind === 'app') return from === 'app card' ? 'meaning' : 'usage';
