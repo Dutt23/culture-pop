@@ -45,15 +45,27 @@ export function CurationTray({ count, tones, onOpen, shakeKey, hint, reelRef }: 
   const hintRef = useRef<HTMLParagraphElement>(null);
   const countRef = useRef<HTMLSpanElement>(null);
   const shaken = useRef(shakeKey);
+  const hintTimers = useRef<number[]>([]);
   const gradient = `reel${useId().replace(/[^\w-]/g, '')}`;
 
   useEffect(() => {
     if (shakeKey === shaken.current) return;
     shaken.current = shakeKey;
     const tray = trayRef.current;
+    const status = hintRef.current;
     if (canAnimate(tray)) tray.animate(reduced ? FADE : SHAKE, { duration: reduced ? 150 : 320 });
-    if (canAnimate(hintRef.current)) hintRef.current.animate(HINT, { duration: HINT_MS });
-  }, [shakeKey, reduced]);
+    if (!status) return;
+    if (canAnimate(status)) status.animate(HINT, { duration: HINT_MS });
+    // Empty, then refill, so a status with the same text as last time is announced again.
+    hintTimers.current.forEach(clearTimeout);
+    status.textContent = '';
+    hintTimers.current = [
+      window.setTimeout(() => (status.textContent = hint ?? ''), 0),
+      window.setTimeout(() => (status.textContent = ''), HINT_MS),
+    ];
+  }, [shakeKey, hint, reduced]);
+
+  useEffect(() => () => hintTimers.current.forEach(clearTimeout), []);
 
   useEffect(() => {
     if (!reduced && canAnimate(countRef.current)) {
@@ -64,9 +76,8 @@ export function CurationTray({ count, tones, onOpen, shakeKey, hint, reelRef }: 
   const frames = `${count} of ${LIMITS.sources} frames`;
   return (
     <div className={styles.dock} data-scene="night">
-      <p ref={hintRef} role="status" className={styles.hint}>
-        {hint}
-      </p>
+      {/* Text is set by the shake effect, not rendered: see above. */}
+      <p ref={hintRef} role="status" className={styles.hint} />
       <span className="sr-only" aria-live="polite">
         {frames}
       </span>

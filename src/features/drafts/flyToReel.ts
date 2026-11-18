@@ -53,4 +53,5 @@ export function flyToReel(
     clone.remove();
     spinReel(reel, round ? 360 : 240);
   };
+  flight.oncancel = () => clone.remove();
 }

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -98,7 +98,30 @@ describe('film strip, filters and reel', () => {
 
     expect(frameButton(7)).toHaveAttribute('aria-pressed', 'false');
     expect(liveCount()).toHaveTextContent('6 of 6 frames');
-    expect(screen.getByRole('status')).toHaveTextContent('A card takes up to 6 frames.');
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('A card takes up to 6 frames.'),
+    );
+  });
+
+  it('announces a repeated limit hint again', () => {
+    vi.useFakeTimers();
+    try {
+      renderFlow();
+      for (let n = 1; n <= 7; n++) fireEvent.click(frameButton(n));
+      const status = screen.getByRole('status');
+      act(() => vi.advanceTimersByTime(0));
+      expect(status).toHaveTextContent('A card takes up to 6 frames.');
+
+      fireEvent.click(frameButton(7)); // the same limit, while the first hint still shows
+      expect(status).toBeEmptyDOMElement();
+      act(() => vi.advanceTimersByTime(0));
+      expect(status).toHaveTextContent('A card takes up to 6 frames.');
+
+      act(() => vi.advanceTimersByTime(2000)); // cleared after the fade
+      expect(status).toBeEmptyDOMElement();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('a picked filter grades the reel', async () => {
@@ -117,7 +140,9 @@ describe('film strip, filters and reel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Bazinga!' }));
     await userEvent.click(screen.getByRole('button', { name: 'Closer' }));
     expect(screen.getByRole('button', { name: 'Closer' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('status')).toHaveTextContent('Up to 2 colour filters.');
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Up to 2 colour filters.'),
+    );
     expect(screen.getByText('Graded: Stonks + Bazinga!')).toBeInTheDocument();
   });
 
