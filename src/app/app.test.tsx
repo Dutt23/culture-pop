@@ -628,10 +628,10 @@ describe('settings', () => {
     const { user } = renderApp('/settings', db);
     await user.click(await screen.findByRole('button', { name: 'Reset everything' }));
 
-    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/saved web links/));
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/the cards you kept/));
     expect(
       await screen.findByText(
-        'Favourites, packs, saved web links, search history, settings and saved online results were cleared.',
+        'Favourites, packs, saved web links, search history, settings, saved online results and kept cards were cleared.',
       ),
     ).toBeInTheDocument();
     expect(await repos.favourites.list()).toEqual([]);

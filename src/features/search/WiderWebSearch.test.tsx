@@ -63,6 +63,7 @@ describe('wider-web search (D45)', () => {
     await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     const consent = screen.getByRole('region', { name: 'Search the wider web?' });
     expect(consent).toHaveTextContent(/Parallel/);
+    expect(consent).toHaveTextContent(/The card is kept only on this device/);
     expect(consent).toHaveTextContent(/may use them to improve its service/);
     expect(consent).toHaveTextContent(/kept on this device, for you only/);
     expect(retrieval.webSearch.search).not.toHaveBeenCalled();

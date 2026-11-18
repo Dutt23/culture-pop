@@ -573,3 +573,29 @@ secure" flag, is **not verified** (no source confirms it). So use the local-only
   skip the `webResults` table.
 - The browser may still offer to remember the code in its own password manager; the app itself never
   stores it.
+
+
+---
+
+## 12. Card drafts: `/api/draft-card`
+
+Spec: `docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md`; decision D63. Status: **built, not run against real providers.**
+
+**What it does.** Takes the search, up to 6 picked sources (at most 3 web links) and up to 2 tone cards. Parallel Extract reads the picked web pages, then a model writes one card from them. The model curates only; the prompt (`card-draft-v7`) says to invent no facts. The AI never sees a URL. Same access-code cookie as `/api/web-search`.
+
+**Environment** (Vercel project settings; never in the repo):
+
+| Name                                         | Use                                                   |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `OPENAI_API_KEY`                             | OpenAI, first provider (`gpt-6-luna`)                 |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Cloudflare Workers AI, fallback (Llama 3.3 70B fast) |
+| `PARALLEL_API_KEY`                           | Parallel Extract (and Search)                         |
+| `CARD_DRAFT_FAKE`                            | `1` on a local machine only: a canned answer, no cost |
+
+With `WEB_SEARCH_FAKE=1` Extract also answers locally (inline in `api/_lib/parallelExtract.ts`).
+
+**Providers and fallback.** OpenAI first; if it fails, Cloudflare is tried. A cancelled request does not start the next provider.
+
+**Limits.** Request body 48 KB; 50 drafts a day per server instance (the providers' spend limits are the real cap); model call aborted after 20 s; Vercel `maxDuration` 30 s (`vercel.json`); at most 800 output tokens.
+
+**Caching.** OpenAI: explicit prompt cache, 30 m, breakpoint after the fixed prefix, `prompt_cache_key` = the prompt version. Drafts themselves are never cached on the server.

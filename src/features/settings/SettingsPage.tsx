@@ -70,13 +70,13 @@ export function SettingsPage() {
 
   const reset = async () => {
     const question =
-      'Remove all favourites, packs, saved web links and search history, reset settings and delete online results saved on this device? Your library cards stay. This cannot be undone.';
+      'Remove all favourites, packs, saved web links and search history, reset settings, and delete online results and the cards you kept on this device? Your library cards stay. This cannot be undone.';
     if (!window.confirm(question)) return;
     try {
       await resetLocalData();
       setMessage({
         tone: 'ok',
-        text: 'Favourites, packs, saved web links, search history, settings and saved online results were cleared.',
+        text: 'Favourites, packs, saved web links, search history, settings, saved online results and kept cards were cleared.',
       });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't reset local data. Please try again." });
@@ -162,8 +162,11 @@ export function SettingsPage() {
             are not checked. Results from the wider web can be kept on this device, for you only,
             for 30 days while search history is on; they are never sent anywhere, and Clear history
             deletes them. A link you save with the heart keeps only its title and address, on this
-            device, until you remove it or reset. It needs an access code from the owner; the app
-            never stores the code, only a sign-in cookie from our server.
+            device, until you remove it or reset. If you make a card from results, the search, the
+            results you picked and any style cards go through our server to OpenAI (or Cloudflare if
+            OpenAI is busy), and Parallel reads the pages you picked; they don't use it to train
+            their models, and the card is kept only on this device. It needs an access code from the
+            owner; the app never stores the code, only a sign-in cookie from our server.
           </Note>
           <button type="button" className={styles.reset} onClick={forgetAccessCode}>
             Forget access code
@@ -220,8 +223,9 @@ export function SettingsPage() {
           topic="resetting"
           lead="Reset everything removes what you saved here; your library cards stay."
         >
-          It removes favourites, packs, saved web links, search history, settings and online results
-          saved on this device. It asks first, and can't be undone.
+          It removes favourites, packs, saved web links, search history, settings, online results and
+          the cards you kept, all saved on this device. Clear history does not delete kept cards. It
+          asks first, and can't be undone.
         </Note>
         <button type="button" className={styles.reset} onClick={reset}>
           Reset everything

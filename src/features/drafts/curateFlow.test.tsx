@@ -364,7 +364,7 @@ describe('curate a card', () => {
     await user.click(makeButton());
 
     let consent = await screen.findByRole('region', { name: 'Make a card from these?' });
-    expect(consent).toHaveTextContent(/Parallel/);
+    expect(consent).toHaveTextContent(/OpenAI \(or Cloudflare if OpenAI is busy\)/);
     await user.click(within(consent).getByRole('button', { name: 'Not now' }));
     expect(draftCard).not.toHaveBeenCalled();
 

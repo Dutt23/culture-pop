@@ -44,6 +44,10 @@ export const WEB_SEARCH_DISCLOSURE = [
   'history is on. They are never sent anywhere else, and Clear history deletes them.',
   'A link you save with the heart (its title and address only) stays on this device until you',
   'remove it or reset the app.',
+  'If you make a card from results, the search, the results you picked and any style cards go',
+  'through our server to OpenAI (or Cloudflare if OpenAI is busy) to write a draft, and Parallel',
+  "reads the web pages you picked. They don't use it to train their models. The card is kept only",
+  'on this device.',
 ].join(' ');
 
 const failureOf = (error: unknown): WebSearchFailure =>
