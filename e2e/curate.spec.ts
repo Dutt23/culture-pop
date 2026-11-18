@@ -2,7 +2,8 @@ import { expect, test, type Route } from '@playwright/test';
 import { skipTours } from './returningReader';
 
 // The preview server has no /api, so both functions are answered here in the shapes the real ones
-// use (CARD_DRAFT_FAKE and WEB_SEARCH_FAKE do the same on a machine running them).
+// use. CARD_DRAFT_FAKE and WEB_SEARCH_FAKE only work on a local `vercel dev` server, which is why
+// this spec mocks with page.route.
 test.use({ serviceWorkers: 'block' });
 test.beforeEach(({ page }) => skipTours(page));
 
@@ -67,7 +68,7 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
 
   await page.getByRole('button', { name: /Zorbo quibble explained/ }).click();
   await page.getByRole('button', { name: /What a zorbo quibble means/ }).click();
-  await page.getByRole('button', { name: /Hakuna matata/, pressed: false }).click();
+  await page.getByRole('button', { name: 'Hakuna matata (Swahili phrase)', exact: true }).click();
   await page.getByRole('button', { name: 'Review 2 frames' }).click();
 
   const check = page.getByRole('region', { name: 'Splice check' });

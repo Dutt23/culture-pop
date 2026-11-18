@@ -574,7 +574,6 @@ secure" flag, is **not verified** (no source confirms it). So use the local-only
 - The browser may still offer to remember the code in its own password manager; the app itself never
   stores it.
 
-
 ---
 
 ## 12. Card drafts: `/api/draft-card`
@@ -585,12 +584,12 @@ Spec: `docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md`; decision D63
 
 **Environment** (Vercel project settings; never in the repo):
 
-| Name                                         | Use                                                   |
-| -------------------------------------------- | ----------------------------------------------------- |
-| `OPENAI_API_KEY`                             | OpenAI, first provider (`gpt-6-luna`)                 |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Cloudflare Workers AI, fallback (Llama 3.3 70B fast) |
-| `PARALLEL_API_KEY`                           | Parallel Extract (and Search)                         |
-| `CARD_DRAFT_FAKE`                            | `1` on a local machine only: a canned answer, no cost |
+| Name                                            | Use                                                   |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| `OPENAI_API_KEY`                                | OpenAI, first provider (`gpt-6-luna`)                 |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Cloudflare Workers AI, fallback (Llama 3.3 70B fast)  |
+| `PARALLEL_API_KEY`                              | Parallel Extract (and Search)                         |
+| `CARD_DRAFT_FAKE`                               | `1` on a local machine only: a canned answer, no cost |
 
 With `WEB_SEARCH_FAKE=1` Extract also answers locally (inline in `api/_lib/parallelExtract.ts`).
 
