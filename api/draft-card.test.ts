@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProviderError, type DraftProvider } from './_lib/cardProviders.js';
-import type { ModelAnswer } from './_lib/cardPrompt.js';
+import { PROMPT_VERSION, type ModelAnswer } from './_lib/cardPrompt.js';
 import { createDraftHandler, type DraftHandlerOptions } from './draft-card.js';
 
 const SEARCH = 'kitne aadmi the';
@@ -162,7 +162,7 @@ describe('draft-card', () => {
     const r = await read(await handle(post({ search: SEARCH, sources: [web, wiki] })));
     expect(r.status).toBe(200);
     expect(r.body.provider).toBe('fake');
-    expect(r.body.promptVersion).toBe('card-draft-v6');
+    expect(r.body.promptVersion).toBe(PROMPT_VERSION);
     expect(r.body.card.summary).toEqual([
       { text: 'Gabbar asks how many men there were.', sources: [1] },
     ]);

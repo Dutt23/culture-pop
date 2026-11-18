@@ -334,7 +334,7 @@ evidence[4]{id,from,title,text}:
   E3,reddit.com,What does rizz mean,"…"
   E4,tiktok.com,…,"…"
 tone_example:
-  note: About something else. Tone and length only.
+  note: About something else. Tone and length and kind of information only.
   label: The Chainsmokers' biggest hit
   gist: A 2016 hit about two exes meeting again years later.
   means: They're being nostalgic about an old flame.
