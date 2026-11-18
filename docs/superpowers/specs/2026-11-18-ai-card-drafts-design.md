@@ -82,6 +82,15 @@ Status: **draft v3**, 2026-11-18. Nothing built. The trial has run; decisions be
     the review screen hints "Add a web result to show how people use it."
   - **For the build:** the real check must not treat a capitalised first word or a non-English
     word in a reply ("Bas", "Just") as an unknown name; the trial check did.
+- **v7 (current, `card-draft-v7`)**, owner decision 2026-11-18: a reader's example cards (app
+  cards they picked, or their own kept and edited cards) now steer what the new card includes and
+  in what order (origin first or use first, an example line or not, how much detail), as well as
+  tone and length; never the example's facts, words or phrases. Only the `tone_examples` line and
+  `TONE_NOTE` changed ("Tone and length and kind of information only."); the rest of the prefix is
+  byte-identical. The tone-copy 4-gram check in `cardCheck.ts` is unchanged. Trial gate (Luna,
+  five answer keys, all with a tone example, two runs, same judge): v7 overall 3.80 / 4.00, pooled
+  **3.90** against v6 pooled 3.90; wrong points 1 in 10 cards against v6's 3 in 10. **PASS.**
+  Llama not retested (Cloudflare free quota).
 - **Only on a tap:** curation and aggregation of the reader's ticked results, never automatic.
 
 ### Trial results (5 searches + 2 tone-example runs per model, Parallel Extract page text)
@@ -443,6 +452,9 @@ Cost: under $0.40 on OpenAI, about $0.03 on Parallel, free on Cloudflare. Throwa
   app's security policy allows images only from itself (`img-src 'self' data:`), web images are
   usually someone's copyright (and the app's rule is no real IP art), and Parallel's results may
   be kept only for the person who searched.
+- **Write your own card from a blank page** (owner, 2026-11-18). For now a reader's own card is
+  one they kept and edited; it can serve as a tone example (style and what to include, never
+  facts). A blank-page editor would let readers make examples without drafting first.
 
 ## Left to the builder
 

@@ -24,7 +24,13 @@ const evidence = [
 describe('PREFIX', () => {
   it('is identical on every call', () => {
     expect(again.PREFIX).toBe(PREFIX);
-    expect(PROMPT_VERSION).toBe('card-draft-v6');
+    expect(PROMPT_VERSION).toBe('card-draft-v7');
+  });
+
+  it('tells the model example cards steer tone, length and what to include, never facts', () => {
+    expect(PREFIX).toContain(
+      'Match their tone, length, and what kind of information they include and in what order: never their facts, words or phrases.',
+    );
   });
 
   it('is over the 1,024-token cache minimum', () => {
@@ -46,7 +52,7 @@ describe('requestText', () => {
         E1,meaning,wiktionary,no cap,"Slang: no lie."
         E2,usage,reddit.com,no cap,"Best pizza ever, no cap."
       tone_examples[1]{note,label,gist,means,reply,summary}:
-        About something else. Tone and length only.,L,G,M,R,S"
+        About something else. Tone and length and kind of information only.,L,G,M,R,S"
     `);
   });
 
