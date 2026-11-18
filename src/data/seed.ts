@@ -10,6 +10,9 @@ import type {
 } from '../domain/types';
 import { PACK_1_DEFINITIONS } from './seedPack1';
 import { PACK_2_DEFINITIONS } from './seedPack2';
+import { PACK_3_DEFINITIONS } from './seedPack3';
+import { CHAINSMOKERS_DEFINITIONS } from './seedPackChainsmokers';
+import { DOOMSDAY_DEFINITIONS } from './seedPackDoomsday';
 
 /**
  * Original, editorially written DEMO content (provenance `seed_curated`).
@@ -457,6 +460,9 @@ const BUILT_IN_DEFINITIONS: readonly SeedDefinition[] = [
   ...SEED_DEFINITIONS,
   ...PACK_1_DEFINITIONS,
   ...PACK_2_DEFINITIONS,
+  ...PACK_3_DEFINITIONS,
+  ...DOOMSDAY_DEFINITIONS,
+  ...CHAINSMOKERS_DEFINITIONS,
 ];
 
 export function buildSeed(): SeedData {

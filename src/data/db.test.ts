@@ -22,6 +22,9 @@ import { createRepositories } from './repositories';
 import { buildSeed } from './seed';
 import { PACK_1_DEFINITIONS } from './seedPack1';
 import { PACK_2_DEFINITIONS } from './seedPack2';
+import { PACK_3_DEFINITIONS } from './seedPack3';
+import { CHAINSMOKERS_DEFINITIONS, CHAINSMOKERS_PACK } from './seedPackChainsmokers';
+import { DOOMSDAY_DEFINITIONS, DOOMSDAY_PACK } from './seedPackDoomsday';
 
 describe('database', () => {
   it('starts fresh databases with an interpretations store and no meanings store', async () => {
@@ -123,7 +126,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
@@ -197,7 +200,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     // The built-in meaning is replaced by the current seed (v7), glance lines included.
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
@@ -244,7 +247,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
     expect(await db.references.count()).toBe(buildSeed().references.length);
@@ -269,7 +272,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(db.tables.map((t) => t.name)).toContain('savedLinks');
     expect(await db.savedLinks.count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
@@ -305,7 +308,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       gist: 'Ugh, I just did something stupid.',
       socialMove: "They're laughing at their own mistake.",
@@ -340,9 +343,9 @@ describe('schema upgrades', () => {
     const before = await v7.table('references').toArray();
     v7.close();
 
-    const db = createDatabase(name);
+    const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['packs', 'packMembers']));
     expect(await db.packs.count()).toBe(0);
     expect(await db.packMembers.count()).toBe(0);
@@ -386,9 +389,9 @@ describe('schema upgrades', () => {
     await v8.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
     v8.close();
 
-    const db = createDatabase(name);
+    const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -426,9 +429,9 @@ describe('schema upgrades', () => {
     await v9.table('favourites').add({ referenceId: 'doh-simpsons', savedAt: 't' });
     v9.close();
 
-    const db = createDatabase(name);
+    const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -470,13 +473,93 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     expect(await db.references.get('i-choose-you-pokemon')).toMatchObject({ category: 'anime' });
     expect(await db.references.get('doh-simpsons')).toMatchObject({ category: 'cartoon' });
     // A saved online result can't be re-filed without asking Wikidata again, so it stays.
     expect(await db.references.get('wd:Q239937')).toMatchObject({ category: 'cartoon' });
     expect(await db.favourites.count()).toBe(1);
     db.close();
+  });
+
+  it('upgrades a real v11 database: adds batch 3 and the ready-made packs with their cards', async () => {
+    const name = `upgrade-v11-${Math.random().toString(36).slice(2)}`;
+    const v11 = new Dexie(name);
+    v11.version(1).stores(SCHEMA_V1);
+    v11.version(2).stores(SCHEMA_V2_CHANGES);
+    v11.version(3).stores({});
+    v11.version(4).stores(SCHEMA_V4_CHANGES);
+    v11.version(5).stores(SCHEMA_V5_CHANGES);
+    v11.version(6).stores(SCHEMA_V6_CHANGES);
+    v11.version(7).stores({});
+    v11.version(8).stores(SCHEMA_V8_CHANGES);
+    v11.version(9).stores({});
+    v11.version(10).stores({});
+    v11.version(11).stores({});
+    await v11.open();
+    const seed = buildSeed();
+    const batch = new Set(
+      [...PACK_3_DEFINITIONS, ...DOOMSDAY_DEFINITIONS, ...CHAINSMOKERS_DEFINITIONS].map(
+        (def) => def.id,
+      ),
+    );
+    // A v11 install: the built-in rows from before v12, plus the reader's own pack.
+    await v11.table('references').bulkAdd(seed.references.filter((r) => !batch.has(r.id)));
+    await v11
+      .table('interpretations')
+      .bulkAdd(seed.interpretations.filter((i) => !batch.has(i.referenceId)));
+    await v11.table('aliases').bulkAdd(seed.aliases.filter((a) => !batch.has(a.referenceId)));
+    await v11.table('packs').add({
+      id: 'pack:1',
+      name: 'Mine',
+      normalizedName: 'mine',
+      ceiling: 'open',
+      now: true,
+      createdAt: 't',
+      updatedAt: 't',
+    });
+    await v11
+      .table('packMembers')
+      .add({ id: 'pm:1', packId: 'pack:1', referenceId: 'ok-boomer', position: 0, addedAt: 't' });
+    v11.close();
+
+    const db = createDatabase(name);
+    await db.open();
+    expect(db.verno).toBe(12);
+    expect(await db.references.count()).toBe(seed.references.length);
+    expect(await db.aliases.count()).toBe(seed.aliases.length);
+    expect(await db.packs.get(DOOMSDAY_PACK.id)).toMatchObject({
+      name: 'Before Avengers: Doomsday',
+      ceiling: 'before_watching',
+      now: false,
+    });
+    for (const pack of [DOOMSDAY_PACK, CHAINSMOKERS_PACK]) {
+      const members = await db.packMembers.where('packId').equals(pack.id).sortBy('position');
+      expect(members.map((m) => m.referenceId)).toEqual(pack.referenceIds);
+      for (const id of pack.referenceIds) {
+        expect(await db.references.get(id)).toBeDefined();
+      }
+    }
+    // The reader's pack and its pin are untouched.
+    expect(await db.packs.get('pack:1')).toMatchObject({ now: true });
+    expect(await db.packMembers.where('packId').equals('pack:1').count()).toBe(1);
+    db.close();
+  });
+
+  it('starts a fresh install with the ready-made pack, and never puts it back once deleted', async () => {
+    const name = `fresh-${Math.random().toString(36).slice(2)}`;
+    const db = createDatabase(name);
+    await db.open();
+    expect(await db.packMembers.where('packId').equals(DOOMSDAY_PACK.id).count()).toBe(
+      DOOMSDAY_PACK.referenceIds.length,
+    );
+    await createRepositories(db).packs.deletePack(DOOMSDAY_PACK.id);
+    db.close();
+
+    const reopened = createDatabase(name);
+    await reopened.open();
+    expect(await reopened.packs.get(DOOMSDAY_PACK.id)).toBeUndefined();
+    reopened.close();
   });
 });
 

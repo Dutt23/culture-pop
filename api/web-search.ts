@@ -23,8 +23,8 @@ const MAX_URL = 2048;
 /** Parallel's answers are a few KB; anything bigger is refused unread. */
 const MAX_UPSTREAM_BYTES = 256 * 1024;
 /**
- * `{ "q": "…", "question": true, "about": […] }` with a 200-character query and five 30-character
- * tags fits, even in four-byte characters; anything bigger is refused.
+ * `{ "q": "…", "question": true, "videos": true, "about": […] }` with a 200-character query and
+ * five 30-character tags fits, even in four-byte characters; anything bigger is refused.
  */
 const MAX_REQUEST_BYTES = 2048;
 /** Search tags sent as a hint (docs/SEARCH_TAGS_PLAN.md); the same caps as the app's. */
@@ -68,30 +68,34 @@ export interface HandlerOptions {
   checkAccess?: (request: Request) => AccessResult;
 }
 
+/** What to look for: what the words mean, an answer from fiction, or videos of it. */
+export type SearchKind = 'meaning' | 'question' | 'videos';
+
 interface SearchBody {
   q: string | null;
-  question: boolean;
+  kind: SearchKind;
   about: string[];
 }
 
 /**
- * The raw `q`, the `question` flag and the `about` tags from a JSON body
- * `{ "q": "…", "question": true, "about": ["anime"] }`. `q` is null when the body is oversized, not
- * JSON or has no string `q`; any `question` that is not exactly `true` counts as false, and any bad
- * tag is dropped, so a bad flag or tag never blocks a search.
+ * The raw `q`, the kind of search and the `about` tags from a JSON body
+ * `{ "q": "…", "question": true, "about": ["anime"] }` (or `"videos": true`). `q` is null when the
+ * body is oversized, not JSON or has no string `q`; a flag that is not exactly `true` counts as
+ * false, `videos` wins over `question`, and any bad tag is dropped, so a bad flag or tag never
+ * blocks a search.
  */
 async function readBody(request: Request): Promise<SearchBody> {
   try {
     const body: unknown = JSON.parse(await readCapped(request, MAX_REQUEST_BYTES));
     const fields = typeof body === 'object' && body !== null ? body : {};
-    const { q, question, about } = fields as { q?: unknown; question?: unknown; about?: unknown };
+    const { q, question, videos, about } = fields as Record<string, unknown>;
     return {
       q: typeof q === 'string' ? q : null,
-      question: question === true,
+      kind: videos === true ? 'videos' : question === true ? 'question' : 'meaning',
       about: validAbout(about),
     };
   } catch {
-    return { q: null, question: false, about: [] };
+    return { q: null, kind: 'meaning', about: [] };
   }
 }
 
@@ -164,33 +168,85 @@ function safeUrl(value: unknown): URL | undefined {
  * committed the worst genocides" with real-world history.
  * `q` is already validated (≤200 characters, no control characters).
  */
-export function objective(q: string, question = false, about: readonly string[] = []): string {
+export function objective(
+  q: string,
+  kind: SearchKind = 'meaning',
+  about: readonly string[] = [],
+): string {
   // A hint only: the search text itself never changes with tags.
   const hint = about.length > 0 ? ` Prefer results about ${about.join(', ')}.` : '';
-  return baseObjective(q, question) + hint;
+  return baseObjective(q, kind) + hint;
 }
 
-function baseObjective(q: string, question: boolean): string {
-  if (question) {
+function baseObjective(q: string, kind: SearchKind): string {
+  if (kind === 'videos') {
+    return `Find YouTube videos for "${q}": the official music video, live performances, trailers, clips or explainers. Prefer official channels.`;
+  }
+  if (kind === 'question') {
     return `Answer "${q}" about fiction, myths and pop culture: characters, events and works in films, TV, anime, books, comics, games, myths, legends and folklore — not real-world history or news. Name the characters and works.`;
   }
   return `Explain "${q}": what it means or refers to in pop culture or internet culture (films, TV, comics, games, music, memes, slang), and where it comes from.`;
 }
 
-const QUESTION_QUERY_SUFFIX = ' in fiction myths anime films TV books games';
+/** A second, short angle on the same words; the objective carries the rest of the intent. */
+const ANGLE: Record<SearchKind, string> = {
+  meaning: ' meaning origin',
+  question: ' fiction',
+  videos: ' video',
+};
+/** Parallel's guide asks for keyword queries of 3–6 words. */
+const MAX_KEYWORDS = 6;
+/** Words that carry no search meaning; dropped only from text longer than six words. */
+const FILLER = new Set(
+  (
+    'a an the is are was were be been do does did what who whom whose which why how when where ' +
+    'of in on to for and or but that this these those it its i me my you your we our they their ' +
+    'he him his she her about with from by at as if so can could would should will there'
+  ).split(' '),
+);
 
-/** The text sent as Parallel's search query: a question gets fiction words, cut to fit MAX_QUERY. */
-export function searchQuery(q: string, question = false): string {
-  return question ? cut(q, MAX_QUERY - QUESTION_QUERY_SUFFIX.length) + QUESTION_QUERY_SUFFIX : q;
+/**
+ * The search words of long text, at most six of them in order. Text of six words or fewer is kept
+ * whole, so a line like "I am your father" is never cut down to "father".
+ */
+export function keywords(q: string): string {
+  const words = q.split(' ');
+  if (words.length <= MAX_KEYWORDS) return q;
+  const bare = (word: string) => word.toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, '');
+  const kept = words.filter((word) => bare(word) && !FILLER.has(bare(word)));
+  return (kept.length > 0 ? kept : words).slice(0, MAX_KEYWORDS).join(' ');
+}
+
+/**
+ * Parallel's search queries: the reader's words as typed, then their keywords with a short angle.
+ * Its guide asks for 1–3 short keyword queries rather than one long sentence; the full text stays
+ * in the first query and the objective, so no context is lost. The price is per request, so the
+ * second query costs nothing.
+ */
+export function searchQueries(q: string, kind: SearchKind = 'meaning'): string[] {
+  const angle = ANGLE[kind];
+  return [q, cut(keywords(q), MAX_QUERY - angle.length) + angle];
+}
+
+/** Videos come from YouTube only; plain domains include www. and m. (Parallel's source policy). */
+const VIDEO_DOMAIN = 'youtube.com';
+const isVideoPage = (url: URL) =>
+  url.hostname === VIDEO_DOMAIN || url.hostname.endsWith(`.${VIDEO_DOMAIN}`);
+
+function advancedSettings(kind: SearchKind) {
+  return kind === 'videos'
+    ? { max_results: MAX_RESULTS, source_policy: { include_domains: [VIDEO_DOMAIN] } }
+    : { max_results: MAX_RESULTS };
 }
 
 /**
  * Rebuilds each result from three allowlisted fields; every other field Parallel sends (images,
  * media, page content) is dropped, and anything malformed is skipped, not repaired. Copies of a
  * page (another form of its URL, or the same text on another site) are dropped, and the snippet
- * starts at the sentence that best answers `q`.
+ * starts at the sentence that best answers `q`. With `videosOnly`, anything not on YouTube is
+ * dropped.
  */
-export function toResults(body: unknown, q: string): WebResult[] | undefined {
+export function toResults(body: unknown, q: string, videosOnly = false): WebResult[] | undefined {
   if (typeof body !== 'object' || body === null) return undefined;
   const raw = (body as { results?: unknown }).results;
   if (!Array.isArray(raw)) return undefined;
@@ -202,7 +258,8 @@ export function toResults(body: unknown, q: string): WebResult[] | undefined {
     if (typeof item !== 'object' || item === null) continue;
     const { url, title, excerpts } = item as { url?: unknown; title?: unknown; excerpts?: unknown };
     const parsed = safeUrl(url);
-    if (!parsed) continue;
+    // Parallel already limits videos to YouTube; checked again so nothing else can slip through.
+    if (!parsed || (videosOnly && !isVideoPage(parsed))) continue;
     const page = pageKey(parsed);
     if (seenPages.has(page)) continue;
     seenPages.add(page);
@@ -256,7 +313,7 @@ export function createHandler(
     if (allowed === 'not_configured') return json(503, { error: 'not_configured' });
     if (allowed === 'locked') return json(401, { error: 'locked' });
 
-    const { q: rawQuery, question, about } = await readBody(request);
+    const { q: rawQuery, kind, about } = await readBody(request);
     const q = validQuery(rawQuery);
     if (!q) return json(400, { error: 'bad_query' });
 
@@ -283,11 +340,11 @@ export function createHandler(
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         // No session_id: Parallel can't link one search to the next.
         body: JSON.stringify({
-          objective: objective(q, question, about),
-          search_queries: [searchQuery(q, question)],
+          objective: objective(q, kind, about),
+          search_queries: searchQueries(q, kind),
           mode: 'fast',
           max_chars_total: 6000,
-          advanced_settings: { max_results: MAX_RESULTS },
+          advanced_settings: advancedSettings(kind),
         }),
         signal: controller.signal,
         redirect: 'error',
@@ -295,11 +352,14 @@ export function createHandler(
       if (!response.ok) {
         // Release the connection; the error body is never read.
         await response.body?.cancel().catch(() => {});
+        // 402: Parallel's balance or spend limit is used up. Not a fault: it comes back once topped up.
+        if (response.status === 402) return json(503, { error: 'out_of_credit' });
         return json(response.status === 429 ? 429 : 502, {
           error: response.status === 429 ? 'rate_limited' : 'provider_failed',
         });
       }
-      const results = toResults(JSON.parse(await readCapped(response, MAX_UPSTREAM_BYTES)), q);
+      const upstreamBody: unknown = JSON.parse(await readCapped(response, MAX_UPSTREAM_BYTES));
+      const results = toResults(upstreamBody, q, kind === 'videos');
       return results ? json(200, responseBody(results)) : json(502, { error: 'provider_failed' });
     } catch {
       // Timeout, network failure, oversized or bad JSON. Not logged: the error could echo the request.

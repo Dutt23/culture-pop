@@ -55,6 +55,7 @@ export type WebSearchFailure =
   | 'bad_query'
   | 'rate_limited'
   | 'daily_cap'
+  | 'out_of_credit'
   | 'not_configured'
   | 'blocked'
   | 'failed'
@@ -74,12 +75,14 @@ export interface WebSearchClient {
   /**
    * `stories`: a question leans to fiction and myths (the "Stories & myths" box); on by default.
    * `about`: the reader's search tags, a hint only; the server checks them again.
+   * `videos`: YouTube videos only ("Search videos").
    */
   search: (
     query: string,
     signal?: AbortSignal,
     stories?: boolean,
     about?: readonly string[],
+    videos?: boolean,
   ) => Promise<WebResult[]>;
   /** Sends the code once; the server answers with the cookie. Throws `wrong_code` if it's wrong. */
   unlock: (code: string) => Promise<void>;
@@ -106,7 +109,7 @@ function failureFor(status: number, code: string | undefined): WebSearchFailure 
   if (status === 400) return code === 'bad_request' ? 'wrong_code' : 'bad_query';
   if (status === 401) return code === 'wrong_code' ? 'wrong_code' : 'locked';
   if (status === 429) return code === 'daily_cap' ? 'daily_cap' : 'rate_limited';
-  if (status === 503) return 'not_configured';
+  if (status === 503) return code === 'out_of_credit' ? 'out_of_credit' : 'not_configured';
   if (status === 403) return 'blocked';
   return 'failed';
 }
@@ -205,12 +208,13 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
     // can't import the page's question rule, so it is told whether this search is a question that
     // leans to stories; with "Stories & myths" unticked it is searched like any other text.
     // Tags go only as a short hint; with none, the body is exactly what it was before tags.
-    search: async (query, signal, stories = true, about = []) => {
+    search: async (query, signal, stories = true, about = [], videos = false) => {
       const hint = about.slice(0, MAX_HINT_TAGS);
       const body = {
         q: query.trim(),
         question: stories && looksLikeQuestion(query),
         ...(hint.length > 0 && { about: hint }),
+        ...(videos && { videos: true }),
       };
       return parseWebResults(await call(WEB_SEARCH_PATH, post(body), signal));
     },

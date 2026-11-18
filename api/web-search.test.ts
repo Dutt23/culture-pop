@@ -167,7 +167,7 @@ describe('query validation', () => {
     const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
       search_queries: string[];
     };
-    expect(sent.search_queries).toEqual([QUERY]);
+    expect(sent.search_queries).toEqual([QUERY, `${QUERY} meaning origin`]);
   });
 });
 
@@ -183,7 +183,7 @@ describe('upstream request', () => {
     expect((init?.headers as Record<string, string>)['x-api-key']).toBe(DUMMY_KEY);
     const sent = JSON.parse(String(init?.body)) as Record<string, unknown>;
     expect(sent).toMatchObject({
-      search_queries: [QUERY],
+      search_queries: [QUERY, `${QUERY} meaning origin`],
       mode: 'fast',
       advanced_settings: { max_results: 10 },
     });
@@ -203,9 +203,7 @@ describe('upstream request', () => {
 });
 
 describe('question searches', () => {
-  const SUFFIX = ' in fiction myths anime films TV books games';
-
-  it('asks for fiction and pop culture, and widens the search query to match', async () => {
+  it('asks for fiction and pop culture, with a short "fiction" search beside the question', async () => {
     const { fetchMock, handle } = setup();
     await handle(questionRequest('who committed the worst genocides'));
     const { objective, search_queries } = sentOf(fetchMock);
@@ -213,22 +211,51 @@ describe('question searches', () => {
     expect(objective).toMatch(/fiction, myths and pop culture/);
     expect(objective).toMatch(/legends and folklore/);
     expect(objective).toMatch(/not real-world history or news/);
-    expect(search_queries).toEqual([`who committed the worst genocides${SUFFIX}`]);
+    expect(search_queries).toEqual([
+      'who committed the worst genocides',
+      'who committed the worst genocides fiction',
+    ]);
   });
 
-  it('cuts a long question so the search query stays within 200 characters', async () => {
+  it('keeps a long question whole first, then searches its keywords', async () => {
     const { fetchMock, handle } = setup();
-    expect((await handle(questionRequest('why '.repeat(50).trim()))).status).toBe(200);
-    const [query] = sentOf(fetchMock).search_queries;
-    expect(query).toHaveLength(200);
-    expect(query?.endsWith(`…${SUFFIX}`)).toBe(true);
+    const long = 'in which anime does the main character die at the end of the very first season';
+    expect((await handle(questionRequest(long))).status).toBe(200);
+    expect(sentOf(fetchMock).search_queries).toEqual([
+      long,
+      'anime main character die end very fiction',
+    ]);
   });
 
-  it('leaves a search that is not a question exactly as it was', async () => {
+  it('keeps an angled search within 200 characters even when one word is huge', async () => {
+    const { fetchMock, handle } = setup();
+    expect((await handle(questionRequest('y'.repeat(200)))).status).toBe(200);
+    const [, angled] = sentOf(fetchMock).search_queries;
+    expect(angled).toHaveLength(200);
+    expect(angled?.endsWith('… fiction')).toBe(true);
+  });
+
+  it('never cuts a short line down to its keywords', async () => {
+    const { fetchMock, handle } = setup();
+    await handle(request('I am your father'));
+    expect(sentOf(fetchMock).search_queries).toEqual([
+      'I am your father',
+      'I am your father meaning origin',
+    ]);
+  });
+
+  it('keeps the words when a long text is all filler', async () => {
+    const { fetchMock, handle } = setup();
+    await handle(questionRequest('who is he and what is it about'));
+    const [, angled] = sentOf(fetchMock).search_queries;
+    expect(angled).toBe('who is he and what is fiction');
+  });
+
+  it('searches a non-question for its meaning and origin', async () => {
     const { fetchMock, handle } = setup();
     await handle(questionRequest('red pill', false));
     const { objective, search_queries } = sentOf(fetchMock);
-    expect(search_queries).toEqual(['red pill']);
+    expect(search_queries).toEqual(['red pill', 'red pill meaning origin']);
     expect(objective).toMatch(/comes from/);
     expect(objective).not.toMatch(/fiction, myths and pop culture/);
   });
@@ -238,9 +265,73 @@ describe('question searches', () => {
     async (flag) => {
       const { fetchMock, handle } = setup();
       expect((await handle(questionRequest(QUERY, flag))).status).toBe(200);
-      expect(sentOf(fetchMock).search_queries).toEqual([QUERY]);
+      expect(sentOf(fetchMock).search_queries).toEqual([QUERY, `${QUERY} meaning origin`]);
     },
   );
+});
+
+describe('video searches', () => {
+  const videoRequest = (q: string, extra: Record<string, unknown> = {}) =>
+    rawRequest(JSON.stringify({ q, videos: true, ...extra }));
+  // Each with its own text: results with the same snippet are dropped as copies.
+  const video = (url: string) => hit({ url, excerpts: [`A video at ${url}`] });
+  const youtube = (id: string) => video(`https://www.youtube.com/watch?v=${id}`);
+
+  it('asks Parallel for YouTube videos only', async () => {
+    const { fetchMock, handle } = setup({ results: [youtube('a')] });
+    expect((await handle(videoRequest('closer chainsmokers'))).status).toBe(200);
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(sent).toMatchObject({
+      search_queries: ['closer chainsmokers', 'closer chainsmokers video'],
+      mode: 'fast',
+      advanced_settings: { max_results: 10, source_policy: { include_domains: ['youtube.com'] } },
+    });
+    expect(sent.objective).toMatch(/^Find YouTube videos for "closer chainsmokers"/);
+  });
+
+  it('wins over the question flag', async () => {
+    const { fetchMock, handle } = setup({ results: [] });
+    await handle(videoRequest('who sang closer', { question: true }));
+    const { objective, search_queries } = sentOf(fetchMock);
+    expect(objective).toMatch(/YouTube videos/);
+    expect(search_queries[1]).toBe('who sang closer video');
+  });
+
+  it('drops anything not on YouTube, even if Parallel sends it', async () => {
+    const { handle } = setup({
+      results: [
+        youtube('a'),
+        video('https://m.youtube.com/watch?v=b'),
+        video('https://youtube.com.evil.test/watch?v=c'),
+        video('https://notyoutube.com/watch?v=d'),
+        hit(),
+      ],
+    });
+    const { status, body } = await read(await handle(videoRequest('closer')));
+    expect(status).toBe(200);
+    expect((body.results as { url: string }[]).map((r) => r.url)).toEqual([
+      'https://www.youtube.com/watch?v=a',
+      'https://m.youtube.com/watch?v=b',
+    ]);
+  });
+
+  it.each([['true'], [1], [null]])(
+    'treats a non-boolean videos flag (%j) as false',
+    async (flag) => {
+      const { fetchMock, handle } = setup();
+      await handle(rawRequest(JSON.stringify({ q: QUERY, videos: flag })));
+      const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+        advanced_settings: unknown;
+      };
+      expect(sent.advanced_settings).toEqual({ max_results: 10 });
+    },
+  );
+
+  it('counts towards the same daily cap', async () => {
+    const { handle } = setup({ results: [] }, { dailyCap: 1 });
+    expect((await handle(videoRequest('closer'))).status).toBe(200);
+    expect((await handle(request(QUERY))).status).toBe(429);
+  });
 });
 
 describe('search tags hint', () => {
@@ -251,7 +342,7 @@ describe('search tags hint', () => {
     expect((await handle(withAbout(['anime', 'Marvel']))).status).toBe(200);
     const { objective, search_queries } = sentOf(fetchMock);
     expect(objective).toMatch(/Prefer results about anime, Marvel\.$/);
-    expect(search_queries).toEqual(['red pill']);
+    expect(search_queries).toEqual(['red pill', 'red pill meaning origin']);
   });
 
   it('drops bad tags and keeps at most five, without failing the search', async () => {
@@ -546,6 +637,14 @@ describe('errors', () => {
     expect(await read(await limited(request(QUERY)))).toEqual({
       status: 429,
       body: { error: 'rate_limited' },
+    });
+  });
+
+  it('says the search is out of credit when Parallel answers 402, instead of "failed"', async () => {
+    const broke = unlocked(async () => upstream({}, 402));
+    expect(await read(await broke(request(QUERY)))).toEqual({
+      status: 503,
+      body: { error: 'out_of_credit' },
     });
   });
 

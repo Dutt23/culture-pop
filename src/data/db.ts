@@ -12,8 +12,11 @@ import type {
   Setting,
   Source,
 } from '../domain/types';
+import { normalizePhrase } from '../domain/normalize';
 import { storeCuration } from './curationStore';
 import { buildSeed } from './seed';
+import { CHAINSMOKERS_PACK } from './seedPackChainsmokers';
+import { DOOMSDAY_PACK } from './seedPackDoomsday';
 
 const DATABASE_NAME = 'pop-culture-decoder';
 
@@ -92,11 +95,51 @@ async function refreshBuiltIns(tx: Transaction) {
   await tx.table('aliases').bulkPut(seed.aliases);
 }
 
+/** The app's ready-made packs: a film to get ready for, and a concert. */
+export const READY_PACKS = [DOOMSDAY_PACK, CHAINSMOKERS_PACK] as const;
+
+/**
+ * Adds each ready-made pack once, unless the reader already has it (or a pack with its id). A
+ * reader who deletes one keeps it deleted: no later version adds it again.
+ */
+async function addReadyPacks(tx: Transaction) {
+  const now = new Date().toISOString();
+  for (const { id, name, referenceIds } of READY_PACKS) {
+    if (await tx.table('packs').get(id)) continue;
+    await tx.table('packs').add({
+      id,
+      name,
+      normalizedName: normalizePhrase(name),
+      ceiling: 'before_watching',
+      now: false,
+      createdAt: now,
+      updatedAt: now,
+    } satisfies Pack);
+    await tx.table('packMembers').bulkAdd(
+      referenceIds.map((referenceId, position): PackMember => ({
+        id: `pm:${id}:${referenceId}`,
+        packId: id,
+        referenceId,
+        position,
+        addedAt: now,
+      })),
+    );
+  }
+}
+
+export interface DatabaseOptions {
+  /** Start with the ready-made packs. Tests turn them off so every pack test starts with none. */
+  readyPack?: boolean;
+}
+
 /**
  * Versioned schema. Add a new `db.version(n)` block (with `.upgrade()` when data must move)
  * for every change; never edit a shipped version in place.
  */
-export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
+export function createDatabase(
+  name: string = DATABASE_NAME,
+  { readyPack = true }: DatabaseOptions = {},
+): PopCultureDb {
   const db = new Dexie(name) as PopCultureDb;
 
   db.version(1).stores(SCHEMA_V1);
@@ -173,11 +216,21 @@ export function createDatabase(name: string = DATABASE_NAME): PopCultureDb {
   // of that search refreshes them.
   db.version(11).stores({}).upgrade(refreshBuiltIns);
 
+  // v12: the "you'll hear this" pack, batch 3 (30 cards), and two ready-made packs with their cards:
+  // "Before Avengers: Doomsday" and "Before The Chainsmokers live". No index changes.
+  db.version(12)
+    .stores({})
+    .upgrade(async (tx) => {
+      await refreshBuiltIns(tx);
+      if (readyPack) await addReadyPacks(tx);
+    });
+
   db.on('populate', (tx) => {
     const seed = buildSeed();
     void tx.table('references').bulkAdd(seed.references);
     void tx.table('interpretations').bulkAdd(seed.interpretations);
     void tx.table('aliases').bulkAdd(seed.aliases);
+    if (readyPack) void addReadyPacks(tx);
   });
 
   return db;

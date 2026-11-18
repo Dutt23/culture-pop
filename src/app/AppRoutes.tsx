@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
+import { PageLoader } from '../components/mascot/PageLoader';
 import { DiscoverPage } from '../features/discovery/DiscoverPage';
 import { NotFoundPage } from '../features/not-found/NotFoundPage';
 import { AppShell } from './AppShell';
@@ -25,7 +26,8 @@ const SettingsPage = lazy(() =>
   import('../features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
 
-const later = (page: ReactNode) => <Suspense fallback={null}>{page}</Suspense>;
+// While a page's code downloads, the mascot juggles popcorn (only if it takes more than a moment).
+const later = (page: ReactNode) => <Suspense fallback={<PageLoader />}>{page}</Suspense>;
 
 // Development-only: the import is dead code in production builds and gets tree-shaken.
 const DevComponentsPage = import.meta.env.DEV

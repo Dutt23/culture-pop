@@ -287,8 +287,15 @@ describe('externalSearchLinks', () => {
       'Encyclopedias and quotes',
       'Memes and slang',
       'Shows, films and anime',
+      'Music and videos',
       'Anything else',
     ]);
+  });
+
+  it('opens YouTube on its videos-only filter', () => {
+    expect(links.find((l) => l.site === 'YouTube')?.href).toBe(
+      'https://www.youtube.com/results?sp=EgIQAQ%3D%3D&search_query=rock%20%26%20roll%3F',
+    );
   });
 });
 

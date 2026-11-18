@@ -251,6 +251,72 @@ describe('wider-web search (D45)', () => {
   });
 });
 
+describe('"Search videos"', () => {
+  const VIDEO: DeviceResult = {
+    title: 'Ferrari fans react (video)',
+    url: 'https://www.youtube.com/watch?v=abc',
+    snippet: 'Fans watch the last lap.',
+    storage: 'device',
+  };
+
+  it('asks first, searches videos only, and keeps nothing', async () => {
+    const db = await databaseWith({});
+    const retrieval = serviceWith(async () => [VIDEO]);
+    const { user } = renderApp(ROUTE, db, retrieval);
+
+    await user.click(await screen.findByRole('button', { name: 'Search videos' }));
+    const consent = screen.getByRole('region', { name: 'Search the wider web?' });
+    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
+    await user.click(within(consent).getByRole('button', { name: 'Search videos' }));
+
+    const block = await screen.findByRole('region', { name: 'Videos found… (unverified)' });
+    expect(within(block).getByRole('link', { name: /Ferrari fans react/ })).toHaveAttribute(
+      'href',
+      VIDEO.url,
+    );
+    expect(block).toHaveTextContent('YouTube links found by a web search.');
+    expect(block).toHaveTextContent('Not saved on this device.');
+    expect(block.querySelector('img, video, iframe, picture, source')).toBeNull();
+    expect(retrieval.webSearch.search).toHaveBeenCalledWith(
+      QUESTION,
+      expect.any(AbortSignal),
+      true,
+      undefined,
+      true,
+    );
+    expect(await db.webResults.count()).toBe(0);
+    // The way back to the ordinary search.
+    expect(screen.getByRole('button', { name: 'Search the wider web' })).toBeEnabled();
+  });
+
+  it('is offered after wider-web results and never replaces the kept ones', async () => {
+    const db = await databaseWith({ webSearch: 'on' });
+    const retrieval = serviceWith(async () => [RESULT]);
+    const { user } = renderApp(ROUTE, db, retrieval);
+    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
+    const repos = createRepositories(db);
+    await waitFor(async () =>
+      expect((await repos.webResults.get(QUESTION, Date.now()))?.results).toEqual([RESULT]),
+    );
+
+    retrieval.webSearch.search.mockResolvedValueOnce([VIDEO]);
+    await user.click(screen.getByRole('button', { name: 'Search videos' }));
+    await screen.findByRole('region', { name: 'Videos found… (unverified)' });
+    expect((await repos.webResults.get(QUESTION, Date.now()))?.results).toEqual([RESULT]);
+  });
+
+  it('says so when there are no videos', async () => {
+    const { user } = renderApp(
+      ROUTE,
+      await databaseWith({ webSearch: 'on' }),
+      serviceWith(async () => []),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Search videos' }));
+    expect(await screen.findByText('No videos found for this.')).toBeInTheDocument();
+  });
+});
+
 describe('access code', () => {
   it('asks for the code on 401, unlocks, retries, and never keeps the code', async () => {
     const db = await databaseWith({ webSearch: 'on' });

@@ -26,6 +26,7 @@ const FAILURE_TEXT: Record<WebSearchFailure, string> = {
   bad_query: 'This search is too long for the wider web search. Try fewer words.',
   rate_limited: 'Too many searches just now. Try again in a minute.',
   daily_cap: "Today's wider web searches are used up. Try again tomorrow.",
+  out_of_credit: 'The wider web search is paused for now. Try again later.',
   not_configured: "The wider web search isn't set up on the server yet.",
   blocked: 'The server refused the search.',
   failed: "The wider web search didn't answer. Try again.",
@@ -99,6 +100,8 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
   const [saveFailed, setSaveFailed] = useState(false);
   // With history off nothing is kept, so there is nothing to wait for before searching by itself.
   const [savedChecked, setSavedChecked] = useState(!historyOn);
+  // Which search was asked for last: the wider web, or YouTube videos only ("Search videos").
+  const [videos, setVideos] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const started = useRef(false);
 
@@ -126,24 +129,28 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
     };
   }, [webResults, query, historyOn]);
 
-  const run = async (auto = false) => {
+  const run = async (auto = false, wantVideos = videos) => {
     // Any search, tapped or not, means this mount never searches by itself again.
     started.current = true;
+    setVideos(wantVideos);
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
     setPhase({ kind: 'loading' });
     try {
       // Without tags the call is exactly what it was before tags existed.
-      const results = await (props.about
-        ? webSearch.search(query, current.signal, stories, props.about)
-        : webSearch.search(query, current.signal, stories));
+      const results = await (wantVideos
+        ? webSearch.search(query, current.signal, stories, props.about, true)
+        : props.about
+          ? webSearch.search(query, current.signal, stories, props.about)
+          : webSearch.search(query, current.signal, stories));
       if (current.signal.aborted) return;
       onSearched();
       setPhase({ kind: 'done', results });
       if (!unlocked) onAccess(true);
-      // Best effort: a failed write only means a new search next time.
-      if (historyOn) {
+      // Best effort: a failed write only means a new search next time. Videos are never kept: kept
+      // results are keyed by the query alone and would replace the wider-web ones.
+      if (historyOn && !wantVideos) {
         webResults.save(query, results.filter(isDeviceResult), Date.now()).catch(() => {});
       }
     } catch (error) {
@@ -158,7 +165,7 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
   };
 
   // Runs by itself once per query, after any kept results were checked: kept ones are shown free.
-  const autoSearch = useEffectEvent(() => void run(true));
+  const autoSearch = useEffectEvent(() => void run(true, false));
   const autoReady =
     preference === 'on' && unlocked && isOnline && props.mayAutoSearch && savedChecked && !saved;
   useEffect(() => {
@@ -185,12 +192,15 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
         <p>{WEB_SEARCH_DISCLOSURE}</p>
         <div className={styles.actions}>
           <button type="button" className={styles.primary} onClick={allow}>
-            Search the wider web
+            {videos ? 'Search videos' : 'Search the wider web'}
           </button>
           <button
             type="button"
             className={styles.secondary}
-            onClick={() => setPhase({ kind: 'idle' })}
+            onClick={() => {
+              setVideos(false);
+              setPhase({ kind: 'idle' });
+            }}
           >
             Not now
           </button>
@@ -206,9 +216,22 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
   }
 
   // Refresh and the first search both go through consent when it's still "Ask first".
-  const start = () => (preference === 'ask' ? setPhase({ kind: 'consent' }) : void run());
+  const start = (wantVideos = false) => {
+    if (preference !== 'ask') {
+      void run(false, wantVideos);
+      return;
+    }
+    setVideos(wantVideos);
+    setPhase({ kind: 'consent' });
+  };
   const busy = !isOnline || phase.kind === 'loading';
   const showSaved = saved !== undefined && phase.kind !== 'done';
+  const showingVideos = phase.kind === 'done' && videos;
+  const searchVideos = (
+    <button type="button" className={styles.secondary} disabled={busy} onClick={() => start(true)}>
+      Search videos
+    </button>
+  );
 
   return (
     <div className={own.wrapper}>
@@ -217,15 +240,23 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
           results={saved.results}
           kept
           savedAt={saved.savedAt}
-          onRefresh={start}
+          onRefresh={() => start()}
           refreshDisabled={busy}
         />
       )}
       {phase.kind !== 'done' && !showSaved && (
         <>
-          <button type="button" className={styles.secondary} disabled={busy} onClick={start}>
-            Search the wider web
-          </button>
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.secondary}
+              disabled={busy}
+              onClick={() => start()}
+            >
+              Search the wider web
+            </button>
+            {searchVideos}
+          </div>
           <p className={styles.note}>
             {isOnline ? (
               <>
@@ -245,7 +276,7 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
       )}
       {phase.kind === 'loading' && (
         <p className={styles.note} role="status">
-          Searching the wider web…
+          {videos ? 'Searching for videos…' : 'Searching the wider web…'}
         </p>
       )}
       {phase.kind === 'error' && (
@@ -261,8 +292,15 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
       {phase.kind === 'done' && (
         <CommunitySuggests
           results={phase.results}
-          kept={historyOn && phase.results.every(isDeviceResult)}
+          videos={videos}
+          kept={!videos && historyOn && phase.results.every(isDeviceResult)}
         />
+      )}
+      {(showSaved || (phase.kind === 'done' && !videos)) && searchVideos}
+      {showingVideos && (
+        <button type="button" className={styles.secondary} disabled={busy} onClick={() => start()}>
+          Search the wider web
+        </button>
       )}
     </div>
   );
@@ -341,6 +379,8 @@ interface CommunitySuggestsProps {
   results: readonly WebResult[];
   /** True when these results are (or now will be) kept on this device. */
   kept: boolean;
+  /** YouTube videos only ("Search videos"). */
+  videos?: boolean;
   /** Set for results read back from this device. */
   savedAt?: number;
   onRefresh?: () => void;
@@ -350,6 +390,7 @@ interface CommunitySuggestsProps {
 function CommunitySuggests({
   results,
   kept,
+  videos = false,
   savedAt,
   onRefresh,
   refreshDisabled,
@@ -359,15 +400,18 @@ function CommunitySuggests({
   return (
     <section className={styles.community} aria-labelledby="web-results-title">
       <h2 id="web-results-title" className={styles.communityTitle}>
-        Community suggests… (unverified)
+        {videos ? 'Videos found… (unverified)' : 'Community suggests… (unverified)'}
       </h2>
       {savedOn && <p className={styles.note}>Saved {savedOn}</p>}
       {results.length === 0 ? (
-        <p className={styles.note}>The wider web had nothing for this either.</p>
+        <p className={styles.note}>
+          {videos ? 'No videos found for this.' : 'The wider web had nothing for this either.'}
+        </p>
       ) : (
         <>
           <p className={styles.note}>
-            Links found by a web search. Nobody has checked them.{' '}
+            {videos ? 'YouTube links found by a web search.' : 'Links found by a web search.'}{' '}
+            Nobody has checked them.{' '}
             {kept ? 'Kept on this device for 30 days, for you only.' : 'Not saved on this device.'}
           </p>
           <p className={styles.note}>Tap the heart to save a link until you remove it.</p>

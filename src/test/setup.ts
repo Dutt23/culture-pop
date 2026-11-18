@@ -1,11 +1,15 @@
 import '@testing-library/jest-dom/vitest';
 import 'fake-indexeddb/auto';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach } from 'vitest';
 
 // jsdom has no layout or real frames: finish Motion animations instantly so exits never hang.
 MotionGlobalConfig.skipAnimations = true;
+
+// A fresh test database seeds the whole built-in library before the first screen shows; under the
+// full suite's load that can take longer than the default one second of waiting.
+configure({ asyncUtilTimeout: 3000 });
 
 // jsdom has no IntersectionObserver: everything counts as on screen, so in-view animations finish.
 class OnScreenObserver {

@@ -309,12 +309,14 @@ describe('discover', () => {
   }
 
   const browseOf = () => screen.findByRole('region', { name: 'Browse' });
+  // The online result, not the built-in Doomsday cards that mention Doctor Doom too.
+  const ONLINE_DOOM = /Doctor Doom.*Found online/;
 
   it('lists an explained found-online reference the reader opened, under its year, marked with its date', async () => {
     const db = await withOnlineReferences();
     await openedFromSearch(db, 'wd:Q1');
     renderApp('/discover', db);
-    const doom = await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    const doom = await within(await browseOf()).findByRole('link', { name: ONLINE_DOOM });
     expect(doom).toHaveTextContent('Explained from sources');
     expect(doom).toHaveTextContent(`Found online · Saved ${DOOM_DATE}`);
     expect(
@@ -335,7 +337,7 @@ describe('discover', () => {
     const db = await withOnlineReferences();
     await openedFromSearch(db, 'wd:Q1', 'wd:Q2');
     renderApp('/discover', db);
-    await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    await within(await browseOf()).findByRole('link', { name: ONLINE_DOOM });
     expect(screen.queryByText('Galactus')).not.toBeInTheDocument();
     expect(screen.queryByText('Unexplained Hero')).not.toBeInTheDocument();
     expect(screen.queryByText('Found online · unverified')).not.toBeInTheDocument();
@@ -345,7 +347,7 @@ describe('discover', () => {
     const db = await withOnlineReferences();
     await openedFromSearch(db, 'wd:Q1', 'enwikiquote:7');
     renderApp('/discover', db);
-    await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    await within(await browseOf()).findByRole('link', { name: ONLINE_DOOM });
     expect(screen.queryByText('Doom quotes')).not.toBeInTheDocument();
   });
 
@@ -354,7 +356,7 @@ describe('discover', () => {
     await openedFromSearch(db, 'wd:Q1');
     await createRepositories(db).favourites.toggle('wd:Q3');
     renderApp('/discover', db);
-    await within(await browseOf()).findByRole('link', { name: /Doctor Doom/ });
+    await within(await browseOf()).findByRole('link', { name: ONLINE_DOOM });
 
     await act(async () => createRepositories(db).retrieval.clear());
 
@@ -380,7 +382,7 @@ describe('discover', () => {
     expect(
       within(browse).queryByRole('group', { name: 'Filter by category' }),
     ).not.toBeInTheDocument();
-    expect(within(browse).getByRole('link', { name: /Doctor Doom/ })).toBeInTheDocument();
+    expect(within(browse).getByRole('link', { name: ONLINE_DOOM })).toBeInTheDocument();
   });
 
   it('says, per empty type, how to find one, and never offers "Other"', async () => {

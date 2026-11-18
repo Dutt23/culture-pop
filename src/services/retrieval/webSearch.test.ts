@@ -92,6 +92,17 @@ describe('search', () => {
     });
   });
 
+  it('asks for videos only when told to, and never by default', async () => {
+    // One setup per call: each fake answer can be read only once.
+    const sent = async (videos?: boolean) => {
+      const { fetchMock, client } = setup(answer({ storage: 'device', results: [] }));
+      await client.search('closer chainsmokers', undefined, true, [], videos);
+      return JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as object;
+    };
+    expect(await sent(true)).toEqual({ q: 'closer chainsmokers', question: false, videos: true });
+    expect(await sent()).not.toHaveProperty('videos');
+  });
+
   it('sends no about field when no tag is on', async () => {
     const { fetchMock, client } = setup(answer({ storage: 'device', results: [] }));
     await client.search('red pill', undefined, true, []);
@@ -117,6 +128,7 @@ describe('search', () => {
     [429, { error: 'daily_cap' }, 'daily_cap'],
     [429, { error: 'rate_limited' }, 'rate_limited'],
     [503, { error: 'not_configured' }, 'not_configured'],
+    [503, { error: 'out_of_credit' }, 'out_of_credit'],
     [403, { error: 'cross_site' }, 'blocked'],
     [502, { error: 'provider_failed' }, 'failed'],
     [500, 'not json', 'failed'],

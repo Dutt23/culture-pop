@@ -12,7 +12,9 @@ let counter = 0;
 /** Every test gets its own IndexedDB database, so tests never share state. */
 export function createTestDatabase(): PopCultureDb {
   counter += 1;
-  return createDatabase(`test-db-${counter}-${Math.random().toString(36).slice(2)}`);
+  return createDatabase(`test-db-${counter}-${Math.random().toString(36).slice(2)}`, {
+    readyPack: false,
+  });
 }
 
 export function renderApp(

@@ -38,6 +38,14 @@ const GROUPS: readonly { label: string; sites: readonly [string, string][] }[] =
     ],
   },
   {
+    label: 'Music and videos',
+    sites: [
+      // sp=EgIQAQ%3D%3D is YouTube's own "Type: Video" filter: no channels or playlists.
+      ['YouTube', 'https://www.youtube.com/results?sp=EgIQAQ%3D%3D&search_query='],
+      ['Spotify', 'https://open.spotify.com/search/'],
+    ],
+  },
+  {
     label: 'Anything else',
     sites: [['DuckDuckGo', 'https://duckduckgo.com/?q=']],
   },

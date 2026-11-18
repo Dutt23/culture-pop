@@ -1,0 +1,76 @@
+.loader {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-6);
+}
+
+/* The cards fill the page's width, like the results they stand in for. */
+.loader > ul {
+  justify-self: stretch;
+}
+
+.mascot {
+  inline-size: 7.5rem;
+  block-size: auto;
+}
+
+.text {
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--color-text-muted);
+}
+
+.kernel {
+  fill: #fff4d6;
+  /* Paused with reduced motion, through the shared ambient switch. */
+  animation: 0.9s ease-in-out infinite alternate;
+  animation-play-state: var(--motion-ambient-state);
+}
+
+.toasted {
+  fill: #ffb27a;
+}
+
+.across {
+  animation-name: across;
+}
+
+.back {
+  animation-name: back;
+}
+
+.hop {
+  animation: hop 0.45s ease-in-out infinite alternate;
+  animation-play-state: var(--motion-ambient-state);
+}
+
+@keyframes across {
+  from {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(20px, -46px);
+  }
+  to {
+    transform: translate(40px, 0);
+  }
+}
+
+@keyframes back {
+  from {
+    transform: translate(40px, 0);
+  }
+  50% {
+    transform: translate(20px, -46px);
+  }
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes hop {
+  to {
+    transform: translateY(-6px);
+  }
+}
