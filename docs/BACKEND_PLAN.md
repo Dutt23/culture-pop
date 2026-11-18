@@ -580,7 +580,7 @@ secure" flag, is **not verified** (no source confirms it). So use the local-only
 
 Spec: `docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md`; decision D63. Status: **built, not run against real providers.**
 
-**What it does.** Takes the search, up to 6 picked sources (at most 3 web links) and up to 2 tone cards. Parallel Extract reads the picked web pages, then a model writes one card from them. The model curates only; the prompt (`card-draft-v7`) says to invent no facts. The AI never sees a URL. Same access-code cookie as `/api/web-search`.
+**What it does.** Takes the search, up to 6 picked sources (at most 3 web links) and up to 2 tone cards. Parallel Extract reads the picked web pages, then a model writes one card from them. The model curates only; the prompt (`card-draft-v8`) says to invent no facts. The AI never sees a URL. Same access-code cookie as `/api/web-search`.
 
 **Environment** (Vercel project settings; never in the repo):
 

@@ -34,6 +34,29 @@ describe('extractPages', () => {
     expect(out.get(A)).toBe('Rizz is charm.');
   });
 
+  it('keeps only the sentences that name the search, so page menus drop out', async () => {
+    const fetchMock = vi.fn(() =>
+      reply({
+        results: [
+          {
+            url: A,
+            excerpts: ['Popular right now. Rizz is charm.', 'Sign up today. People say rizz about flirting.'],
+          },
+        ],
+      }),
+    );
+    const out = await run(fetchMock as unknown as typeof fetch, [A]);
+    expect(out.get(A)).toBe('Rizz is charm. People say rizz about flirting.');
+  });
+
+  it('keeps the whole page text when no sentence names the search', async () => {
+    const fetchMock = vi.fn(() =>
+      reply({ results: [{ url: A, excerpts: ['Charm is attractive.', 'Flirting skills.'] }] }),
+    );
+    const out = await run(fetchMock as unknown as typeof fetch, [A]);
+    expect(out.get(A)).toBe('Charm is attractive. Flirting skills.');
+  });
+
   it('matches a url Parallel returns in normalised form', async () => {
     const raw = 'https://c.example';
     const fetchMock = vi.fn(() =>

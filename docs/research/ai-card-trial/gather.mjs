@@ -16,6 +16,16 @@ const MAX_WEB_PAGES = 3;
 const EXTRACT_FOCUS = process.env.EXTRACT_FOCUS ?? 'facts';
 const EXTRA_USAGE_SEARCH = process.env.EXTRA_USAGE_SEARCH === '1';
 const EXTRA_PAGES = 2;
+// RICH=1: up to 2 of the 3 web links come from meaning sites (a second search limited to them), Extract
+// asks for creator, who says it to whom, attitude and every use, short excerpts are topped up from the
+// page's full text, and meaning-site items go before Wikipedia so the 6,000-character cap keeps them.
+// RICH=2 (after RICH=1 pulled page menus and off-topic meme pages): a meaning-site page only when its
+// title or snippet has the whole search, the usual Extract objective, item text = the excerpt and
+// full-text sentences that name the search (no menus), and the usual order (Wikipedia before web).
+const RICH = process.env.RICH === '1' || process.env.RICH === '2';
+const RICH2 = process.env.RICH === '2';
+const MEANING_DOMAINS = ['knowyourmeme.com', 'urbandictionary.com', 'merriam-webster.com', 'dictionary.com'];
+const isMeaningSite = (url) => MEANING_DOMAINS.some((d) => host(url) === d || host(url).endsWith(`.${d}`));
 const WIKIMEDIA = /(^|\.)(wikipedia|wiktionary|wikiquote|wikidata)\.org$/;
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,6 +97,23 @@ async function web(q) {
   });
   const isWeb = (r) => r.url && !WIKIMEDIA.test(new URL(r.url).hostname);
   const pages = (found.results ?? []).filter(isWeb).slice(0, MAX_WEB_PAGES);
+  if (RICH) {
+    const meaning = await parallel('search', {
+      objective,
+      search_queries: [q, `${q} meaning`],
+      mode: 'fast',
+      max_chars_total: 6000,
+      advanced_settings: { max_results: 10, source_policy: { include_domains: MEANING_DOMAINS } },
+    });
+    const picked = [];
+    const onTopic = (r) => !RICH2 || `${r.title} ${(r.excerpts ?? []).join(' ')}`.toLowerCase().includes(q.toLowerCase());
+    for (const r of (meaning.results ?? []).filter((r) => r.url && isMeaningSite(r.url) && onTopic(r))) {
+      if (picked.length < 2 && !picked.some((p) => host(p.url) === host(r.url))) picked.push(r);
+    }
+    const rest = (found.results ?? []).filter((r) => isWeb(r) && !picked.some((p) => p.url === r.url));
+    pages.splice(0, pages.length, ...[...picked, ...rest].slice(0, MAX_WEB_PAGES));
+  }
+  const richObjective = `Explain "${q}" for someone who just heard it: what it means, who created it or which show, film, book, game or meme it comes from, who says it to whom, the tone or attitude (smug, mocking, menacing, rude), and every way people use it in everyday conversation, with example sentences.`;
   const usageObjective = `What "${q}" means when someone says it in a chat or online, and how and when people use it in everyday conversation. Prefer real example sentences of people using it.`;
   if (EXTRA_USAGE_SEARCH) {
     const more = await parallel('search', {
@@ -101,13 +128,38 @@ async function web(q) {
   }
   const snippetChars = pages.map((p) => (p.excerpts ?? []).join(' ').length);
   if (pages.length === 0) return { items: [], note: 'no web pages' };
-  const extracted = await parallel('extract', { urls: pages.map((p) => p.url), objective: EXTRACT_FOCUS === 'usage' ? usageObjective : objective });
+  const extractObjective = RICH && !RICH2 ? richObjective : EXTRACT_FOCUS === 'usage' ? usageObjective : objective;
+  const extracted = await parallel('extract', { urls: pages.map((p) => p.url), objective: extractObjective, ...(RICH && { advanced_settings: { full_content: { max_chars_per_result: 20000 } } }) });
   const items = pages.map((page, i) => {
     const got = (extracted.results ?? []).find((r) => r.url === page.url);
-    const text = plain((got?.excerpts ?? page.excerpts ?? []).join(' '));
-    return { from: host(page.url), title: plain(page.title ?? got?.title ?? host(page.url)).slice(0, 120), text: clip(text, MAX_ITEM), url: page.url, searchChars: snippetChars[i] ?? 0, extractChars: text.length, extra: Boolean(page.extra) };
+    const excerpt = plain((got?.excerpts ?? page.excerpts ?? []).join(' '));
+    const full = plain(got?.full_content ?? '');
+    const text = RICH2 ? namingSentences(`${excerpt} ${full}`, q) : RICH ? topUp(excerpt, full, q) : excerpt;
+    return { meaningSite: isMeaningSite(page.url), from: host(page.url), title: plain(page.title ?? got?.title ?? host(page.url)).slice(0, 120), text: clip(text, MAX_ITEM), url: page.url, searchChars: snippetChars[i] ?? 0, extractChars: text.length, extra: Boolean(page.extra) };
   });
   return { items, note: `${pages.length} pages (${pages.filter((p) => p.extra).length} from the usage search); extract errors: ${(extracted.errors ?? []).length}` };
+}
+
+/** Excerpts first, then full-text sentences that name the search, until the item cap. */
+function topUp(excerpt, full, q) {
+  let text = excerpt;
+  for (const sentence of full.split(/(?<=[.!?])\s+/)) {
+    if (text.length + sentence.length + 1 > MAX_ITEM) break;
+    if (sentence.toLowerCase().includes(q.toLowerCase()) && !text.includes(sentence)) text = `${text} ${sentence}`.trim();
+  }
+  return text;
+}
+
+/** Sentences that name the search (or most of its words), in page order, without repeats or menu runs. */
+function namingSentences(text, q) {
+  const qWords = q.toLowerCase().split(' ').filter((w) => w.length > 2);
+  const names = (s) => s.toLowerCase().includes(q.toLowerCase()) || qWords.filter((w) => s.toLowerCase().includes(w)).length >= Math.max(1, qWords.length - 1);
+  const kept = [];
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    if (sentence.length > 400 || !names(sentence) || kept.includes(sentence)) continue;
+    kept.push(sentence);
+  }
+  return kept.join(' ');
 }
 
 const out = [];
@@ -117,7 +169,9 @@ for (const q of SEARCHES) {
     return [];
   });
   const webResult = await web(q).catch((error) => ({ items: [], note: error.message }));
-  const items = [...(await wiktionary(q)), ...wiki, ...webResult.items];
+  const items = RICH && !RICH2
+    ? [...(await wiktionary(q)), ...webResult.items.filter((i) => i.meaningSite), ...wiki, ...webResult.items.filter((i) => !i.meaningSite)]
+    : [...(await wiktionary(q)), ...wiki, ...webResult.items];
   const kept = [];
   let total = 0;
   for (const it of items) {

@@ -22,6 +22,31 @@ export interface ExtractDeps {
 const allNull = (urls: readonly string[]) =>
   new Map<string, string | null>(urls.map((url) => [url, null]));
 
+/** Longer "sentences" are page menus run together, not prose. */
+const MAX_SENTENCE_CHARS = 400;
+
+/**
+ * The sentences that name the search (the whole phrase, or all but one of its words), in page
+ * order. Drops menus and sidebars that would otherwise fill the 1,200-character item cut.
+ * Empty when none do; the caller then keeps the whole text.
+ */
+function namingSentences(text: string, search: string): string {
+  const phrase = search.toLowerCase();
+  const words = phrase.split(/\s+/).filter((w) => w.length > 2);
+  const names = (sentence: string) => {
+    const lower = sentence.toLowerCase();
+    const hits = words.filter((w) => lower.includes(w)).length;
+    return lower.includes(phrase) || hits >= Math.max(1, words.length - 1);
+  };
+  const kept: string[] = [];
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    if (sentence.length <= MAX_SENTENCE_CHARS && names(sentence) && !kept.includes(sentence)) {
+      kept.push(sentence);
+    }
+  }
+  return kept.join(' ');
+}
+
 const href = (value: string): string => {
   try {
     return new URL(value).href;
@@ -71,7 +96,7 @@ export async function extractPages(
       const input = out.has(url) ? url : byHref.get(href(url));
       if (input === undefined) continue;
       const text = plainText(excerpts.filter((e): e is string => typeof e === 'string').join(' '));
-      out.set(input, text || null);
+      out.set(input, namingSentences(text, search) || text || null);
     }
     return out;
   } catch {

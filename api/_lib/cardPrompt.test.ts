@@ -24,13 +24,23 @@ const evidence = [
 describe('PREFIX', () => {
   it('is identical on every call', () => {
     expect(again.PREFIX).toBe(PREFIX);
-    expect(PROMPT_VERSION).toBe('card-draft-v7');
+    expect(PROMPT_VERSION).toBe('card-draft-v8');
   });
 
   it('tells the model example cards steer tone, length and what to include, never facts', () => {
     expect(PREFIX).toContain(
       'Match their tone, length, and what kind of information they include and in what order: never their facts, words or phrases.',
     );
+  });
+
+  it('asks for creator, speaker, attitude and every use, but only when an item states them', () => {
+    expect(PREFIX).toContain('# What to include');
+    expect(PREFIX).toContain('Who says it, and to whom (for example younger people to older ones).');
+    expect(PREFIX).toContain(
+      'Only what an item states. If no item says it, leave it out, even if you know it: never guess a creator, an attitude or a use.',
+    );
+    // Context lines stay under cardCheck's 280-character cap.
+    expect(PREFIX).toContain('each under 250 characters');
   });
 
   it('is over the 1,024-token cache minimum', () => {

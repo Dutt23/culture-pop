@@ -82,7 +82,7 @@ Status: **draft v3**, 2026-11-18. Built on branch `feat/ai-card-drafts`. The tri
     the review screen hints "Add a web result to show how people use it."
   - **For the build:** the real check must not treat a capitalised first word or a non-English
     word in a reply ("Bas", "Just") as an unknown name; the trial check did.
-- **v7 (current, `card-draft-v7`)**, owner decision 2026-11-18: a reader's example cards (app
+- **v7 (`card-draft-v7`)**, owner decision 2026-11-18: a reader's example cards (app
   cards they picked, or their own kept and edited cards) now steer what the new card includes and
   in what order (origin first or use first, an example line or not, how much detail), as well as
   tone and length; never the example's facts, words or phrases. Only the `tone_examples` line and
@@ -91,6 +91,38 @@ Status: **draft v3**, 2026-11-18. Built on branch `feat/ai-card-drafts`. The tri
   five answer keys, all with a tone example, two runs, same judge): v7 overall 3.80 / 4.00, pooled
   **3.90** against v6 pooled 3.90; wrong points 1 in 10 cards against v6's 3 in 10. **PASS.**
   Llama not retested (Cloudflare free quota).
+- **v8 (current, `card-draft-v8`)**, owner decision 2026-11-18 ("Yes, tune and ship"): the card
+  now carries the whole picture when the evidence states it. A new `# What to include` section
+  (after `# Facts`) asks for who made it or where it's from (and what that was adapted from), who
+  says it to whom, the attitude (smug, menacing, mocking, ironic, can come across as rude), what an
+  image meme shows, and every distinct everyday use, then repeats the rule: only what an item
+  states, never a guessed creator, attitude or use. `means` adds "and with what attitude";
+  `summary` adds "naming the creator and the work when an item does"; `context` becomes "1 to 3
+  sentences (none when unclear), each under 250 characters … who says it to whom, the attitude,
+  and each distinct use the items show, one per sentence". The rest of the prefix is
+  byte-identical, `TONE_NOTE` included. `cardCheck.ts` caps are unchanged (2 summary lines, 3
+  context lines, 280 characters a line). Two extra voice lines ("no production credits"; "a reply a
+  friend would really say, never a line from another scene") were tried and **not shipped**: they
+  failed the gate.
+  - **Ship metric (from v8, 2026-11-18): the evidence-only score.** The judge also gets the evidence
+    the writer saw and scores only the answer-key points that evidence states, so the AI isn't
+    marked down for refusing to invent (smug grin, Gabbar's fury, tiny wins aren't in any fetched
+    page). Gate: evidence-only overall ≥ 4.20, wrong points ≤ 0.10 a card, voice ≥ 3.33.
+  - **Trial** (Luna, five answer keys with a tone example, the same evidence, combined judge
+    gpt-6.2-sol; one run of 5 moves about ±0.2; the old judge gave v7 3.90 where this one gives
+    3.70):
+
+    | Prompt | Cards | Overall | Evidence-only overall | Meaning (evidence-only) | Voice | Wrong a card | Gate |
+    |---|---|---|---|---|---|---|---|
+    | v7 | 10 | 3.70 | 4.20 | 3.70 (4.40) | 3.60 | 0.00 | — |
+    | v8 | 15 | 3.93 | 4.27 | 4.00 (4.73) | 3.33 | 0.07 | **PASS** |
+    | v8 + voice lines | 15 | 3.80 | 4.00 | 4.07 (4.60) | 3.40 | 0.13 | fail |
+
+    v8 misses fewer points the evidence does state (4 of 51 against v7's 9 of 35); voice dips
+    because cards carry more detail. 4.5 isn't reachable under the no-invention rule with these
+    sources: about a third of the answer-key points aren't in any fetched page. Sol as the writer
+    scored 4.40 evidence-only on 5 cards at about 23 times Luna's cost, and the grounding check
+    dropped 7 of its 18 paraphrased lines, so Luna stays.
 - **Only on a tap:** curation and aggregation of the reader's ticked results, never automatic.
 
 ### Trial results (5 searches + 2 tone-example runs per model, Parallel Extract page text)
@@ -236,6 +268,10 @@ The reader ticks up to **6 results** to combine, from any mix of:
 but it keeps only a 300-character snippet per result. For a draft, the server asks
 **Parallel Extract** for the ticked web links (at most 3), with the reader's search as the
 objective, so it returns the parts of each page about the reference rather than the whole page.
+Of that text the server keeps only the sentences that name the search (the whole phrase, or all
+but one of its words; a "sentence" over 400 characters is a run-together menu and is skipped), so
+page menus and sidebars don't fill the 1,200-character item. If no sentence names the search, the
+page text is kept as it came (2026-11-18, with v8).
 Parallel charges $0.001 per page, so at most $0.003 a card. The app stores nothing new: the page
 text lives only for this one request, which fits Parallel's terms (results kept only for the
 person who searched).
