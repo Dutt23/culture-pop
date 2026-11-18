@@ -45,11 +45,11 @@ export function request({ style, search, about, evidence }) {
   const tones = [style].flat().filter(Boolean);
   return encode({
     search,
-    ...(about?.length && { about }),
+    ...(about?.length ? { about } : {}),
     evidence: evidence.map(({ id, role, from, title, text }) => ({ id, role, from, title, text })),
-    ...(tones.length && {
-      tone_examples: tones.map((t) => ({ note: 'About something else. Tone and length only.', ...t })),
-    }),
+    ...(tones.length
+      ? { tone_examples: tones.map((t) => ({ note: 'About something else. Tone and length only.', ...t })) }
+      : {}),
   });
 }
 
@@ -78,9 +78,9 @@ const EXAMPLE_CASES = [
         { t: 'People mention it when an ex gets back in touch.', ids: ['E3'] },
       ],
       example: { t: 'Classic Closer situation, not falling for it.', ids: ['E3'] },
-      ignored: [],
       spoiler: 'none',
       unclear: false,
+      ignored: [],
     },
   },
   {
@@ -105,9 +105,9 @@ const EXAMPLE_CASES = [
         { t: 'The film is known for a twist ending.', ids: ['E1'] },
       ],
       example: { t: 'my roommate just whispered "I see dead people"', ids: ['E3'] },
-      ignored: [],
       spoiler: 'none',
       unclear: false,
+      ignored: [],
     },
   },
   {
@@ -129,9 +129,9 @@ const EXAMPLE_CASES = [
       summary: [{ t: 'This is fine is a meme from a 2013 webcomic by KC Green: a cartoon dog sits calmly in a room on fire.', ids: ['E2'] }],
       context: [{ t: 'People share it to joke about staying calm while everything goes wrong, at work or in the news.', ids: ['E1', 'E3'] }],
       example: { t: 'my manager says this is fine', ids: ['E3'] },
-      ignored: [],
       spoiler: 'none',
       unclear: false,
+      ignored: [],
     },
   },
   {
@@ -159,9 +159,9 @@ const EXAMPLE_CASES = [
       summary: [{ t: 'No cap is slang for no lie, or for real.', ids: ['E1', 'E2'] }],
       context: [{ t: 'People add it after a claim to stress that they are being honest.', ids: ['E1'] }],
       example: { t: "that was the best pizza I've ever had, no cap.", ids: ['E2'] },
-      ignored: [],
       spoiler: 'none',
       unclear: false,
+      ignored: [],
     },
   },
   {
@@ -183,9 +183,9 @@ const EXAMPLE_CASES = [
       summary: [{ t: 'Point Break is a 1991 action film by Kathryn Bigelow, starring Patrick Swayze and Keanu Reeves.', ids: ['E2'] }],
       context: [{ t: 'Reeves plays an FBI agent who goes undercover among surfers suspected of robbing banks.', ids: ['E3'] }],
       example: null,
-      ignored: [{ id: 'E1', why: 'the surfing term, not the film' }],
       spoiler: 'none',
       unclear: false,
+      ignored: [{ id: 'E1', why: 'the surfing term, not the film' }],
     },
   },
   {
@@ -205,9 +205,9 @@ const EXAMPLE_CASES = [
       summary: [{ t: "The results describe rare blue lobsters but don't explain the phrase.", ids: ['E1'] }],
       context: [],
       example: null,
-      ignored: [],
       spoiler: 'none',
       unclear: true,
+      ignored: [],
     },
   },
 ];
@@ -239,6 +239,8 @@ export const SCHEMA = {
     summary: { type: 'array', items: cited },
     context: { type: 'array', items: cited },
     example: { anyOf: [cited, { type: 'null' }] },
+    spoiler: { type: 'string', enum: ['none', 'major'] },
+    unclear: { type: 'boolean' },
     ignored: {
       type: 'array',
       items: {
@@ -248,8 +250,6 @@ export const SCHEMA = {
         required: ['id', 'why'],
       },
     },
-    spoiler: { type: 'string', enum: ['none', 'major'] },
-    unclear: { type: 'boolean' },
   },
-  required: ['main_use', 'label', 'gist', 'means', 'reply', 'summary', 'context', 'example', 'ignored', 'spoiler', 'unclear'],
+  required: ['main_use', 'label', 'gist', 'means', 'reply', 'summary', 'context', 'example', 'spoiler', 'unclear', 'ignored'],
 };

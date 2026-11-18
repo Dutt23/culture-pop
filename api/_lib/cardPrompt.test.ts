@@ -86,7 +86,8 @@ describe('ANSWER_SCHEMA', () => {
   it('lists every property as required and allows nothing extra', () => {
     expect(strictProblems(ANSWER_SCHEMA as Schema, 'root')).toEqual([]);
     const keys = Object.keys(ANSWER_SCHEMA.properties);
-    expect(keys.indexOf('ignored')).toBe(keys.indexOf('example') + 1);
+    expect(keys[keys.length - 1]).toBe('ignored');
+    expect(ANSWER_SCHEMA.required[ANSWER_SCHEMA.required.length - 1]).toBe('ignored');
     expect(ANSWER_SCHEMA.required).toContain('ignored');
   });
 });
