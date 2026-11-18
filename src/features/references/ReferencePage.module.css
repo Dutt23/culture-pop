@@ -39,6 +39,31 @@
   color: var(--color-text-muted);
 }
 
+/* "Find it on": three search links near the top, picked by the card's type. */
+.findItOn {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.findLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-muted);
+}
+
+/* The full search list, folded under the sources. */
+.morePlaces {
+  margin-block-start: var(--space-2);
+}
+
+.morePlaces > summary {
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+
 /* Stands in for the glance card when only a spoiler-free summary was written. */
 .safeSummary {
   font-family: var(--font-display);

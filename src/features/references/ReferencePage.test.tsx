@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OPEN_PACK_KEY } from '../../components/reference-card/openPack';
 import { createRepositories } from '../../data/repositories';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
@@ -61,6 +61,48 @@ describe('reference page: glance card', () => {
     renderApp(pageOf(matrix.id), await withCached(matrix));
     await screen.findByRole('heading', { name: 'Explained from sources' });
     expect(screen.queryByRole('region', { name: 'At a glance' })).not.toBeInTheDocument();
+  });
+});
+
+describe('reference page: "Find it on" links', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('opens Spotify first on a music card, searching the song and artist', async () => {
+    renderApp(pageOf('closer-chainsmokers'));
+    const row = await screen.findByRole('group', { name: 'Find it on' });
+    const links = within(row).getAllByRole('link');
+    expect(links.map((link) => link.textContent?.replace(' (opens a new tab)', ''))).toEqual([
+      'Open in Spotify',
+      'YouTube',
+      'Wikipedia',
+    ]);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      'https://open.spotify.com/search/Closer%20The%20Chainsmokers',
+    );
+    expect(links[0]).toHaveAttribute('target', '_blank');
+  });
+
+  it('keeps the full list folded under "More places to look"', async () => {
+    const { user } = renderApp(pageOf('closer-chainsmokers'));
+    const summary = await screen.findByText('More places to look');
+    const details = summary.closest('details') as HTMLDetailsElement;
+    expect(details).not.toHaveAttribute('open');
+    await user.click(summary);
+    expect(details).toHaveAttribute('open');
+    expect(within(details).getByRole('link', { name: /Search TVmaze/ })).toHaveAttribute(
+      'href',
+      'https://www.tvmaze.com/search?q=Closer%20The%20Chainsmokers',
+    );
+  });
+
+  it('offers no outside links offline', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    renderApp(pageOf('closer-chainsmokers'));
+    await screen.findByText('More places to look');
+    expect(screen.queryByRole('group', { name: 'Find it on' })).not.toBeInTheDocument();
   });
 });
 

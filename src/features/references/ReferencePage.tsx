@@ -14,6 +14,7 @@ import { ExternalLinks } from '../../components/ui/ExternalLinks';
 import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
+import { searchName } from '../../domain/externalSearch';
 import { CATEGORY_LABEL, ERA_LABEL, fromWorks } from '../../domain/labels';
 import { linesForCeiling } from '../../domain/packs';
 import { isFromOnline } from '../../domain/types';
@@ -24,6 +25,7 @@ import { PackSheet } from '../packs/PackSheet';
 import { usePacksOf } from '../packs/usePacks';
 import { useSettings } from '../settings/SettingsContext';
 import styles from './ReferencePage.module.css';
+import { FindItOn } from './FindItOn';
 import { SameWorldChips } from './SameWorldChips';
 import { useReference } from './useReference';
 
@@ -108,6 +110,13 @@ function ReferenceView({ id }: { id: string }) {
     ...storyLink,
     ...(reference.externalLinks ?? []).map((link) => ({ label: link.label, href: link.url })),
   ];
+  // The full list, folded: the "Find it on" row near the top covers the usual places.
+  const morePlaces = (
+    <details className={styles.morePlaces}>
+      <summary>More places to look</summary>
+      <ExternalSearchLinks query={searchName(reference.title)} isOnline={isOnline} />
+    </details>
+  );
 
   return (
     <Page
@@ -137,6 +146,7 @@ function ReferenceView({ id }: { id: string }) {
       {lines.nothingSafe && (
         <p className={styles.note}>No spoiler-free line filed for this card yet.</p>
       )}
+      <FindItOn reference={reference} isOnline={isOnline} />
       {/* The pack travels with every hop; each card applies its ceiling only if filed there. */}
       <SameWorldChips groups={groups} packId={openPackId ?? undefined} />
       <PackChips label="In your packs:" packs={inPacks ?? []} />
@@ -270,9 +280,7 @@ function ReferenceView({ id }: { id: string }) {
               <ExternalLinks links={otherSites} />
             </Section>
           )}
-          <Section title="Look further">
-            <ExternalSearchLinks query={reference.title} isOnline={isOnline} />
-          </Section>
+          <Section title="Look further">{morePlaces}</Section>
         </>
       ) : (
         <Section
@@ -284,7 +292,7 @@ function ReferenceView({ id }: { id: string }) {
           }
         >
           {sources.length > 0 && <SourceList sources={sources} />}
-          <ExternalSearchLinks query={reference.title} isOnline={isOnline} />
+          {morePlaces}
         </Section>
       )}
     </Page>

@@ -15,13 +15,14 @@ import {
   seededShuffle,
   surprisePool,
 } from './discovery';
-import { externalSearchLinks } from './externalSearch';
+import { cardSearchLinks, externalSearchLinks, searchName } from './externalSearch';
 import { CATEGORIES, emptyCategoryNote, matchReason, SEARCH_HINT, surpriseNote } from './labels';
 import { relatedReferences } from './related';
 import { DEFAULT_SETTINGS, parseSettings } from './settings';
 import { describeStorageError } from './storageErrors';
 import { summarizeByReference } from './summaries';
 import { listOf } from './text';
+import type { Reference } from './types';
 
 describe('summarizeByReference', () => {
   it('counts meanings and never uses a spoiler as the teaser', () => {
@@ -296,6 +297,89 @@ describe('externalSearchLinks', () => {
     expect(links.find((l) => l.site === 'YouTube')?.href).toBe(
       'https://www.youtube.com/results?sp=EgIQAQ%3D%3D&search_query=rock%20%26%20roll%3F',
     );
+  });
+});
+
+describe('searchName', () => {
+  it('keeps the artist or work in brackets and drops lower-case asides and quote marks', () => {
+    expect(searchName('Closer (The Chainsmokers)')).toBe('Closer The Chainsmokers');
+    expect(searchName('The Chainsmokers (who they are)')).toBe('The Chainsmokers');
+    expect(searchName('Inside Out (The Chainsmokers, a fan-favourite deep cut)')).toBe(
+      'Inside Out The Chainsmokers',
+    );
+    expect(searchName('“No capes!” (The Incredibles)')).toBe('No capes! The Incredibles');
+  });
+
+  it('drops encyclopedia asides that start with a capital or a year', () => {
+    expect(searchName('Friends (TV series)')).toBe('Friends');
+    expect(searchName('Closer (2016 song)')).toBe('Closer');
+  });
+
+  it('falls back to the title when nothing would be left', () => {
+    expect(searchName('(who they are)')).toBe('(who they are)');
+  });
+});
+
+describe('cardSearchLinks', () => {
+  const sitesFor = (overrides: Partial<Reference>) =>
+    cardSearchLinks(makeReference('r', 'Gundam', { kind: 'work', ...overrides })).map(
+      (link) => link.label,
+    );
+
+  it('puts Spotify first on a music card, searching the song and artist', () => {
+    const song = makeReference('closer', 'Closer (The Chainsmokers)', {
+      category: 'music',
+      kind: 'work',
+    });
+    expect(cardSearchLinks(song)).toEqual([
+      {
+        label: 'Open in Spotify',
+        href: 'https://open.spotify.com/search/Closer%20The%20Chainsmokers',
+      },
+      {
+        label: 'YouTube',
+        href: 'https://www.youtube.com/results?sp=EgIQAQ%3D%3D&search_query=Closer%20The%20Chainsmokers',
+      },
+      {
+        label: 'Wikipedia',
+        href: 'https://en.wikipedia.org/w/index.php?search=Closer%20The%20Chainsmokers',
+      },
+    ]);
+  });
+
+  it('picks the sites that fit each type of card', () => {
+    expect(sitesFor({ category: 'anime' })).toEqual(['MyAnimeList', 'Wikipedia', 'YouTube']);
+    expect(sitesFor({ category: 'cartoon' })).toEqual(['TVmaze', 'IMDb', 'Wikipedia']);
+    expect(sitesFor({ category: 'tv' })).toEqual(['TVmaze', 'IMDb', 'Wikipedia']);
+    expect(sitesFor({ category: 'film' })).toEqual(['IMDb', 'Wikipedia', 'YouTube']);
+    expect(sitesFor({ category: 'meme' })).toEqual([
+      'Know Your Meme',
+      'Urban Dictionary',
+      'Reddit',
+    ]);
+    expect(sitesFor({ category: 'saying' })).toEqual([
+      'Wikiquote',
+      'Wikipedia',
+      'Urban Dictionary',
+    ]);
+    expect(sitesFor({ category: 'other' })).toEqual(['Wikipedia', 'YouTube', 'DuckDuckGo']);
+  });
+
+  it('searches show and film sites for the work a quote comes from', () => {
+    const quote = makeReference('q', '“No capes!” (The Incredibles)', { category: 'film' });
+    const [imdb, wikipedia] = cardSearchLinks(quote);
+    expect(imdb.href).toBe('https://www.imdb.com/find/?q=The%20Incredibles');
+    expect(wikipedia.href).toBe(
+      'https://en.wikipedia.org/w/index.php?search=No%20capes!%20The%20Incredibles',
+    );
+  });
+
+  it('prefers the work Wikidata names over the brackets', () => {
+    const line = makeReference('l', 'How you doin?', {
+      category: 'tv',
+      presentIn: [{ qid: 'Q79784', label: 'Friends' }],
+    });
+    expect(cardSearchLinks(line)[0].href).toBe('https://www.tvmaze.com/search?q=Friends');
   });
 });
 
