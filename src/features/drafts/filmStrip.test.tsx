@@ -1,0 +1,143 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useRef, useState } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ToneCard } from '../../../api/_lib/cardTypes.js';
+import { MotionPreferenceProvider } from '../../motion/MotionPreferenceProvider';
+import { CurationTray } from './CurationTray';
+import { gradeOf, LIMIT_HINTS } from './curationLook';
+import { FilmStrip } from './FilmStrip';
+import type { Frame } from './frames';
+import { ToneFilters } from './ToneFilters';
+import { useCurationTray } from './useCurationTray';
+
+const frames: Frame[] = Array.from({ length: 7 }, (_, i) => ({
+  key: `app:${i}`,
+  kind: 'app',
+  from: 'app card',
+  title: `Frame ${i + 1}`,
+  line: `Line ${i + 1}`,
+}));
+
+const tone = (label: string): ToneCard => ({
+  label,
+  gist: 'g',
+  means: 'm',
+  reply: 'r',
+  summary: 's',
+});
+const cards = [tone('Stonks'), tone('Bazinga!'), tone('Closer')];
+
+// What Task 13's flow does: the hook's state, the three pieces, the grade on the root.
+function Flow() {
+  const tray = useCurationTray('ok boomer');
+  const reelRef = useRef<SVGSVGElement>(null);
+  const [shake, setShake] = useState({ key: 0, hint: '' });
+  const limit = <R extends string>(result: R) => {
+    if (result in LIMIT_HINTS) {
+      setShake((s) => ({ key: s.key + 1, hint: LIMIT_HINTS[result as keyof typeof LIMIT_HINTS] }));
+    }
+    return result;
+  };
+  return (
+    <div data-testid="root" style={gradeOf(tray.tones)}>
+      <FilmStrip
+        frames={frames}
+        pickedKeys={new Set(tray.picked.map((f) => f.key))}
+        onToggle={(f) => limit(tray.toggleFrame(f))}
+        reelRef={reelRef}
+      />
+      <ToneFilters
+        cards={cards}
+        picked={tray.tones}
+        onToggle={(c) => limit(tray.toggleTone(c))}
+        reelRef={reelRef}
+      />
+      <CurationTray
+        count={tray.picked.length}
+        tones={tray.tones}
+        onOpen={() => {}}
+        shakeKey={shake.key}
+        hint={shake.hint}
+        reelRef={reelRef}
+      />
+    </div>
+  );
+}
+
+const renderFlow = (preference: 'system' | 'reduce' = 'system') =>
+  render(
+    <MotionPreferenceProvider preference={preference}>
+      <Flow />
+    </MotionPreferenceProvider>,
+  );
+
+const frameButton = (n: number) => screen.getByRole('button', { name: new RegExp(`Frame ${n}`) });
+const liveCount = () => document.querySelector('[aria-live="polite"]');
+
+afterEach(() => {
+  delete (Element.prototype as Partial<Element>).animate;
+});
+
+describe('film strip, filters and reel', () => {
+  it('ticking a frame marks it pressed and updates the tray count', async () => {
+    renderFlow();
+    expect(liveCount()).toHaveTextContent('0 of 6 frames');
+
+    await userEvent.click(frameButton(1));
+
+    expect(frameButton(1)).toHaveAttribute('aria-pressed', 'true');
+    expect(frameButton(2)).toHaveAttribute('aria-pressed', 'false');
+    expect(liveCount()).toHaveTextContent('1 of 6 frames');
+    expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
+  });
+
+  it('a 7th frame keeps the count at 6 and shows the limit hint', async () => {
+    renderFlow();
+    for (let n = 1; n <= 7; n++) await userEvent.click(frameButton(n));
+
+    expect(frameButton(7)).toHaveAttribute('aria-pressed', 'false');
+    expect(liveCount()).toHaveTextContent('6 of 6 frames');
+    expect(screen.getByRole('status')).toHaveTextContent('A card takes up to 6 frames.');
+  });
+
+  it('a picked filter grades the reel', async () => {
+    renderFlow();
+    const root = screen.getByTestId('root');
+    expect(root.style.getPropertyValue('--grade-1')).toBe('#b6aed6');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Stonks' }));
+
+    expect(screen.getByRole('button', { name: 'Stonks' })).toHaveAttribute('aria-pressed', 'true');
+    const g1 = root.style.getPropertyValue('--grade-1');
+    expect(g1).not.toBe('#b6aed6');
+    expect(root.style.getPropertyValue('--grade-2')).toBe(g1);
+    expect(screen.getByText('Graded: Stonks')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Bazinga!' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Closer' }));
+    expect(screen.getByRole('button', { name: 'Closer' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('status')).toHaveTextContent('Up to 2 colour filters.');
+    expect(screen.getByText('Graded: Stonks + Bazinga!')).toBeInTheDocument();
+  });
+
+  it('renders without motion when reduced motion is on', async () => {
+    const animate = vi.fn(() => ({}) as Animation);
+    Element.prototype.animate = animate;
+
+    const full = renderFlow();
+    await userEvent.click(frameButton(1));
+    expect(animate).toHaveBeenCalled(); // the exposure flash and the fly
+    full.unmount();
+
+    animate.mockClear();
+    renderFlow('reduce');
+    await userEvent.click(frameButton(1));
+    await userEvent.click(screen.getByRole('button', { name: 'Stonks' }));
+
+    expect(animate).not.toHaveBeenCalled();
+    expect(frameButton(1)).toHaveAttribute('aria-pressed', 'true');
+    const tray = screen.getByRole('button', { name: 'Review 1 frame' });
+    expect(within(tray).getByText('Graded: Stonks')).toBeInTheDocument();
+  });
+});

@@ -1,0 +1,95 @@
+/* The reel tray pinned under the film, ported from the approved curation demo. */
+.dock {
+  --g1: var(--grade-1, #b6aed6);
+  --g2: var(--grade-2, var(--g1));
+  --tray: #221d4a;
+  position: sticky;
+  bottom: 10px;
+  z-index: 5;
+  color: var(--color-text);
+}
+
+.tray {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 62px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--g1) 28%, var(--tray)),
+    color-mix(in srgb, var(--g2) 28%, var(--tray))
+  );
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.6s;
+}
+
+.tray:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.reel {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.stop1 {
+  stop-color: var(--g1);
+}
+
+.stop2 {
+  stop-color: var(--g2);
+}
+
+.hole {
+  fill: var(--color-bg);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+}
+
+.count {
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+}
+
+.sub {
+  color: #d8d0f5;
+  font-size: 11px;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.hint {
+  position: absolute;
+  right: 2px;
+  bottom: calc(100% + 8px);
+  left: 2px;
+  margin: 0;
+  color: var(--color-warm);
+  font-size: 12px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+}

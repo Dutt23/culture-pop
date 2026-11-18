@@ -1,0 +1,188 @@
+<!doctype html>
+<!--
+  Approved design demo for AI card curation (owner, 2026-11-18). Reference only: not part of the app.
+  Open in a browser. Shows: film-strip frames with sprocket rails that run 1.6x the scroll and settle on
+  a 20 px hole; ticking a frame (exposure flash, "cut" tag, mini frame flying into the reel, reel spin);
+  colour filters (tone cards) that grade the reel, tray, cut frames, beam and card; limits with a tray
+  shake; the splice check with a flagged frame (Keep / Cut it out) gating "Make a card"; the drafting
+  projector; the ticket-style reveal with source chips and a "Not used" row; Keep / Drop.
+  Reduced motion: fades only, rails move 1:1 without settling.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Curation demo</title>
+<style>
+body{margin:0;background:#1b1830;font-family:system-ui,sans-serif}
+.wrap{display:flex;justify-content:center;padding:1rem 0}
+.ph{--t1:#b6aed6;--t2:#b6aed6;position:relative;width:340px;height:640px;background:#0d0b1f;border-radius:28px;overflow:hidden;color:#ece8ff;border:6px solid #221d4a}
+.scr{position:absolute;inset:0;padding:14px 12px 92px;overflow-y:auto;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+.q{font-size:12px;color:#b6aed6;margin:0}.h{font-family:Georgia,serif;font-size:19px;margin:0 0 8px}
+.sec{font-size:11px;color:#b6aed6;margin:10px 2px 6px;letter-spacing:.04em}
+.strip{position:relative;background:#16131f;border-radius:6px;padding:4px 24px}
+.rail{position:absolute;width:12px;z-index:2;pointer-events:none;background-image:repeating-linear-gradient(to bottom,transparent 0 6px,#e9e3ff40 6px 15px,transparent 15px 20px);border-radius:3px}
+.fr{position:relative;background:#241f45;border:1px solid #3a3470;border-radius:4px;margin:6px 0;padding:8px 10px;cursor:pointer;overflow:hidden;transition:background .5s,border-color .5s}
+.fr.on{background:linear-gradient(135deg,color-mix(in srgb,var(--t1) 22%,#241f45),color-mix(in srgb,var(--t2) 22%,#241f45));border-color:var(--t1)}
+.edge{font-size:11px;color:var(--t1);letter-spacing:.08em;font-family:ui-monospace,monospace;display:flex;justify-content:space-between;transition:color .5s}
+.tt{font-size:13px;margin:3px 0 1px}.ln{font-size:12px;color:#cfc6ff}
+.cut{position:absolute;right:8px;bottom:6px;font-size:11px;color:#0d0b1f;background:var(--t1);border-radius:5px;padding:0 5px;opacity:0;transition:opacity .2s,background .5s}
+.fr.on .cut{opacity:1}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.gels{display:flex;gap:10px;padding:0 2px}.gel{flex:1;text-align:center;font-size:11px;cursor:pointer}
+.lens{width:46px;height:46px;border-radius:50%;margin:0 auto 4px;border:2px solid #ece8ff55;transition:transform .25s,box-shadow .25s;opacity:.85}
+.gel.on .lens{transform:rotate(-12deg) scale(1.08);box-shadow:0 0 0 3px #ece8ff}
+.tray{position:absolute;left:10px;right:10px;bottom:10px;height:62px;border-radius:16px;display:flex;align-items:center;gap:10px;padding:0 12px;cursor:pointer;z-index:5;background:linear-gradient(90deg,color-mix(in srgb,var(--t1) 28%,#221d4a),color-mix(in srgb,var(--t2) 28%,#221d4a));transition:background .6s}
+.reel{width:44px;height:44px;flex:none}
+.cnt{font-size:13px;font-weight:500}.sub{font-size:11px;color:#d8d0f5}
+.gstk{display:flex;gap:3px;margin-left:auto;align-items:center}.gdot{width:14px;height:14px;border-radius:50%}
+.fly{position:absolute;z-index:9;pointer-events:none;border-radius:4px;background:#3a2f7a;border:1px solid var(--t1)}
+.hint{position:absolute;left:12px;right:12px;bottom:80px;text-align:center;font-size:12px;color:#ffb27a;opacity:0;transition:opacity .2s;z-index:6}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:580px;background:#18153a;border-radius:22px 22px 0 0;padding:16px 14px;transform:translateY(105%);z-index:7;box-sizing:border-box;overflow-y:auto}
+.sheet .strip::before,.sheet .strip::after{content:'';position:absolute;top:0;bottom:0;width:12px;background:repeating-linear-gradient(to bottom,transparent 0 6px,#e9e3ff33 6px 15px,transparent 15px 20px)}
+.sheet .strip::before{left:6px}.sheet .strip::after{right:6px}
+.fr.flag{border-color:#ff8a80;background:#241f45 repeating-linear-gradient(115deg,transparent 0 22px,#ff8a8022 22px 23px)}
+.warn{font-size:12px;color:#ff8a80;margin:4px 0}
+.btns{display:flex;gap:6px;margin-top:4px}.b{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #6f65a8;background:transparent;color:#ece8ff;cursor:pointer}
+.make{width:100%;margin-top:10px;padding:11px;border-radius:12px;border:none;font-size:14px;font-weight:500;background:#3a3470;color:#8d84bd;cursor:not-allowed;transition:background .3s,color .3s}
+.make.ready{background:var(--t1);color:#0d0b1f;cursor:pointer}
+.draft{display:grid;place-items:center;align-content:center;gap:12px;text-align:center}
+.dl{font-size:13px;color:#cfc6ff;min-height:18px;font-family:Georgia,serif}
+.beam{width:200px;height:90px;clip-path:polygon(0 0,100% 30%,100% 70%,0 100%);background:linear-gradient(90deg,color-mix(in srgb,var(--t1) 70%,transparent),color-mix(in srgb,var(--t2) 10%,transparent))}
+.card{background:#221d4a;border:2px solid var(--t1);border-radius:16px;padding:12px;position:relative;box-shadow:0 0 0 4px color-mix(in srgb,var(--t2) 25%,transparent)}
+.stamp{position:absolute;top:10px;right:10px;font-size:11px;color:var(--t1);border:1px solid var(--t1);border-radius:6px;padding:0 5px;transform:rotate(6deg)}
+.lab{font-family:Georgia,serif;font-size:17px;margin:0 0 6px}.f{font-size:12px;margin:6px 0}.f b{color:#b6aed6;font-weight:500}
+.chip{display:inline-block;font-size:11px;background:#2d2758;color:#cfc6ff;border-radius:6px;padding:0 5px;margin-left:4px;opacity:0}
+@keyframes pop{0%{opacity:0;transform:scale(.4)}70%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+.unused{font-size:11px;color:#b6aed6;margin-top:8px;opacity:0}
+.acts{display:flex;gap:8px;margin-top:12px}.acts .b{flex:1;padding:9px}.keep{background:var(--t1);color:#0d0b1f;border-color:var(--t1)}
+.toast{position:absolute;left:0;right:0;top:45%;text-align:center;font-family:Georgia,serif;font-size:16px;opacity:0;pointer-events:none}
+.hide{display:none}
+</style></head><body>
+<div class="wrap"><div class="ph" id="ph">
+ <div class="scr" id="pick">
+  <p class="q">You searched</p><p class="h">“ok boomer”</p>
+  <div class="sec">THE FILM · scroll to run it · tap frames to cut · up to 6 (3 web)</div>
+  <div class="strip" id="list"></div>
+  <div class="sec">COLOUR FILTERS · the tone · up to 2</div>
+  <div class="gels" id="gels"></div>
+ </div>
+ <div class="rail" id="railL"></div><div class="rail" id="railR"></div>
+ <div class="hint" id="hint"></div>
+ <div class="tray" id="tray">
+  <svg class="reel" id="reel" viewBox="0 0 44 44" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.5" style="stop-color:var(--t1)"/><stop offset="0.5" style="stop-color:var(--t2)"/></linearGradient></defs><circle cx="22" cy="22" r="20" fill="url(#rg)" opacity=".35"/><circle cx="22" cy="22" r="20" fill="none" stroke="url(#rg)" stroke-width="3"/><circle cx="22" cy="22" r="4" fill="url(#rg)"/><circle cx="22" cy="10" r="5" fill="#0d0b1f"/><circle cx="32.4" cy="28" r="5" fill="#0d0b1f"/><circle cx="11.6" cy="28" r="5" fill="#0d0b1f"/></svg>
+  <div><div class="cnt" id="cnt">0 of 6 frames</div><div class="sub" id="sub">No filter yet</div></div>
+  <div class="gstk" id="gstk"></div><span>↑</span>
+ </div>
+ <div class="sheet" id="sheet">
+  <p class="h" style="margin-bottom:2px">Splice check</p>
+  <p class="q" style="margin:0 0 10px">Nothing is sent until you tap Make a card.</p>
+  <div class="strip" id="rev"></div>
+  <button class="make" id="make">Make a card</button>
+  <button class="b" id="back" style="display:block;margin:10px auto 0">Back to the film</button>
+ </div>
+ <div class="scr draft hide" id="draft">
+  <div style="display:flex;align-items:center">
+   <svg width="70" height="70" viewBox="-10 -14 140 134" aria-hidden="true"><path d="M50 30 L40 14 M70 30 L82 12" stroke="#f3efff" stroke-width="5" stroke-linecap="round"/><circle cx="40" cy="14" r="4.5" fill="#ffb27a"/><circle cx="82" cy="12" r="4.5" fill="#ffb27a"/><rect x="16" y="30" width="88" height="72" rx="20" fill="#6a3df0"/><rect x="24" y="38" width="72" height="56" rx="14" fill="#b29bff"/><circle cx="46" cy="58" r="11" fill="#f3efff"/><circle cx="74" cy="58" r="11" fill="#f3efff"/><circle cx="52" cy="60" r="5" fill="#0d0b1f"/><circle cx="80" cy="60" r="5" fill="#0d0b1f"/><path d="M44 80 q16 10 32 0" stroke="#0d0b1f" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+   <svg width="62" height="62" viewBox="0 0 44 44" id="preel" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="url(#rg)" opacity=".35"/><circle cx="22" cy="22" r="20" fill="none" stroke="url(#rg)" stroke-width="3"/><circle cx="22" cy="22" r="4" fill="url(#rg)"/><circle cx="22" cy="10" r="5" fill="#0d0b1f"/><circle cx="32.4" cy="28" r="5" fill="#0d0b1f"/><circle cx="11.6" cy="28" r="5" fill="#0d0b1f"/></svg>
+   <div class="beam" id="beam"></div>
+  </div>
+  <div class="dl" id="dl">Threading your frames…</div>
+ </div>
+ <div class="scr hide" id="out">
+  <div class="card" id="card">
+   <span class="stamp">AI draft</span>
+   <p class="lab">A dismissive comeback</p>
+   <p class="f"><b>Gist</b><br>That opinion sounds out of touch, and I’m not arguing.<span class="chip">wiktionary</span></p>
+   <p class="f"><b>What they mean</b><br>They’re brushing off your view as old-fashioned, sometimes rudely.<span class="chip">bbc.co.uk</span></p>
+   <p class="f"><b>You could say</b><br>“Okay, Zoomer.”</p>
+   <p class="f"><b>Summary</b><br>A catchphrase young people use to dismiss attitudes seen as out of touch; it took off in 2019.<span class="chip">wikipedia</span><span class="chip">wiktionary</span></p>
+   <p class="f"><b>How it’s used</b><br>Often fired back in family chats when an older relative lectures.<span class="chip">reddit.com</span></p>
+   <p class="unused" id="unused"></p>
+  </div>
+  <div class="acts"><button class="b" id="drop">Drop</button><button class="b" id="edit">Edit</button><button class="b keep" id="keep">Keep</button></div>
+ </div>
+ <div class="toast" id="toast"></div>
+</div></div>
+<script>
+(function(){
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const R=[
+ {id:'w1',site:'WIKTIONARY',title:'OK boomer',line:'Used to dismiss an older person as out of touch.',web:false},
+ {id:'w2',site:'WIKIPEDIA',title:'OK boomer',line:'A catchphrase and meme that drew attention in 2019.',web:false},
+ {id:'b1',site:'BBC.CO.UK',title:'What does “OK boomer” mean?',line:'A two-word comeback to older people who seem out of touch.',web:true},
+ {id:'r1',site:'REDDIT.COM',title:'ok boomer in the family chat',line:'Uncle said phones ruin kids. Cousin: ok boomer.',web:true},
+ {id:'m1',site:'MERRIAM-WEBSTER.COM',title:'Stonks: meaning and origin',line:'Humorous slang for stocks, from a 2017 meme.',web:true,flag:'Doesn’t seem to be about “ok boomer”'},
+ {id:'c1',site:'THECONVERSATION.COM',title:'Why the phrase stings',line:'Some call it ageist; others say it is just a joke.',web:true},
+ {id:'d1',site:'DICTIONARY.COM',title:'OK boomer meaning',line:'A retort to older people seen as dismissive of the young.',web:true},
+ {id:'u1',site:'URBANDICTIONARY.COM',title:'ok boomer',line:'What you say when a boomer starts a rant.',web:true},
+ {id:'a1',site:'YOUR SAVED CARD',title:'Boomer jokes',line:'Teasing older relatives about their tech habits.',web:false},
+];
+const G=[{id:'g1',title:'Stonks',color:'#ffb27a'},{id:'g2',title:'Bazinga!',color:'#7fd6c2'},{id:'g3',title:'Closer',color:'#f48fb1'}];
+const DEFAULT='#b6aed6',PITCH=20,SPEED=RM?1:1.6;
+const $=id=>document.getElementById(id);
+const ph=$('ph'),pickScr=$('pick'),list=$('list'),gels=$('gels'),tray=$('tray'),cnt=$('cnt'),sub=$('sub'),gstk=$('gstk'),hint=$('hint'),reel=$('reel'),railL=$('railL'),railR=$('railR');
+let picked=new Set(),gelsOn=[],answered={};
+const anim=(el,k,o)=>RM?el.animate([{opacity:.4},{opacity:1}],{duration:150}):el.animate(k,o);
+const rel=el=>{const a=el.getBoundingClientRect(),b=ph.getBoundingClientRect();return{x:a.left-b.left,y:a.top-b.top,w:a.width,h:a.height};};
+/* Projector gate: rails beside the visible strip; holes run 1.6x the scroll, then settle on a hole. */
+let offset=0,lastTop=0,settle;
+function placeRails(){const s=rel(list),v=rel(pickScr);const top=Math.max(s.y,v.y+4),bottom=Math.min(s.y+s.h,v.y+v.h-84);const show=bottom-top>8&&!pickScr.classList.contains('hide');
+ [railL,railR].forEach((r,i)=>{r.style.display=show?'block':'none';r.style.top=top+'px';r.style.height=Math.max(0,bottom-top)+'px';r.style.left=(i?s.x+s.w-18:s.x+6)+'px';r.style.backgroundPositionY=offset+'px';});}
+pickScr.addEventListener('scroll',()=>{const d=pickScr.scrollTop-lastTop;lastTop=pickScr.scrollTop;offset-=d*SPEED;placeRails();
+ clearTimeout(settle);settle=setTimeout(()=>{if(RM)return;const from=offset,to=Math.round(offset/PITCH)*PITCH;const t0=performance.now();
+  (function step(t){const p=Math.min(1,(t-t0)/160),e=1-Math.pow(1-p,3);offset=from+(to-from)*e;placeRails();if(p<1)requestAnimationFrame(step);})(t0);},90);},{passive:true});
+function say(t){hint.textContent=t;hint.style.opacity=1;clearTimeout(say.t);say.t=setTimeout(()=>hint.style.opacity=0,1600);}
+function shake(){anim(tray,[{transform:'translateX(0)'},{transform:'translateX(-7px)'},{transform:'translateX(7px)'},{transform:'translateX(-4px)'},{transform:'translateX(0)'}],{duration:320});}
+function spin(n=240){anim(reel,[{transform:'rotate(0)'},{transform:`rotate(${n}deg)`}],{duration:700,easing:'cubic-bezier(.2,.8,.3,1)'});}
+function fly(from,round,color,after){if(RM){after&&after();return;}const s=rel(from),t=rel(reel);const d=document.createElement('div');d.className='fly';d.style.cssText=`left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;${round?`border-radius:50%;background:${color};border:none`:''}`;ph.appendChild(d);
+ d.animate([{transform:'translate(0,0) scale(1) rotate(0)',opacity:.95},{transform:`translate(${t.x+t.w/2-s.x-s.w/2}px,${t.y+t.h/2-s.y-s.h/2}px) scale(.1) rotate(${round?0:-25}deg)`,opacity:.4}],{duration:560,easing:'cubic-bezier(.3,.7,.3,1)'}).onfinish=()=>{d.remove();spin(round?360:240);after&&after();};}
+function grade(){const c=gelsOn.map(g=>G.find(x=>x.id===g).color);const t1=c[0]??DEFAULT,t2=c[1]??t1;ph.style.setProperty('--t1',t1);ph.style.setProperty('--t2',t2);sub.textContent=c.length?`Graded: ${gelsOn.map(g=>G.find(x=>x.id===g).title).join(' + ')}`:'No filter yet';}
+function draw(){cnt.textContent=`${picked.size} of 6 frames`;gstk.innerHTML=gelsOn.map(g=>`<span class="gdot" style="background:${G.find(x=>x.id===g).color}"></span>`).join('');anim(cnt,[{transform:'scale(1)'},{transform:'scale(1.2)'},{transform:'scale(1)'}],{duration:260});}
+function frame(r,i){const el=document.createElement('div');el.className='fr';el.innerHTML=`<div class="edge"><span>${r.site}</span><span>${String(i+1).padStart(2,'0')}A</span></div><div class="tt">${r.title}</div><div class="ln">${r.line}</div><span class="cut">✂ cut</span><span class="flash"></span>`;return el;}
+R.forEach((r,i)=>{const el=frame(r,i);
+ el.onclick=()=>{ if(picked.has(r.id)){picked.delete(r.id);el.classList.remove('on');draw();return;}
+  if(picked.size>=6){shake();say('A card takes up to 6 frames.');return;}
+  if(r.web&&[...picked].filter(x=>R.find(y=>y.id===x).web).length>=3){shake();say('Up to 3 web frames per card.');return;}
+  picked.add(r.id);el.classList.add('on');if(!RM)el.querySelector('.flash').animate([{opacity:.7},{opacity:0}],{duration:280});fly(el,false);draw();};
+ list.appendChild(el);});
+G.forEach(g=>{const el=document.createElement('div');el.className='gel';el.innerHTML=`<div class="lens" style="background:${g.color}"></div>${g.title}`;
+ el.onclick=()=>{const at=gelsOn.indexOf(g.id);if(at>=0){gelsOn.splice(at,1);el.classList.remove('on');grade();spin(-180);draw();return;}
+  if(gelsOn.length>=2){shake();say('Up to 2 colour filters.');return;}
+  gelsOn.push(g.id);el.classList.add('on');fly(el.querySelector('.lens'),true,g.color,grade);draw();};
+ gels.appendChild(el);});
+const sheet=$('sheet'),rev=$('rev'),make=$('make');
+function ready(){const waiting=[...picked].some(i=>R.find(x=>x.id===i).flag&&!answered[i]);const ok=picked.size>0&&!waiting;make.classList.toggle('ready',ok);return ok;}
+function openReview(){
+ if(!picked.size){shake();say('Cut a frame first.');return;}
+ rev.innerHTML='';answered={};
+ [...picked].forEach((id,i)=>{const r=R.find(x=>x.id===id);const c=frame(r,R.indexOf(r));c.classList.add(r.flag?'flag':'on');c.style.cursor='default';
+  if(r.flag)c.insertAdjacentHTML('beforeend',`<div class="warn">⚠ ${r.flag}</div><div class="btns"><button class="b" data-a="keep">Keep</button><button class="b" data-a="rm">Cut it out</button></div>`);
+  rev.appendChild(c);anim(c,[{transform:'translateX(-40px)',opacity:0},{transform:'translateX(0)',opacity:1}],{duration:320,delay:i*70,fill:'backwards'});
+  if(r.flag){setTimeout(()=>anim(c,[{transform:'rotate(0)'},{transform:'rotate(-1.5deg)'},{transform:'rotate(1.5deg)'},{transform:'rotate(0)'}],{duration:360}),600);
+   c.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation(); if(b.dataset.a==='rm'){picked.delete(id);list.children[R.indexOf(r)].classList.remove('on');
+      anim(c,[{transform:'translateX(0)',opacity:1},{transform:'translateX(130%) rotate(8deg)',opacity:0}],{duration:320}).onfinish=()=>c.remove();draw();}
+     else{answered[id]=1;c.querySelector('.btns').remove();c.querySelector('.warn').textContent='⚠ Kept by you: the AI may leave it out';}
+     ready();});}});
+ ready();sheet.style.transform='translateY(0)';anim(sheet,[{transform:'translateY(105%)'},{transform:'translateY(-2%)'},{transform:'translateY(0)'}],{duration:480,easing:'cubic-bezier(.2,.9,.3,1)'});
+}
+tray.onclick=openReview;$('back').onclick=()=>{sheet.style.transform='translateY(105%)';};
+const draft=$('draft'),out=$('out'),dl=$('dl');
+make.onclick=()=>{ if(!ready())return;
+ sheet.style.transform='translateY(105%)';pickScr.classList.add('hide');tray.classList.add('hide');placeRails();draft.classList.remove('hide');
+ const sp=RM?null:$('preel').animate([{transform:'rotate(0)'},{transform:'rotate(360deg)'}],{duration:900,iterations:Infinity});
+ const fl=RM?null:$('beam').animate([{opacity:.5},{opacity:1},{opacity:.6},{opacity:.95}],{duration:400,iterations:Infinity});
+ const lines=['Threading your frames…','Checking every fact…','Grading it with your filters…','Cutting it into one card…'];let k=0;dl.textContent=lines[0];
+ const iv=setInterval(()=>{k=(k+1)%lines.length;dl.textContent=lines[k];anim(dl,[{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:260});},850);
+ setTimeout(()=>{clearInterval(iv);sp&&sp.cancel();fl&&fl.cancel();draft.classList.add('hide');reveal();},3400);};
+function reveal(){out.classList.remove('hide');const card=$('card');
+ anim(card,[{transform:'perspective(700px) rotateY(90deg) scale(.9)',opacity:0},{transform:'perspective(700px) rotateY(-8deg) scale(1.02)',opacity:1},{transform:'perspective(700px) rotateY(0) scale(1)',opacity:1}],{duration:650,easing:'cubic-bezier(.2,.9,.3,1)'});
+ card.querySelectorAll('.chip').forEach((c,i)=>{c.style.animation=RM?'none':`pop .35s ${0.7+i*0.15}s both`;if(RM)c.style.opacity=1;});
+ const un=$('unused');const kept=[...picked].some(i=>R.find(x=>x.id===i).flag);un.textContent=kept?'Not used: merriam-webster.com (about stonks, not “ok boomer”)':'';un.style.opacity=0;
+ if(kept)un.animate([{opacity:0,transform:'translateY(-8px)'},{opacity:1,transform:'translateY(0)'}],{duration:400,delay:1600,fill:'forwards'});}
+const toast=$('toast');
+function done(msg,k){anim($('card'),k,{duration:520,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});toast.textContent=msg;toast.animate([{opacity:0},{opacity:1},{opacity:1},{opacity:0}],{duration:1500,delay:300});setTimeout(reset,1900);}
+$('keep').onclick=()=>done('Saved to your library',[{transform:'translateY(0) scale(1)',opacity:1},{transform:'translateY(-340px) scale(.2)',opacity:0}]);
+$('drop').onclick=()=>done('Dropped',[{transform:'scaleY(1)',opacity:1},{transform:'scaleY(.05) translateY(400px)',opacity:0}]);
+$('edit').onclick=()=>say('Edit opens the fields in place.');
+function reset(){out.classList.add('hide');pickScr.classList.remove('hide');tray.classList.remove('hide');picked.clear();gelsOn=[];[...list.children].forEach(c=>c.classList.remove('on'));[...gels.children].forEach(c=>c.classList.remove('on'));$('card').getAnimations().forEach(a=>a.cancel());grade();draw();requestAnimationFrame(placeRails);}
+grade();draw();requestAnimationFrame(placeRails);addEventListener('resize',placeRails);
+})();
+</script></body></html>
