@@ -127,7 +127,12 @@ describe('Your cards', () => {
           search="ok boomer"
           candidates={[]}
           webResults={[
-            { url: 'https://www.bbc.co.uk/x', title: 'BBC page', snippet: 'A snippet.', storage: 'none' },
+            {
+              url: 'https://www.bbc.co.uk/x',
+              title: 'BBC page',
+              snippet: 'A snippet.',
+              storage: 'none',
+            },
           ]}
           onClose={vi.fn()}
         />

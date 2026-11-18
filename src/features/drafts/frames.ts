@@ -49,13 +49,29 @@ export function framesFrom(input: {
     const from = s && wikiFrom(s.publisher, s.url);
     if (!s || !from) continue; // the server accepts only the four wikis
     const line = s.excerpt || c.title;
-    all.push({ key: `wiki:${c.id}`, kind: 'wiki', from, title: c.title, line, text: line, url: s.url });
+    all.push({
+      key: `wiki:${c.id}`,
+      kind: 'wiki',
+      from,
+      title: c.title,
+      line,
+      text: line,
+      url: s.url,
+    });
   }
   for (const w of input.webResults) {
     const href = httpsHref(w.url);
     if (!href) continue;
     const from = new URL(href).hostname.replace(/^www\./, '');
-    all.push({ key: href, kind: 'web', from, title: w.title, line: w.snippet, text: w.snippet, url: href });
+    all.push({
+      key: href,
+      kind: 'web',
+      from,
+      title: w.title,
+      line: w.snippet,
+      text: w.snippet,
+      url: href,
+    });
   }
   for (const { reference, interpretation: i, own } of input.appCards) {
     all.push({

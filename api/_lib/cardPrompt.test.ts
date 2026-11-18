@@ -35,7 +35,9 @@ describe('PREFIX', () => {
 
   it('asks for creator, speaker, attitude and every use, but only when an item states them', () => {
     expect(PREFIX).toContain('# What to include');
-    expect(PREFIX).toContain('Who says it, and to whom (for example younger people to older ones).');
+    expect(PREFIX).toContain(
+      'Who says it, and to whom (for example younger people to older ones).',
+    );
     expect(PREFIX).toContain(
       'Only what an item states. If no item says it, leave it out, even if you know it: never guess a creator, an attitude or a use.',
     );

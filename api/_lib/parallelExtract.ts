@@ -30,7 +30,10 @@ const SENTENCE_END = /(?<=[.!?।॥])\s+/u;
 
 /** Lowercase words of any script (letters with their marks, numbers), space-padded so ` word ` matches whole words. */
 const padded = (text: string) =>
-  ` ${text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ').trim()} `;
+  ` ${text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
+    .trim()} `;
 
 /**
  * The sentences that name the search (the whole phrase, or all but one of its words of 3+
@@ -39,7 +42,10 @@ const padded = (text: string) =>
  */
 function namingSentences(text: string, search: string): string {
   const phrase = padded(search);
-  const words = phrase.trim().split(' ').filter((w) => w.length > 2);
+  const words = phrase
+    .trim()
+    .split(' ')
+    .filter((w) => w.length > 2);
   const names = (sentence: string) => {
     const plain = padded(sentence);
     if (phrase.trim() && plain.includes(phrase)) return true;

@@ -69,6 +69,7 @@ function setup(options: DraftHandlerOptions = {}, answer?: unknown) {
 }
 
 async function read(response: Response) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tests walk nested JSON fields
   return { status: response.status, body: (await response.json()) as Record<string, any> };
 }
 

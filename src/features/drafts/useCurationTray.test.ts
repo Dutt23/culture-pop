@@ -180,7 +180,9 @@ describe('requests the server accepts', () => {
         ...candidate(i, 'Wikipedia', `doctor doom ${long}`),
         title: `Doctor Doom ${long}`,
       })) as RetrievedCandidate[],
-      webResults: [1, 2, 3].map((n) => ({ ...web(n), snippet: `doctor doom ${long}` }) as WebResult),
+      webResults: [1, 2, 3].map(
+        (n) => ({ ...web(n), snippet: `doctor doom ${long}` }) as WebResult,
+      ),
     }).forEach((f) => act(() => void hook.result.current.toggleFrame(f)));
     const longTone = Object.fromEntries(
       ['label', 'gist', 'means', 'reply', 'summary'].map((k) => [k, '𝒜'.repeat(500)]),

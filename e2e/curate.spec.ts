@@ -52,11 +52,13 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
   await page.goto('/search');
   await page.getByRole('searchbox', { name: 'Search references' }).fill('hakuna matata');
   await page.getByRole('link', { name: /Hakuna matata \(Swahili phrase\)/ }).click();
-  await page.getByRole('button', { name: 'Favourite' }).click();
-  await expect(page.getByRole('button', { name: 'Favourite' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // Wait for the card page: the search list behind it has titled hearts of its own.
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Hakuna matata (Swahili phrase)' }),
+  ).toBeVisible();
+  const favourite = page.getByRole('button', { name: 'Favourite', exact: true });
+  await favourite.click();
+  await expect(favourite).toHaveAttribute('aria-pressed', 'true');
 
   await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
   await page.getByRole('button', { name: 'Search the wider web' }).click();

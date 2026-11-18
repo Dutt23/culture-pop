@@ -25,7 +25,12 @@ import { useSavedLinks } from './useSavedLinks';
 
 /** A kept card's sources were saved without their kind: links keep their link. */
 const framesOf = (sources: { from: string; title: string; url?: string }[]) =>
-  sources.map((s) => ({ ...s, kind: s.url ? 'web' : 'app', key: s.from, line: s.title })) as Frame[];
+  sources.map((s) => ({
+    ...s,
+    kind: s.url ? 'web' : 'app',
+    key: s.from,
+    line: s.title,
+  })) as Frame[];
 
 export function FavouritesPage() {
   const { drafts } = useRepositories();

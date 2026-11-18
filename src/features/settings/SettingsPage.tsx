@@ -223,9 +223,9 @@ export function SettingsPage() {
           topic="resetting"
           lead="Reset everything removes what you saved here; your library cards stay."
         >
-          It removes favourites, packs, saved web links, search history, settings, online results and
-          the cards you kept, all saved on this device. Clear history does not delete kept cards. It
-          asks first, and can't be undone.
+          It removes favourites, packs, saved web links, search history, settings, online results
+          and the cards you kept, all saved on this device. Clear history does not delete kept
+          cards. It asks first, and can't be undone.
         </Note>
         <button type="button" className={styles.reset} onClick={reset}>
           Reset everything

@@ -40,7 +40,10 @@ describe('extractPages', () => {
         results: [
           {
             url: A,
-            excerpts: ['Popular right now. Rizz is charm.', 'Sign up today. People say rizz about flirting.'],
+            excerpts: [
+              'Popular right now. Rizz is charm.',
+              'Sign up today. People say rizz about flirting.',
+            ],
           },
         ],
       }),
@@ -61,14 +64,17 @@ describe('extractPages', () => {
     /** The text kept for one page whose excerpts are `excerpts`, for `search`. */
     const keptFor = async (search: string, excerpts: string[]) => {
       const fetchMock = vi.fn(() => reply({ results: [{ url: A, excerpts }] }));
-      const out = await extractPages([A], search, { fetch: fetchMock as unknown as typeof fetch, apiKey: 'k' });
+      const out = await extractPages([A], search, {
+        fetch: fetchMock as unknown as typeof fetch,
+        apiKey: 'k',
+      });
       return out.get(A);
     };
 
     it('ignores punctuation in the search and the page', async () => {
-      expect(await keptFor('ok boomer?', ['Popular now. People said OK, boomer and left. Sign up.'])).toBe(
-        'People said OK, boomer and left.',
-      );
+      expect(
+        await keptFor('ok boomer?', ['Popular now. People said OK, boomer and left. Sign up.']),
+      ).toBe('People said OK, boomer and left.');
     });
 
     it('splits Hindi text on the danda and matches Devanagari words', async () => {
@@ -78,7 +84,9 @@ describe('extractPages', () => {
     });
 
     it('matches a one-word search only as a whole word', async () => {
-      expect(await keptFor('ok', ['I read a book. She said ok and left.'])).toBe('She said ok and left.');
+      expect(await keptFor('ok', ['I read a book. She said ok and left.'])).toBe(
+        'She said ok and left.',
+      );
     });
 
     it('is case-insensitive', async () => {
@@ -91,7 +99,9 @@ describe('extractPages', () => {
     });
 
     it('keeps the page text as it came when nothing names the search', async () => {
-      expect(await keptFor('ok boomer', ['A cookbook. Nothing here.'])).toBe('A cookbook. Nothing here.');
+      expect(await keptFor('ok boomer', ['A cookbook. Nothing here.'])).toBe(
+        'A cookbook. Nothing here.',
+      );
     });
   });
 

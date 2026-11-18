@@ -95,4 +95,3 @@ function baseObjective(q: string, kind: SearchKind): string {
   }
   return `Explain "${q}": what it means or refers to in pop culture or internet culture (films, TV, comics, games, music, memes, slang), and where it comes from.`;
 }
-
