@@ -19,7 +19,7 @@ import { useSavedLinks } from '../favourites/useSavedLinks';
 import styles from './OnlineResults.module.css';
 import own from './WiderWebSearch.module.css';
 
-const FAILURE_TEXT: Record<WebSearchFailure, string> = {
+export const FAILURE_TEXT: Record<WebSearchFailure, string> = {
   offline: "You're offline. The wider web search needs a connection.",
   locked: 'This search needs an access code.',
   wrong_code: "That code didn't work.",
@@ -29,12 +29,13 @@ const FAILURE_TEXT: Record<WebSearchFailure, string> = {
   out_of_credit: 'The wider web search is paused for now. Try again later.',
   not_configured: "The wider web search isn't set up on the server yet.",
   blocked: 'The server refused the search.',
+  no_card: "These results don't explain it. Try ticking others.",
   failed: "The wider web search didn't answer. Try again.",
   aborted: 'The search was cancelled.',
 };
 
 /** The consent card's wording; Settings repeats it in short (D45). */
-const WEB_SEARCH_DISCLOSURE = [
+export const WEB_SEARCH_DISCLOSURE = [
   'Your search text goes through our server to Parallel (parallel.ai), a paid web-search service.',
   'Nothing else is sent: no account, no device details, no location.',
   'Parallel keeps searches and may use them to improve its service.',
@@ -79,6 +80,8 @@ interface WiderWebSearchProps {
   mayAutoSearch: boolean;
   /** This search finished (answered or failed), not cancelled. */
   onSearched: () => void;
+  /** The results on screen (searched or kept), so the page can offer to make a card from them. */
+  onResults?: (results: readonly WebResult[]) => void;
 }
 
 /**
@@ -174,6 +177,14 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoReady]);
 
+  const shownResults = phase.kind === 'done' ? phase.results : saved?.results;
+  const reportResults = useEffectEvent(() => {
+    if (shownResults?.length) props.onResults?.(shownResults);
+  });
+  // An effect event never goes in the list (see above).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => reportResults(), [shownResults]);
+
   if (preference === 'off') return null;
 
   const allow = () => {
@@ -185,27 +196,15 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
 
   if (phase.kind === 'consent') {
     return (
-      <section className={styles.consent} aria-labelledby="web-consent-title">
-        <h2 id="web-consent-title" className={styles.consentTitle}>
-          Search the wider web?
-        </h2>
-        <p>{WEB_SEARCH_DISCLOSURE}</p>
-        <div className={styles.actions}>
-          <button type="button" className={styles.primary} onClick={allow}>
-            {videos ? 'Search videos' : 'Search the wider web'}
-          </button>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() => {
-              setVideos(false);
-              setPhase({ kind: 'idle' });
-            }}
-          >
-            Not now
-          </button>
-        </div>
-      </section>
+      <WebConsent
+        title="Search the wider web?"
+        action={videos ? 'Search videos' : 'Search the wider web'}
+        onAllow={allow}
+        onCancel={() => {
+          setVideos(false);
+          setPhase({ kind: 'idle' });
+        }}
+      />
     );
   }
 
@@ -306,6 +305,34 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
   );
 }
 
+interface WebConsentProps {
+  title: string;
+  action: string;
+  onAllow: () => void;
+  onCancel: () => void;
+}
+
+/** The consent card: the disclosure, then the action or "Not now". */
+export function WebConsent({ title, action, onAllow, onCancel }: WebConsentProps) {
+  const titleId = useId();
+  return (
+    <section className={styles.consent} aria-labelledby={titleId}>
+      <h2 id={titleId} className={styles.consentTitle}>
+        {title}
+      </h2>
+      <p>{WEB_SEARCH_DISCLOSURE}</p>
+      <div className={styles.actions}>
+        <button type="button" className={styles.primary} onClick={onAllow}>
+          {action}
+        </button>
+        <button type="button" className={styles.secondary} onClick={onCancel}>
+          Not now
+        </button>
+      </div>
+    </section>
+  );
+}
+
 interface AccessCodeFormProps {
   onUnlocked: () => void;
   onCancel: () => void;
@@ -316,7 +343,7 @@ interface AccessCodeFormProps {
  * cleared on submit and nothing is written to storage. The server's HttpOnly cookie is the only
  * credential afterwards.
  */
-function AccessCodeForm({ onUnlocked, onCancel }: AccessCodeFormProps) {
+export function AccessCodeForm({ onUnlocked, onCancel }: AccessCodeFormProps) {
   const { webSearch } = useRetrievalService();
   const inputId = useId();
   const [code, setCode] = useState('');

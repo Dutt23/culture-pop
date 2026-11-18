@@ -51,7 +51,8 @@ export function useCurationTray(search: string) {
 
   const toggleFrame = (frame: Frame): 'added' | 'removed' | 'limit_total' | 'limit_web' => {
     if (picked.some((f) => f.key === frame.key)) {
-      setPicked(picked.filter((f) => f.key !== frame.key));
+      // Functional: the splice check removes a frame when its cut-out ends, from an older render.
+      setPicked((p) => p.filter((f) => f.key !== frame.key));
       setKept((k) => new Set([...k].filter((key) => key !== frame.key)));
       return 'removed';
     }
@@ -86,5 +87,5 @@ export function useCurationTray(search: string) {
     picked.length > 0 &&
     picked.every((f) => !flags[f.key] || kept.has(f.key));
 
-  return { picked, tones, flags, toggleFrame, toggleTone, keepFlagged, body, canMake };
+  return { picked, tones, flags, kept, toggleFrame, toggleTone, keepFlagged, body, canMake };
 }

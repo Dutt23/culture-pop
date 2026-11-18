@@ -1,0 +1,378 @@
+/* Splice check, drafting projector and reveal, ported from the approved curation demo. The flow's
+   root sets --grade-1 / --grade-2 (see curationLook.ts); the fallback is the ungraded film. */
+.flow {
+  --g1: var(--grade-1, #b6aed6);
+  --g2: var(--grade-2, var(--g1));
+  --sheet: #18153a;
+  --card: #221d4a;
+  --ink: #0d0b1f;
+  --muted: #b6aed6;
+  --warn: #ff8a80;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note:empty {
+  display: none;
+}
+
+.error {
+  margin: 0;
+  color: var(--warn);
+  font-size: var(--text-sm);
+}
+
+.sec {
+  margin: var(--space-2) 2px 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.04em;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.small,
+.keep {
+  min-height: var(--tap-min);
+  padding: 5px 12px;
+  border: 1px solid #6f65a8;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.keep {
+  border-color: var(--g1);
+  background: var(--g1);
+  color: var(--ink);
+}
+
+.small:focus-visible,
+.keep:focus-visible,
+.make:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Splice check */
+.sheet {
+  display: grid;
+  gap: var(--space-2);
+  padding: 16px 14px;
+  border-radius: 22px 22px 0 0;
+  background: var(--sheet);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+}
+
+.checkStrip {
+  margin: 0;
+  list-style: none;
+}
+
+/* Static sprocket holes down both sides of the review strip. */
+.checkStrip::before,
+.checkStrip::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 6px,
+    #e9e3ff33 6px 15px,
+    transparent 15px 20px
+  );
+  content: '';
+}
+
+.checkStrip::before {
+  left: 6px;
+}
+
+.checkStrip::after {
+  right: 6px;
+}
+
+.checkFrame {
+  cursor: default;
+}
+
+/* The wrong frame: scratched film. */
+.flagged {
+  border-color: var(--warn);
+  background: var(--frame, #241f45)
+    repeating-linear-gradient(115deg, transparent 0 22px, #ff8a8022 22px 23px);
+}
+
+.warn {
+  margin: 4px 0;
+  color: var(--warn);
+  font-size: 12px;
+}
+
+/* Wakes up (full colour) once nothing is waiting. */
+.make {
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: var(--g1);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+.make:disabled {
+  background: #3a3470;
+  color: #8d84bd;
+  cursor: not-allowed;
+}
+
+/* Drafting projector */
+.projector {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: var(--space-5) 0;
+  text-align: center;
+}
+
+.rig {
+  display: flex;
+  align-items: center;
+}
+
+.mascot {
+  width: 70px;
+  height: 70px;
+}
+
+.spinReel {
+  width: 62px;
+  height: 62px;
+  animation: spin 0.9s linear infinite;
+}
+
+.stop1 {
+  stop-color: var(--g1);
+}
+
+.stop2 {
+  stop-color: var(--g2);
+}
+
+.hole {
+  fill: var(--ink);
+}
+
+.beam {
+  width: min(200px, 40vw);
+  height: 90px;
+  clip-path: polygon(0 0, 100% 30%, 100% 70%, 0 100%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--g1) 70%, transparent),
+    color-mix(in srgb, var(--g2) 10%, transparent)
+  );
+  animation: flicker 0.4s infinite;
+}
+
+.projectorLine {
+  min-height: 18px;
+  margin: 0;
+  color: #cfc6ff;
+  font-family: var(--font-display);
+  font-size: 13px;
+  animation: lineIn 0.26s both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes flicker {
+  0% {
+    opacity: 0.5;
+  }
+  33% {
+    opacity: 1;
+  }
+  66% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes lineIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Reveal */
+.reveal {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.card {
+  position: relative;
+  padding: 12px;
+  border: 2px solid var(--g1);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--g2) 25%, transparent);
+  transform-origin: top center;
+}
+
+.stamp {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: 45%;
+  padding: 0 5px;
+  border: 1px solid var(--g1);
+  border-radius: 6px;
+  color: var(--g1);
+  font-size: 11px;
+  transform: rotate(6deg);
+}
+
+.label {
+  margin: 0 0 6px;
+  padding-right: 45%;
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+
+.field {
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.fieldLabel {
+  display: block;
+  color: var(--muted);
+  font-weight: var(--weight-medium);
+}
+
+.fieldText {
+  display: inline;
+  margin: 0;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  min-height: 3em;
+  padding: 4px 6px;
+  border: 1px solid #6f65a8;
+  border-radius: 6px;
+  background: var(--ink);
+  color: inherit;
+  font: inherit;
+}
+
+.chip {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: #2d2758;
+  color: #cfc6ff;
+  font-size: 11px;
+  animation: pop 0.35s both;
+}
+
+.chip a {
+  color: inherit;
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.unused {
+  margin: 8px 0 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  list-style: none;
+  animation: drift 0.4s 1.6s both;
+}
+
+@keyframes drift {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Reduced motion: no spin, flicker or pop; entrances are a short fade. */
+.still .spinReel,
+.still .beam {
+  animation: none;
+}
+
+.still .projectorLine,
+.still .chip,
+.still .unused {
+  animation: fade 0.15s both;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}

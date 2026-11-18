@@ -33,6 +33,8 @@ import {
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { isExactTitle } from '../../services/retrieval/rerank';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
+import type { WebResult } from '../../services/retrieval/webSearch';
+import { CurateFlow } from '../drafts/CurateFlow';
 import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
 import { OnlineResults, SavedOnlineResults } from './OnlineResults';
@@ -207,6 +209,14 @@ export function SearchPage() {
   const [webSearched, setWebSearched] = useState<ReadonlySet<string>>(() => new Set());
   const webKey = `${stories}:${query}`;
   const lookupSettled = onlineState.status !== 'loading' && onlineState.status !== 'partial';
+  // The wider-web results on screen for this search and lean, and the search a card is made for.
+  const [webFound, setWebFound] = useState<{ key: string; results: readonly WebResult[] }>();
+  const webShown = webFound?.key === webKey ? webFound.results : [];
+  const [curating, setCurating] = useState<string | null>(null);
+  const canCurate =
+    settingsLoaded &&
+    settings.webSearch !== 'off' &&
+    (onlineShown.length > 0 || webShown.length > 0);
   // Keyed by query and lean: its results live only in its state, so either change starts it afresh.
   const widerWeb = (search.needsRetrieval || questionFoundNothing) && settingsLoaded && (
     <WiderWebSearch
@@ -226,6 +236,7 @@ export function SearchPage() {
       // A pasted message is someone's private text: the wider web gets it only on a tap.
       mayAutoSearch={lookupSettled && !webSearched.has(webKey) && !looksLikeMessage(query)}
       onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
+      onResults={(results) => setWebFound({ key: webKey, results })}
     />
   );
   // "Where people talk about it" is on the page: its sites aren't listed a second time below.
@@ -462,6 +473,22 @@ export function SearchPage() {
               </>
             )}
           </Section>
+
+          {canCurate &&
+            (curating === query ? (
+              <CurateFlow
+                key={query}
+                search={query}
+                about={hasActiveTags(tags.state) ? aboutHint(tags.state) : undefined}
+                candidates={onlineShown}
+                webResults={webShown}
+                onClose={() => setCurating(null)}
+              />
+            ) : (
+              <button type="button" className={styles.toggle} onClick={() => setCurating(query)}>
+                Make a card from these
+              </button>
+            ))}
         </>
       )}
       {tour.open && <Tour steps={SEARCH_TOUR} onClose={tour.close} />}
