@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { validQuery } from '../../../api/_lib/text.js';
 import { flagSources, type FlagReason } from '../../../api/_lib/cardCurate.js';
 import {
   type DraftRequestBody,
@@ -10,13 +11,22 @@ import type { Frame } from './frames';
 
 const cut = (s: string, n: number) => Array.from(s).slice(0, n).join('');
 
-const toSource = (f: Frame): DraftSourceInput => ({
-  kind: f.kind,
-  from: f.from,
-  title: cut(f.title, LIMITS.itemChars),
-  text: cut(f.text ?? f.line, LIMITS.itemChars),
-  ...(f.kind === 'web' ? { url: f.url } : {}),
-});
+// The server's MAX_TITLE; keeps a full tray under its 16 KB body limit.
+const MAX_TITLE = 200;
+
+const toSource = (f: Frame): DraftSourceInput => {
+  const title = cut(f.title, MAX_TITLE);
+  const raw = f.text ?? f.line;
+  // The server rejects blank wiki/app text, so use the title instead.
+  const text = f.kind !== 'web' && !raw.trim() ? title : raw;
+  return {
+    kind: f.kind,
+    from: f.from,
+    title,
+    text: cut(text, LIMITS.itemChars),
+    ...(f.kind === 'web' ? { url: f.url } : {}),
+  };
+};
 
 const cutTone = (t: ToneCard): ToneCard => ({
   label: cut(t.label, LIMITS.toneFieldChars),
@@ -71,7 +81,10 @@ export function useCurationTray(search: string) {
     ...(tones.length ? { tones } : {}),
   });
 
-  const canMake = picked.length > 0 && picked.every((f) => !flags[f.key] || kept.has(f.key));
+  const canMake =
+    validQuery(search) !== undefined &&
+    picked.length > 0 &&
+    picked.every((f) => !flags[f.key] || kept.has(f.key));
 
   return { picked, tones, flags, toggleFrame, toggleTone, keepFlagged, body, canMake };
 }

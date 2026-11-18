@@ -28,6 +28,16 @@ function hrefOf(url: string | undefined): string | undefined {
   }
 }
 
+/** Same rule as the server: https only, no credentials in the address. */
+function httpsHref(url: string): string | undefined {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && !u.username && !u.password ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function framesFrom(input: {
   candidates: RetrievedCandidate[];
   webResults: WebResult[];
@@ -38,11 +48,11 @@ export function framesFrom(input: {
     const s = c.sources[0];
     const from = s && wikiFrom(s.publisher, s.url);
     if (!s || !from) continue; // the server accepts only the four wikis
-    const line = s.excerpt ?? c.title;
+    const line = s.excerpt || c.title;
     all.push({ key: `wiki:${c.id}`, kind: 'wiki', from, title: c.title, line, text: line, url: s.url });
   }
   for (const w of input.webResults) {
-    const href = hrefOf(w.url);
+    const href = httpsHref(w.url);
     if (!href) continue;
     const from = new URL(href).hostname.replace(/^www\./, '');
     all.push({ key: href, kind: 'web', from, title: w.title, line: w.snippet, text: w.snippet, url: href });

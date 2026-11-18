@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { readDraftBody } from '../../../api/draft-card.js';
 import { LIMITS } from '../../../api/_lib/cardTypes.js';
 import type { Interpretation, Reference } from '../../domain/types';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
@@ -131,5 +132,69 @@ describe('useCurationTray', () => {
     expect(body.sources[0]).toMatchObject({ kind: 'web', url: w.url });
     expect(body.sources[1]).not.toHaveProperty('url');
     body.sources.forEach((s) => expect(s.text!.length).toBeLessThanOrEqual(LIMITS.itemChars));
+  });
+});
+
+describe('requests the server accepts', () => {
+  const tone = { label: 'doom', gist: 'g', means: '', reply: '', summary: 's' };
+  const run = (search: string, input: Parameters<typeof frames>[0]) => {
+    const hook = renderHook(() => useCurationTray(search));
+    frames(input).forEach((f) => act(() => void hook.result.current.toggleFrame(f)));
+    act(() => void hook.result.current.toggleTone(tone));
+    return hook.result.current;
+  };
+
+  it('accepts wiki + web + app picks with tones whose means and reply are empty', () => {
+    const tray = run('doctor doom', {
+      candidates: [candidate('a', 'Wikipedia', 'Doom excerpt')],
+      webResults: [web(1)],
+      appCards: [{ reference: app, interpretation: interp, own: false }],
+    });
+    expect(tray.picked).toHaveLength(3);
+    expect(readDraftBody(JSON.parse(JSON.stringify(tray.body(['x']))))).not.toBeNull();
+  });
+
+  it('falls back to the title for an empty excerpt', () => {
+    const tray = run('doctor doom', { candidates: [candidate('a', 'Wikipedia', '')] });
+    expect(tray.body().sources[0].text).toBe('Doctor Doom a');
+    expect(readDraftBody(tray.body())).not.toBeNull();
+  });
+
+  it('skips http and credential-bearing web results', () => {
+    const tray = run('doctor doom', {
+      webResults: [
+        web('h', 'http://site.com/doom'),
+        web('c', 'https://user:pw@site.com/doom'),
+        web(1),
+      ],
+    });
+    expect(tray.picked.map((f) => f.url)).toEqual(['https://www.site1.com/doom']);
+    expect(readDraftBody(tray.body())).not.toBeNull();
+  });
+
+  it('keeps a worst-case full tray under 16 KB', () => {
+    const long = 'x'.repeat(5000);
+    const hook = renderHook(() => useCurationTray('doctor doom'));
+    frames({
+      candidates: ['a', 'b', 'c'].map((i) => ({
+        ...candidate(i, 'Wikipedia', `doctor doom ${long}`),
+        title: `Doctor Doom ${long}`,
+      })) as RetrievedCandidate[],
+      webResults: [1, 2, 3].map((n) => ({ ...web(n), snippet: `doctor doom ${long}` }) as WebResult),
+    }).forEach((f) => act(() => void hook.result.current.toggleFrame(f)));
+    const longTone = Object.fromEntries(
+      ['label', 'gist', 'means', 'reply', 'summary'].map((k) => [k, 'y'.repeat(500)]),
+    ) as typeof tone;
+    act(() => void hook.result.current.toggleTone({ ...longTone, label: 'a' }));
+    act(() => void hook.result.current.toggleTone({ ...longTone, label: 'b' }));
+    const body = hook.result.current.body(['x']);
+    expect(body.sources).toHaveLength(6);
+    expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeLessThan(16 * 1024);
+    expect(readDraftBody(body)).not.toBeNull();
+  });
+
+  it('cannot make with a search the server rejects', () => {
+    const tray = run('d', { webResults: [web(1)] });
+    expect(tray.canMake).toBe(false);
   });
 });
