@@ -1,5 +1,7 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { useRepositories } from '../../app/RepositoriesContext';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { AnimatedItem } from '../../components/ui/AnimatedItem';
@@ -12,11 +14,20 @@ import { UndoNotice } from '../../components/ui/UndoNotice';
 import { cardElement } from '../../motion/cardElement';
 import { dissolve } from '../../motion/dissolve';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { DraftReveal } from '../drafts/DraftReveal';
+import type { Frame } from '../drafts/frames';
 import styles from './FavouritesPage.module.css';
 import { useFavourites, useFavouriteReferences } from './useFavourites';
 import { useSavedLinks } from './useSavedLinks';
 
+/** A kept card's sources were saved without their kind: links keep their link. */
+const framesOf = (sources: { from: string; title: string; url?: string }[]) =>
+  sources.map((s) => ({ ...s, kind: s.url ? 'web' : 'app', key: s.from, line: s.title })) as Frame[];
+
 export function FavouritesPage() {
+  const { drafts } = useRepositories();
+  const keptCards = useLiveQuery(() => drafts.list(), [drafts]);
+  const [open, setOpen] = useState<string | null>(null);
   const references = useFavouriteReferences();
   const favourites = useFavourites();
   const { reduced } = useMotionPresets();
@@ -77,6 +88,46 @@ export function FavouritesPage() {
             void favourites.toggle(removed.id);
           }}
         />
+      )}
+      {keptCards && keptCards.length > 0 && (
+        <Section title="Your cards" description="Kept AI drafts. They only live on this device.">
+          <ul className={styles.list}>
+            {keptCards.map((kept) => (
+              <li key={kept.id} className={styles.keptCard}>
+                <div className={styles.link}>
+                  <button
+                    type="button"
+                    className={styles.keptOpen}
+                    aria-expanded={open === kept.id}
+                    onClick={() => setOpen(open === kept.id ? null : kept.id)}
+                  >
+                    {kept.card.label}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.keptRemove}
+                    aria-label={`Remove ${kept.card.label}`}
+                    onClick={() => void drafts.remove(kept.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+                {open === kept.id && (
+                  <DraftReveal
+                    readOnly
+                    response={{
+                      card: kept.card,
+                      notUsed: [],
+                      provider: 'fake',
+                      promptVersion: kept.promptVersion,
+                    }}
+                    sent={framesOf(kept.sources)}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </Section>
       )}
       {hasLinks && (
         <Section title="Saved web links">

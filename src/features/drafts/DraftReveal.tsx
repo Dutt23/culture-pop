@@ -37,13 +37,15 @@ interface DraftRevealProps {
   /** The frames sent, in order: a line's `sources` index into these. */
   sent: readonly Frame[];
   /** Saves the card as shown (edits included); rejects when it couldn't be saved. */
-  onKeep: (card: DraftCard) => Promise<void>;
+  onKeep?: (card: DraftCard) => Promise<void>;
   /** The card has flown out (kept) or folded away (dropped). */
-  onDone: (kept: boolean) => void;
+  onDone?: (kept: boolean) => void;
+  /** Just the card, to read: no Keep, Edit or Drop. */
+  readOnly?: boolean;
 }
 
 /** The checked card: flips in with its stamp and sources; Keep, Edit or Drop. */
-export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps) {
+export function DraftReveal({ response, sent, onKeep, onDone, readOnly }: DraftRevealProps) {
   const { reduced } = useMotionPresets();
   const ref = useRef<HTMLElement>(null);
   const titleId = useId();
@@ -75,13 +77,13 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
   }, [reduced]);
 
   const leave = (frames: Keyframe[], kept: boolean) => {
-    if (!canAnimate(ref.current)) return onDone(kept);
+    if (!canAnimate(ref.current)) return onDone?.(kept);
     const exit = ref.current.animate(reduced ? FADE_OUT : frames, {
       duration: reduced ? REDUCED_MS : 520,
       easing: 'cubic-bezier(.4,0,.2,1)',
       fill: 'forwards',
     });
-    exit.onfinish = () => onDone(kept);
+    exit.onfinish = () => onDone?.(kept);
     running.current.push(exit);
   };
 
@@ -94,14 +96,14 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
     if (!flight) return leave(FADE_OUT, true);
     running.current.push(flight);
     setCheering(true);
-    cheerTimer.current = window.setTimeout(() => onDone(true), CHEER_MS);
+    cheerTimer.current = window.setTimeout(() => onDone?.(true), CHEER_MS);
   };
 
   const keep = async () => {
     setBusy(true);
     setSaveFailed(false);
     try {
-      await onKeep(card);
+      await onKeep?.(card);
     } catch {
       if (!alive.current) return;
       setSaveFailed(true);
@@ -212,38 +214,40 @@ export function DraftReveal({ response, sent, onKeep, onDone }: DraftRevealProps
           </ul>
         )}
       </article>
-      {saveFailed && (
+      {!readOnly && saveFailed && (
         <p className={styles.error} role="alert">
           Couldn&rsquo;t keep the card. Please try again.
         </p>
       )}
-      <div className={styles.actions}>
-        {/* Busy from the Keep tap on: a drop or edit can't race the save or the flight. */}
-        <button
-          type="button"
-          className={styles.small}
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            leave(FOLD, false);
-          }}
-        >
-          Drop
-        </button>
-        {!editing && (
+      {!readOnly && (
+        <div className={styles.actions}>
+          {/* Busy from the Keep tap on: a drop or edit can't race the save or the flight. */}
           <button
             type="button"
             className={styles.small}
             disabled={busy}
-            onClick={() => setEditing(true)}
+            onClick={() => {
+              setBusy(true);
+              leave(FOLD, false);
+            }}
           >
-            Edit
+            Drop
           </button>
-        )}
-        <button type="button" className={styles.keep} disabled={busy} onClick={() => void keep()}>
-          Keep
-        </button>
-      </div>
+          {!editing && (
+            <button
+              type="button"
+              className={styles.small}
+              disabled={busy}
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </button>
+          )}
+          <button type="button" className={styles.keep} disabled={busy} onClick={() => void keep()}>
+            Keep
+          </button>
+        </div>
+      )}
     </div>
   );
 }
