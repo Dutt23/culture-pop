@@ -126,7 +126,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
@@ -200,7 +200,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     // The built-in meaning is replaced by the current seed (v7), glance lines included.
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
@@ -247,7 +247,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
     expect(await db.references.count()).toBe(buildSeed().references.length);
@@ -272,7 +272,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(db.tables.map((t) => t.name)).toContain('savedLinks');
     expect(await db.savedLinks.count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
@@ -308,7 +308,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       gist: 'Ugh, I just did something stupid.',
       socialMove: "They're laughing at their own mistake.",
@@ -345,7 +345,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['packs', 'packMembers']));
     expect(await db.packs.count()).toBe(0);
     expect(await db.packMembers.count()).toBe(0);
@@ -391,7 +391,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -431,7 +431,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -473,7 +473,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(await db.references.get('i-choose-you-pokemon')).toMatchObject({ category: 'anime' });
     expect(await db.references.get('doh-simpsons')).toMatchObject({ category: 'cartoon' });
     // A saved online result can't be re-filed without asking Wikidata again, so it stays.
@@ -525,7 +525,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(12);
+    expect(db.verno).toBe(13);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
     expect(await db.packs.get(DOOMSDAY_PACK.id)).toMatchObject({
@@ -543,6 +543,33 @@ describe('schema upgrades', () => {
     // The reader's pack and its pin are untouched.
     expect(await db.packs.get('pack:1')).toMatchObject({ now: true });
     expect(await db.packMembers.where('packId').equals('pack:1').count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a v12 database to v13 with an empty draftCards table and keeps saved links', async () => {
+    const name = `upgrade-v12-${Math.random().toString(36).slice(2)}`;
+    const v12 = new Dexie(name);
+    v12.version(1).stores(SCHEMA_V1);
+    v12.version(2).stores(SCHEMA_V2_CHANGES);
+    v12.version(3).stores({});
+    v12.version(4).stores(SCHEMA_V4_CHANGES);
+    v12.version(5).stores(SCHEMA_V5_CHANGES);
+    v12.version(6).stores(SCHEMA_V6_CHANGES);
+    v12.version(7).stores({});
+    v12.version(8).stores(SCHEMA_V8_CHANGES);
+    v12.version(9).stores({});
+    v12.version(10).stores({});
+    v12.version(11).stores({});
+    v12.version(12).stores({});
+    await v12.open();
+    await v12.table('savedLinks').add({ url: 'https://example.com/a', title: 'A', savedAt: 't' });
+    v12.close();
+
+    const db = createDatabase(name, { readyPack: false });
+    await db.open();
+    expect(db.verno).toBe(13);
+    expect(await db.draftCards.count()).toBe(0);
+    expect(await db.savedLinks.count()).toBe(1);
     db.close();
   });
 
