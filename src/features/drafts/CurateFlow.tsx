@@ -229,6 +229,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
             response={phase.response}
             sent={phase.sent}
             revealSpoilers={settings.spoilers === 'show'}
+            search={search}
             onKeep={(card) => keep(card, phase.sent, phase.response.promptVersion)}
             onDone={(kept) => {
               if (kept) setStatus('Kept on this device.');

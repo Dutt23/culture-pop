@@ -121,6 +121,7 @@ export function FavouritesPage() {
                     <DraftReveal
                       readOnly
                       revealSpoilers={settings.spoilers === 'show'}
+                      search={kept.search}
                       response={{
                         card: kept.card,
                         notUsed: [],

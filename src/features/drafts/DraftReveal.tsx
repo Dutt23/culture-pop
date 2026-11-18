@@ -19,6 +19,10 @@ const FOLD: Keyframe[] = [
   { transform: 'scaleY(1)', opacity: 1 },
   { transform: 'scaleY(.05) translateY(400px)', opacity: 0 },
 ];
+const UNVEIL: Keyframe[] = [
+  { opacity: 0, transform: 'translateY(6px)' },
+  { opacity: 1, transform: 'translateY(0)' },
+];
 const REDUCED_MS = 150;
 /** The flight (560 ms) plus a beat for the thumbs-up, then back to the film. */
 const CHEER_MS = 1100;
@@ -44,15 +48,17 @@ interface DraftRevealProps {
   readOnly?: boolean;
   /** The reader's spoiler setting; a major spoiler is veiled without it. */
   revealSpoilers?: boolean;
+  /** The reader's search: the veiled card's heading, since the AI label can give it away. */
+  search?: string;
 }
 
 /** The checked card: flips in with its stamp and sources; Keep, Edit or Drop. */
 export function DraftReveal(props: DraftRevealProps) {
-  const { response, sent, onKeep, onDone, readOnly, revealSpoilers = false } = props;
+  const { response, sent, onKeep, onDone, readOnly, revealSpoilers = false, search = '' } = props;
   const { reduced } = useMotionPresets();
   const ref = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const spoilerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const [card, setCard] = useState(response.card);
   const [editing, setEditing] = useState(false);
@@ -83,9 +89,13 @@ export function DraftReveal(props: DraftRevealProps) {
     if (!readOnly) titleRef.current?.focus();
   }, [readOnly]);
 
-  // The reveal button goes on tap; hand focus to what it uncovered.
+  // The reveal button goes on tap: focus moves to the real name, and the card fades in.
   useEffect(() => {
-    if (revealedHere) spoilerRef.current?.focus();
+    if (!revealedHere) return;
+    titleRef.current?.focus();
+    if (!canAnimate(bodyRef.current)) return;
+    bodyRef.current.animate(reduced ? FADE_IN : UNVEIL, { duration: reduced ? REDUCED_MS : 320 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per reveal
   }, [revealedHere]);
 
   useEffect(() => {
@@ -212,22 +222,22 @@ export function DraftReveal(props: DraftRevealProps) {
       >
         <span className={styles.stamp}>AI draft · check the sources</span>
         <h2 ref={titleRef} id={titleId} className={styles.label} tabIndex={-1}>
-          {card.label}
+          {veiled ? search.trim() || 'Spoiler' : card.label}
         </h2>
         {isSpoiler && <span className={styles.spoilerTag}>Spoiler</span>}
-        {editing && text('Label', card.label, (label) => setCard((c) => ({ ...c, label })))}
-        {text('Gist', card.gist, (gist) => setCard((c) => ({ ...c, gist })))}
-        {text('What they mean', card.means, (means) => setCard((c) => ({ ...c, means })))}
-        {text('You could say', card.reply, (reply) => setCard((c) => ({ ...c, reply })))}
         {veiled ? (
           <div className={styles.veil}>
-            <p>Spoiler ahead: the rest of this card gives the story away.</p>
+            <p>This card gives away the ending of a story.</p>
             <button type="button" className={styles.small} onClick={() => setRevealedHere(true)}>
               Reveal spoiler
             </button>
           </div>
         ) : (
-          <div ref={spoilerRef} tabIndex={-1}>
+          <div ref={bodyRef}>
+            {editing && text('Label', card.label, (label) => setCard((c) => ({ ...c, label })))}
+            {text('Gist', card.gist, (gist) => setCard((c) => ({ ...c, gist })))}
+            {text('What they mean', card.means, (means) => setCard((c) => ({ ...c, means })))}
+            {text('You could say', card.reply, (reply) => setCard((c) => ({ ...c, reply })))}
             {lines('Summary', 'summary')}
             {lines('How it’s used', 'context')}
             {card.example &&
@@ -237,14 +247,16 @@ export function DraftReveal(props: DraftRevealProps) {
                 (v) => setCard((c) => ({ ...c, example: c.example && { ...c.example, text: v } })),
                 chips(card.example.sources),
               )}
+            {response.notUsed.length > 0 && (
+              <ul className={styles.unused}>
+                {response.notUsed.map((n) => (
+                  <li key={n.source}>
+                    {`Not used: ${sent[n.source]?.from ?? 'a source'} (${n.why})`}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
-        {response.notUsed.length > 0 && (
-          <ul className={styles.unused}>
-            {response.notUsed.map((n) => (
-              <li key={n.source}>{`Not used: ${sent[n.source]?.from ?? 'a source'} (${n.why})`}</li>
-            ))}
-          </ul>
         )}
       </article>
       {!readOnly && saveFailed && (
@@ -271,7 +283,11 @@ export function DraftReveal(props: DraftRevealProps) {
               type="button"
               className={styles.small}
               disabled={busy}
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                // A hidden card can't be edited: Edit uncovers it first.
+                if (veiled) setRevealedHere(true);
+                setEditing(true);
+              }}
             >
               Edit
             </button>

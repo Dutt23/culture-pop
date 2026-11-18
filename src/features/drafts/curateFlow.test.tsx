@@ -297,26 +297,53 @@ describe('curate a card', () => {
     expect(await screen.findByRole('button', { name: 'Review 1 frame' })).toHaveFocus();
   });
 
-  it('veils a major spoiler until the reader reveals it, unless spoilers are shown', async () => {
-    const spoiler = { ...RESPONSE, card: { ...RESPONSE.card, spoiler: 'major' as const } };
-    const summary = RESPONSE.card.summary[0]?.text ?? '';
-    const first = await renderFlow({ webSearch: 'on' }, async () => spoiler);
-    await pickAndCheck(first.user, 'What does OK boomer mean');
-    await first.user.click(makeButton());
-    const card = await screen.findByRole('article', { name: RESPONSE.card.label });
-    expect(card).toHaveTextContent('Spoiler');
-    expect(card).not.toHaveTextContent(summary);
-    expect(card).not.toHaveTextContent(RESPONSE.card.context[0]?.text ?? '');
-    await first.user.click(within(card).getByRole('button', { name: 'Reveal spoiler' }));
-    expect(card).toHaveTextContent(summary);
-    first.unmount();
+  describe('a major spoiler', () => {
+    const SPOILER = { ...RESPONSE, card: { ...RESPONSE.card, spoiler: 'major' as const } };
+    const { label, gist, means, reply } = RESPONSE.card;
+    const hidden = [label, gist, means, reply, RESPONSE.card.summary[0]?.text ?? ''];
 
-    const second = await renderFlow({ webSearch: 'on', spoilers: 'show' }, async () => spoiler);
-    await pickAndCheck(second.user, 'What does OK boomer mean');
-    await second.user.click(makeButton());
-    const shown = await screen.findByRole('article', { name: RESPONSE.card.label });
-    expect(shown).toHaveTextContent(summary);
-    expect(within(shown).queryByRole('button', { name: 'Reveal spoiler' })).toBeNull();
+    async function veiledCard(settings: Partial<Settings> = { webSearch: 'on' }) {
+      const flow = await renderFlow(settings, async () => SPOILER);
+      await pickAndCheck(flow.user, 'What does OK boomer mean');
+      await flow.user.click(makeButton());
+      return { ...flow, card: await screen.findByRole('article', { name: /./ }) };
+    }
+
+    it('shows only the search until Reveal, then focuses the real name', async () => {
+      const { user, card } = await veiledCard();
+      expect(card).toHaveAccessibleName(SEARCH);
+      expect(card).toHaveTextContent('AI draft · check the sources');
+      expect(card).toHaveTextContent('Spoiler');
+      expect(card).toHaveTextContent('This card gives away the ending of a story.');
+      for (const text of hidden) expect(card).not.toHaveTextContent(text);
+      expect(within(card).queryByRole('link')).toBeNull();
+
+      await user.click(within(card).getByRole('button', { name: 'Reveal spoiler' }));
+      expect(screen.getByRole('heading', { name: label })).toHaveFocus();
+      for (const text of hidden) expect(card).toHaveTextContent(text);
+      expect(within(card).getByRole('link', { name: /bbc\.co\.uk/ })).toBeInTheDocument();
+    });
+
+    it('can be kept or edited while veiled; Edit uncovers it first', async () => {
+      const first = await veiledCard();
+      await first.user.click(screen.getByRole('button', { name: 'Keep' }));
+      await waitFor(async () => expect(await first.db.draftCards.count()).toBe(1));
+      expect((await first.db.draftCards.toArray())[0]?.card).toEqual(SPOILER.card);
+      first.unmount();
+
+      const second = await veiledCard();
+      await second.user.click(screen.getByRole('button', { name: 'Edit' }));
+      expect(screen.getByRole('textbox', { name: 'Label' })).toHaveValue(label);
+      expect(screen.getByRole('textbox', { name: 'Gist' })).toHaveValue(gist);
+      expect(screen.queryByRole('button', { name: 'Reveal spoiler' })).toBeNull();
+    });
+
+    it('is never veiled when spoilers are set to show', async () => {
+      const { card } = await veiledCard({ webSearch: 'on', spoilers: 'show' });
+      expect(card).toHaveAccessibleName(label);
+      for (const text of hidden) expect(card).toHaveTextContent(text);
+      expect(within(card).queryByRole('button', { name: 'Reveal spoiler' })).toBeNull();
+    });
   });
 
   it('Edit can change the label, and Keep waits while a needed field is blank', async () => {

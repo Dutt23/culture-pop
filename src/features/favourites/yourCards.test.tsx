@@ -85,17 +85,30 @@ describe('Your cards', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
-  it('veils a kept major spoiler in the read view until revealed', async () => {
+  it('hides a kept major spoiler under its search until revealed, unless set to show', async () => {
     const kept = record('a', 'A dismissive comeback', '2026-11-01T00:00:00.000Z');
-    const { db } = await seed({ ...kept, card: { ...kept.card, spoiler: 'major' } });
-    const { user } = renderApp('/favourites', db);
+    const spoiler = { ...kept, card: { ...kept.card, spoiler: 'major' as const } };
+    const hidden = [CARD.gist, CARD.means, CARD.reply, CARD.summary[0]?.text ?? ''];
+    const { db, repos } = await seed(spoiler);
+    const first = renderApp('/favourites', db);
 
-    await user.click(await screen.findByRole('button', { name: 'A dismissive comeback' }));
-    const card = await screen.findByRole('article', { name: 'A dismissive comeback' });
+    await first.user.click(await screen.findByRole('button', { name: 'A dismissive comeback' }));
+    const card = await screen.findByRole('article', { name: 'ok boomer' });
     expect(card).toHaveTextContent('Spoiler');
-    expect(card).not.toHaveTextContent('A catchphrase used to dismiss older attitudes.');
-    await user.click(within(card).getByRole('button', { name: 'Reveal spoiler' }));
-    expect(card).toHaveTextContent('A catchphrase used to dismiss older attitudes.');
+    expect(card).toHaveTextContent('This card gives away the ending of a story.');
+    for (const text of [...hidden, 'A dismissive comeback']) {
+      expect(card).not.toHaveTextContent(text);
+    }
+    await first.user.click(within(card).getByRole('button', { name: 'Reveal spoiler' }));
+    expect(screen.getByRole('heading', { name: 'A dismissive comeback' })).toHaveFocus();
+    for (const text of hidden) expect(card).toHaveTextContent(text);
+    first.unmount();
+
+    await repos.settings.set('spoilers', 'show');
+    const second = renderApp('/favourites', db);
+    await second.user.click(await screen.findByRole('button', { name: 'A dismissive comeback' }));
+    const shown = await screen.findByRole('article', { name: 'A dismissive comeback' });
+    for (const text of hidden) expect(shown).toHaveTextContent(text);
   });
 
   it('offers kept cards as tone filters but not as frames', async () => {
