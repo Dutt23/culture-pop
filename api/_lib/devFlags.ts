@@ -7,7 +7,9 @@ export type DevFlag =
   /** Canned results instead of Parallel: no key, no spending. */
   | 'WEB_SEARCH_FAKE'
   /** Access cookie without `Secure`, for a phone reaching the dev server over plain http. */
-  | 'ACCESS_COOKIE_INSECURE_DEV';
+  | 'ACCESS_COOKIE_INSECURE_DEV'
+  /** Canned card drafts instead of OpenAI and Cloudflare: no keys, nothing spent. */
+  | 'CARD_DRAFT_FAKE';
 
 export function devFlag(name: DevFlag): boolean {
   const deployment = process.env.VERCEL_ENV;

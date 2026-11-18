@@ -2,6 +2,15 @@ import { checkAccess, type AccessResult } from './_lib/access.js';
 import { devFlag } from './_lib/devFlags.js';
 import { fakeParallelFetch } from './_lib/fakeParallel.js';
 import { isCrossSite, json, readCapped } from './_lib/http.js';
+import {
+  MAX_QUERY,
+  cut,
+  objective,
+  plainText,
+  validAbout,
+  validQuery,
+  type SearchKind,
+} from './_lib/text.js';
 import { bestSnippet, pageKey } from './_lib/snippet.js';
 
 /**
@@ -12,8 +21,6 @@ import { bestSnippet, pageKey } from './_lib/snippet.js';
  */
 
 const PARALLEL_URL = 'https://api.parallel.ai/v1/search';
-const MIN_QUERY = 2;
-const MAX_QUERY = 200;
 const MAX_RESULTS = 10;
 const MAX_TITLE = 120;
 const MAX_SNIPPET = 300;
@@ -27,19 +34,11 @@ const MAX_UPSTREAM_BYTES = 256 * 1024;
  * five 30-character tags fits, even in four-byte characters; anything bigger is refused.
  */
 const MAX_REQUEST_BYTES = 2048;
-/** Search tags sent as a hint (docs/SEARCH_TAGS_PLAN.md); the same caps as the app's. */
-const MAX_ABOUT = 5;
-const MIN_TAG = 2;
-const MAX_TAG = 30;
-// Marks (\p{M}) keep Indic tags whole: "बॉलीवुड" has vowel signs. At least one letter or number,
-// so "&&" or "--" (nothing once normalized) is refused.
-const TAG_TEXT = /^(?=.*[\p{L}\p{N}])[\p{L}\p{M}\p{N} &'-]+$/u;
 /** What we send the phone stays small; results are dropped from the end until it fits. */
 const MAX_RESPONSE_BYTES = 16 * 1024;
 const TIMEOUT_MS = 8000;
 /** 31 days × 150 = 4,650, under the ~5,000 free `fast` searches a month. */
 const DAILY_CAP = 150;
-const CONTROL_CHARS = /\p{Cc}/u;
 
 /** How far a provider's terms let results be kept: `none`, this `device` only, or `shared`. */
 export type StorageLevel = 'none' | 'device' | 'shared';
@@ -59,6 +58,9 @@ export interface WebResult {
   storage: StorageLevel;
 }
 
+export { objective, validAbout, validQuery };
+export type { SearchKind };
+
 export interface HandlerOptions {
   fetch?: typeof fetch;
   timeoutMs?: number;
@@ -67,9 +69,6 @@ export interface HandlerOptions {
   /** Who may search. Swappable: today the access-code cookie (`_lib/access.ts`). */
   checkAccess?: (request: Request) => AccessResult;
 }
-
-/** What to look for: what the words mean, an answer from fiction, or videos of it. */
-export type SearchKind = 'meaning' | 'question' | 'videos';
 
 interface SearchBody {
   q: string | null;
@@ -99,58 +98,6 @@ async function readBody(request: Request): Promise<SearchBody> {
   }
 }
 
-/** Up to five tags, each 2–30 letters, numbers, spaces, `&`, `'` or `-`; anything else is dropped. */
-export function validAbout(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((tag): tag is string => typeof tag === 'string')
-    .map((tag) => tag.trim().replace(/\s+/g, ' '))
-    .filter((tag) => {
-      const length = Array.from(tag).length;
-      return length >= MIN_TAG && length <= MAX_TAG && TAG_TEXT.test(tag);
-    })
-    .slice(0, MAX_ABOUT);
-}
-
-/** Trimmed, single-spaced query, or undefined when it breaks the length or character rules. */
-export function validQuery(raw: string | null): string | undefined {
-  if (raw === null || CONTROL_CHARS.test(raw)) return undefined;
-  const q = raw.trim().replace(/\s+/g, ' ');
-  return q.length >= MIN_QUERY && q.length <= MAX_QUERY ? q : undefined;
-}
-
-/** Cuts by code points, so an emoji is never split into a broken half. */
-function cut(text: string, max: number): string {
-  const chars = Array.from(text);
-  return chars.length <= max
-    ? text
-    : `${chars
-        .slice(0, max - 1)
-        .join('')
-        .trimEnd()}…`;
-}
-
-const ENTITIES: Record<string, string> = {
-  '&amp;': '&',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&nbsp;': ' ',
-};
-
-/** Text only: images dropped, links reduced to their words, HTML tags and Markdown marks removed. */
-function plainText(markup: string): string {
-  return markup
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (entity) => ENTITIES[entity] ?? entity)
-    .replace(/[#*_`>]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function safeUrl(value: unknown): URL | undefined {
   if (typeof value !== 'string' || value.length > MAX_URL) return undefined;
   try {
@@ -159,33 +106,6 @@ function safeUrl(value: unknown): URL | undefined {
   } catch {
     return undefined;
   }
-}
-
-/**
- * What we ask Parallel for: the meaning and origin, so its excerpts explain rather than just mention.
- * A question leans to fiction, myths and pop culture (D50) unless the reader unticked "Stories &
- * myths", in which case the app sends `question: false`: left to itself, Parallel answers "who
- * committed the worst genocides" with real-world history.
- * `q` is already validated (≤200 characters, no control characters).
- */
-export function objective(
-  q: string,
-  kind: SearchKind = 'meaning',
-  about: readonly string[] = [],
-): string {
-  // A hint only: the search text itself never changes with tags.
-  const hint = about.length > 0 ? ` Prefer results about ${about.join(', ')}.` : '';
-  return baseObjective(q, kind) + hint;
-}
-
-function baseObjective(q: string, kind: SearchKind): string {
-  if (kind === 'videos') {
-    return `Find YouTube videos for "${q}": the official music video, live performances, trailers, clips or explainers. Prefer official channels.`;
-  }
-  if (kind === 'question') {
-    return `Answer "${q}" about fiction, myths and pop culture: characters, events and works in films, TV, anime, books, comics, games, myths, legends and folklore — not real-world history or news. Name the characters and works.`;
-  }
-  return `Explain "${q}": what it means or refers to in pop culture or internet culture (films, TV, comics, games, music, memes, slang), and where it comes from.`;
 }
 
 /** A second, short angle on the same words; the objective carries the rest of the intent. */
