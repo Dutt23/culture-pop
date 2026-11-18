@@ -104,7 +104,10 @@ describe('draft-card', () => {
       { search: 'a'.repeat(201), sources: [wiki] },
     ];
     for (const body of bad) {
-      expect((await read(await handle(post(body)))).body).toEqual({ error: 'bad_request' });
+      expect(await read(await handle(post(body)))).toEqual({
+        status: 400,
+        body: { error: 'bad_request' },
+      });
     }
     expect(inputs).toHaveLength(0);
   });
@@ -199,5 +202,115 @@ describe('draft-card', () => {
     const ask = () => handle(post({ search: SEARCH, sources: [wiki] }));
     expect((await ask()).status).toBe(200);
     expect(await read(await ask())).toEqual({ status: 429, body: { error: 'daily_cap' } });
+  });
+
+  it('keeps URLs out of titles, tone cards and the search', async () => {
+    const { handle, inputs } = setup();
+    const r = await read(
+      await handle(
+        post({
+          search: `${SEARCH} https://s.example.test/q`,
+          sources: [{ ...wiki, title: 'Sholay https://t.example.test/x' }],
+          tones: [{ ...tone, gist: 'see https://tone.example.test/y now' }],
+        }),
+      ),
+    );
+    expect(r.status).toBe(200);
+    expect(inputs[0]?.user).not.toContain('http');
+    expect(inputs[0]?.user).toContain('see now');
+    const onlyUrl = post({ search: 'https://only.example.test', sources: [wiki] });
+    expect((await handle(onlyUrl)).status).toBe(400);
+  });
+
+  it('rejects a wiki or app source whose from is not on the list', async () => {
+    const { handle } = setup();
+    for (const source of [
+      { ...wiki, from: 'evil.example' },
+      { kind: 'app', from: 'wikipedia', title: 'Mine', text: WIKI_TEXT },
+    ]) {
+      expect((await handle(post({ search: SEARCH, sources: [source] }))).status).toBe(400);
+    }
+  });
+
+  it('drops whole items that would pass the total length limit and lists them', async () => {
+    // Distinct words per item, so none is a near-duplicate; ~1,190 characters each.
+    const body = (n: number) =>
+      `${SEARCH} ${Array.from({ length: 250 }, (_, k) => `w${n}x${k}`).join(' ')}`.slice(0, 1190);
+    const froms = ['wiktionary', 'wiktionary', 'wikipedia', 'wikipedia', 'your card', 'your card'];
+    const sources = froms.map((from, n) => ({
+      kind: from === 'your card' ? 'app' : 'wiki',
+      from,
+      title: `Item${n}`,
+      text: body(n),
+    }));
+    const answer = { ...ANSWER, summary: [{ t: `${SEARCH} w0x0 w0x1 w0x2.`, ids: ['E1'] }] };
+    const { handle, inputs } = setup({}, answer);
+    const r = await read(await handle(post({ search: SEARCH, sources })));
+    expect(r.status).toBe(200);
+    const sent = inputs[0]?.user ?? '';
+    expect((sent.match(/w\d+x\d+/g) ?? []).join(' ').length).toBeLessThanOrEqual(6000);
+    expect(r.body.notUsed).toEqual([{ source: 5, why: 'over the length limit' }]);
+    expect(sent).not.toContain('Item5');
+  });
+
+  it('does not count a 400 toward the daily cap', async () => {
+    const { handle } = setup({ dailyCap: 1 });
+    expect((await handle(post({ search: SEARCH, sources: [] }))).status).toBe(400);
+    expect((await handle(post({ search: SEARCH, sources: [wiki] }))).status).toBe(200);
+  });
+
+  it('maps provider errors to 429 and 502', async () => {
+    const failing = (kind: 'rate_limited' | 'failed'): DraftProvider => ({
+      name: 'openai',
+      draft: async () => {
+        throw new ProviderError(kind, 'x');
+      },
+    });
+    const body = { search: SEARCH, sources: [wiki] };
+    const limited = setup({ providers: [failing('rate_limited')] }).handle;
+    expect(await read(await limited(post(body)))).toEqual({
+      status: 429,
+      body: { error: 'rate_limited' },
+    });
+    const broken = setup({ providers: [failing('failed')] }).handle;
+    expect(await read(await broken(post(body)))).toEqual({
+      status: 502,
+      body: { error: 'provider_failed' },
+    });
+  });
+
+  it('answers 503 not_configured with no providers', async () => {
+    const { handle } = setup({ providers: [] });
+    expect(await read(await handle(post({ search: SEARCH, sources: [wiki] })))).toEqual({
+      status: 503,
+      body: { error: 'not_configured' },
+    });
+  });
+
+  it('refuses a body over 16 KB', async () => {
+    const { handle } = setup();
+    const big = { search: SEARCH, sources: [wiki], pad: 'x'.repeat(17 * 1024) };
+    expect((await handle(post(big))).status).toBe(400);
+  });
+
+  it('refuses duplicate links and a link with credentials', async () => {
+    const { handle } = setup();
+    const dup = [web, { ...web, title: 'Again' }];
+    const creds = [{ ...web, url: 'https://user:pw@www.example.test/p' }];
+    for (const sources of [dup, creds]) {
+      expect((await handle(post({ search: SEARCH, sources }))).status).toBe(400);
+    }
+  });
+
+  it('cuts an over-long text and title instead of refusing', async () => {
+    const { handle, inputs } = setup();
+    const r = await handle(
+      post({
+        search: SEARCH,
+        sources: [{ ...wiki, title: 'T'.repeat(500), text: `${WIKI_TEXT} ${'a '.repeat(2000)}` }],
+      }),
+    );
+    expect(r.status).toBe(200);
+    expect(inputs[0]?.user).not.toContain('T'.repeat(201));
   });
 });
