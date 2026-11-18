@@ -25,21 +25,29 @@ const allNull = (urls: readonly string[]) =>
 /** Longer "sentences" are page menus run together, not prose. */
 const MAX_SENTENCE_CHARS = 400;
 
+/** Sentence ends, including the Devanagari danda and double danda. */
+const SENTENCE_END = /(?<=[.!?।॥])\s+/u;
+
+/** Lowercase words of any script (letters with their marks, numbers), space-padded so ` word ` matches whole words. */
+const padded = (text: string) =>
+  ` ${text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ').trim()} `;
+
 /**
- * The sentences that name the search (the whole phrase, or all but one of its words), in page
- * order. Drops menus and sidebars that would otherwise fill the 1,200-character item cut.
- * Empty when none do; the caller then keeps the whole text.
+ * The sentences that name the search (the whole phrase, or all but one of its words of 3+
+ * characters), as whole words in any script, in page order. Drops menus and sidebars that would
+ * otherwise fill the 1,200-character item cut. Empty when none do; the caller then keeps the text.
  */
 function namingSentences(text: string, search: string): string {
-  const phrase = search.toLowerCase();
-  const words = phrase.split(/\s+/).filter((w) => w.length > 2);
+  const phrase = padded(search);
+  const words = phrase.trim().split(' ').filter((w) => w.length > 2);
   const names = (sentence: string) => {
-    const lower = sentence.toLowerCase();
-    const hits = words.filter((w) => lower.includes(w)).length;
-    return lower.includes(phrase) || hits >= Math.max(1, words.length - 1);
+    const plain = padded(sentence);
+    if (phrase.trim() && plain.includes(phrase)) return true;
+    const hits = words.filter((w) => plain.includes(` ${w} `)).length;
+    return hits >= Math.max(1, words.length - 1);
   };
   const kept: string[] = [];
-  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+  for (const sentence of text.split(SENTENCE_END)) {
     if (sentence.length <= MAX_SENTENCE_CHARS && names(sentence) && !kept.includes(sentence)) {
       kept.push(sentence);
     }

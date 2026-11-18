@@ -150,6 +150,8 @@ function topUp(excerpt, full, q) {
   return text;
 }
 
+// Trial version (RICH=2). The shipped version lives in api/_lib/parallelExtract.ts and differs: it
+// matches whole words in any script, ignores punctuation and also splits on the Devanagari danda.
 /** Sentences that name the search (or most of its words), in page order, without repeats or menu runs. */
 function namingSentences(text, q) {
   const qWords = q.toLowerCase().split(' ').filter((w) => w.length > 2);

@@ -1,4 +1,5 @@
-// card-draft-v8 (trial only; v7 plus "What to include" and longer context lines): the fixed prefix (instructions + six worked examples), the request builder and
+// Frozen copy of the shipped card-draft-v8 prefix (api/_lib/cardPrompt.ts), as measured in the trial.
+// card-draft-v8 (v7 plus "What to include" and longer context lines): the fixed prefix (instructions + six worked examples), the request builder and
 // the answer schema. Mirrors docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md.
 // Worked examples are our own text and never use the five answer-key topics
 // (bazinga, winter is coming, ok boomer, stonks, kitne aadmi the).

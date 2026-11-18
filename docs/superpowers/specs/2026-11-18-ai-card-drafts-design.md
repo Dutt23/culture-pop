@@ -269,7 +269,9 @@ but it keeps only a 300-character snippet per result. For a draft, the server as
 **Parallel Extract** for the ticked web links (at most 3), with the reader's search as the
 objective, so it returns the parts of each page about the reference rather than the whole page.
 Of that text the server keeps only the sentences that name the search (the whole phrase, or all
-but one of its words; a "sentence" over 400 characters is a run-together menu and is skipped), so
+but one of its words of 3+ characters, matched as whole words in any script with punctuation and
+case ignored; sentences end at . ! ? । or ॥; a "sentence" over 400 characters is a run-together
+menu and is skipped), so
 page menus and sidebars don't fill the 1,200-character item. If no sentence names the search, the
 page text is kept as it came (2026-11-18, with v8).
 Parallel charges $0.001 per page, so at most $0.003 a card. The app stores nothing new: the page
