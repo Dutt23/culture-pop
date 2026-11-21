@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { ToneCard } from '../../../shared/cardTypes.js';
+import { LIMITS, type ToneCard } from '../../../shared/cardTypes.js';
 
 /**
  * A kept card's name in lists and filters. A major spoiler hidden by the reader's setting shows
@@ -33,7 +33,7 @@ export function gradeOf(tones: readonly Pick<ToneCard, 'label'>[]): CSSPropertie
 
 /** What the tray says when a pick would go over a limit (keyed by the tray hook's results). */
 export const LIMIT_HINTS = {
-  limit_total: 'A card takes up to 6 frames.',
-  limit_web: 'Up to 3 web frames per card.',
-  limit: 'Up to 2 colour filters.',
+  limit_total: `A card takes up to ${LIMITS.sources} frames.`,
+  limit_web: `Up to ${LIMITS.webSources} web frames per card.`,
+  limit: `Up to ${LIMITS.tones} colour filters.`,
 } as const;

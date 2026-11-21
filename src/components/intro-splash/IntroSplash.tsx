@@ -77,14 +77,18 @@ export function IntroSplash() {
   const reduced = settings.motion === 'reduce' || (settings.motion === 'system' && deviceReduced);
 
   useEffect(() => {
+    if (done) return;
+    const skip = () => setDone(true);
+    window.addEventListener('keydown', skip);
+    return () => window.removeEventListener('keydown', skip);
+  }, [done]);
+
+  useEffect(() => {
     if (done || !settingsLoaded) return;
     markSeen();
     const timer = setTimeout(() => setDone(true), reduced ? REDUCED_FADE_MS : INTRO_MS);
-    const skip = () => setDone(true);
-    window.addEventListener('keydown', skip);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('keydown', skip);
     };
   }, [done, settingsLoaded, reduced]);
 

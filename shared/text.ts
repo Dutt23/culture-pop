@@ -30,6 +30,26 @@ export function validAbout(raw: unknown): string[] {
     .slice(0, MAX_ABOUT);
 }
 
+/** Explicit animation categories constrain the search to fictional works and characters. */
+export function animationScope(about: readonly string[]): string[] {
+  return [
+    ...new Set(
+      about
+        .map((tag) => tag.toLowerCase())
+        .filter((tag) => tag === 'anime' || tag === 'cartoons' || tag === 'cartoon')
+        .map((tag) => (tag === 'cartoon' ? 'cartoons' : tag)),
+    ),
+  ].sort();
+}
+
+/** Stable context identity. JSON boundaries prevent punctuation or tag-order collisions. */
+export function searchContextKey(stories: boolean, about: readonly string[] = []): string {
+  return JSON.stringify([
+    stories,
+    [...new Set(about.map((tag) => tag.trim().toLowerCase()))].sort(),
+  ]);
+}
+
 /** Trimmed, single-spaced query, or undefined when it breaks the length or character rules. */
 export function validQuery(raw: string | null): string | undefined {
   if (raw === null || CONTROL_CHARS.test(raw)) return undefined;
@@ -83,7 +103,11 @@ export function objective(
 ): string {
   // A hint only: the search text itself never changes with tags.
   const hint = about.length > 0 ? ` Prefer results about ${about.join(', ')}.` : '';
-  return baseObjective(q, kind) + hint;
+  const scope = animationScope(about);
+  const constraint = scope.length
+    ? ` Restrict answers to fictional characters, events and works in ${scope.join(' or ')}. Exclude real historical figures, real-world atrocities, history and news, even when the words also match them.`
+    : '';
+  return baseObjective(q, kind) + hint + constraint;
 }
 
 function baseObjective(q: string, kind: SearchKind): string {

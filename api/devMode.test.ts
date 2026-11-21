@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { accessCookie, clearedAccessCookie } from './_lib/access';
+import { clearedSessionCookie, sessionCookie } from './_lib/session';
 import { devFlag } from './_lib/devFlags';
 import { createHandler } from './web-search';
 
@@ -15,7 +15,8 @@ function request(): Request {
 }
 
 beforeEach(() => {
-  vi.stubEnv('VERCEL_ENV', '');
+  vi.stubEnv('VERCEL_ENV', 'development');
+  vi.stubEnv('NODE_ENV', 'test');
   vi.stubEnv('PARALLEL_API_KEY', '');
   vi.stubEnv('WEB_SEARCH_FAKE', '');
   vi.stubEnv('ACCESS_COOKIE_INSECURE_DEV', '');
@@ -32,8 +33,23 @@ describe('dev flags', () => {
     expect(devFlag('WEB_SEARCH_FAKE')).toBe(false);
     vi.stubEnv('WEB_SEARCH_FAKE', '1');
     expect(devFlag('WEB_SEARCH_FAKE')).toBe(true);
-    vi.stubEnv('VERCEL_ENV', 'development');
+  });
+
+  it('fail closed when no environment says local development', () => {
+    vi.stubEnv('WEB_SEARCH_FAKE', '1');
+    vi.stubEnv('VERCEL_ENV', '');
+    expect(devFlag('WEB_SEARCH_FAKE')).toBe(false);
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(devFlag('WEB_SEARCH_FAKE')).toBe(false);
+    vi.stubEnv('NODE_ENV', 'development');
     expect(devFlag('WEB_SEARCH_FAKE')).toBe(true);
+  });
+
+  it('ignore NODE_ENV=development on a Vercel deployment', () => {
+    vi.stubEnv('WEB_SEARCH_FAKE', '1');
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    expect(devFlag('WEB_SEARCH_FAKE')).toBe(false);
   });
 
   it.each(['production', 'preview'])('are always off on a %s deployment', (deployment) => {
@@ -69,11 +85,9 @@ describe('fake provider (WEB_SEARCH_FAKE=1)', () => {
     expect(JSON.stringify(body)).not.toMatch(/\.png|<i>|\*\*/);
   });
 
-  it('still needs the access cookie', async () => {
+  it('still needs a signed-in person with the wider web turned on', async () => {
     vi.stubEnv('WEB_SEARCH_FAKE', '1');
-    vi.stubEnv('ACCESS_CODE', 'test-code-1234');
-    vi.stubEnv('ACCESS_COOKIE_SECRET', 'test-secret-'.padEnd(40, 'x'));
-    const handle = createHandler({ fetch: vi.fn<typeof fetch>() });
+    const handle = createHandler({ fetch: vi.fn<typeof fetch>(), checkAccess: () => 'signed_out' });
     expect((await handle(request())).status).toBe(401);
   });
 
@@ -94,20 +108,20 @@ describe('fake provider (WEB_SEARCH_FAKE=1)', () => {
   });
 });
 
-describe('insecure dev cookie (ACCESS_COOKIE_INSECURE_DEV=1)', () => {
+describe('insecure dev session cookie (ACCESS_COOKIE_INSECURE_DEV=1)', () => {
   it('drops Secure only on a local machine', () => {
-    expect(accessCookie('t')).toContain('Secure');
+    expect(sessionCookie('t')).toContain('Secure');
     vi.stubEnv('ACCESS_COOKIE_INSECURE_DEV', '1');
-    expect(accessCookie('t')).not.toContain('Secure');
-    expect(clearedAccessCookie()).not.toContain('Secure');
-    expect(accessCookie('t')).toContain('HttpOnly');
-    expect(accessCookie('t')).toContain('SameSite=Strict');
+    expect(sessionCookie('t')).not.toContain('Secure');
+    expect(clearedSessionCookie()).not.toContain('Secure');
+    expect(sessionCookie('t')).toContain('HttpOnly');
+    expect(sessionCookie('t')).toContain('SameSite=Strict');
   });
 
   it.each(['production', 'preview'])('keeps Secure on a %s deployment', (deployment) => {
     vi.stubEnv('VERCEL_ENV', deployment);
     vi.stubEnv('ACCESS_COOKIE_INSECURE_DEV', '1');
-    expect(accessCookie('t')).toContain('Secure');
-    expect(clearedAccessCookie()).toContain('Secure');
+    expect(sessionCookie('t')).toContain('Secure');
+    expect(clearedSessionCookie()).toContain('Secure');
   });
 });

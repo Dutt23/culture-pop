@@ -3,10 +3,8 @@ import { connectSrc } from './hosts';
 import {
   createWebSearch,
   DRAFT_CARD_PATH,
-  LOCK_PATH,
   parseDraftResponse,
   parseWebResults,
-  UNLOCK_PATH,
   WEB_SEARCH_PATH,
   WebSearchError,
 } from './webSearch';
@@ -112,7 +110,7 @@ describe('search', () => {
   });
 
   it('is covered by the CSP without adding a host', () => {
-    for (const path of [WEB_SEARCH_PATH, UNLOCK_PATH, LOCK_PATH]) {
+    for (const path of [WEB_SEARCH_PATH, DRAFT_CARD_PATH]) {
       expect(path.startsWith('/api/')).toBe(true);
     }
     expect(connectSrc()).toMatch(/^connect-src 'self'/);
@@ -125,7 +123,9 @@ describe('search', () => {
   });
 
   it.each([
-    [401, { error: 'locked' }, 'locked'],
+    [401, { error: 'signed_out' }, 'signed_out'],
+    [403, { error: 'not_allowed' }, 'not_allowed'],
+    [503, { error: 'unavailable' }, 'failed'],
     [400, { error: 'bad_query' }, 'bad_query'],
     [429, { error: 'daily_cap' }, 'daily_cap'],
     [429, { error: 'rate_limited' }, 'rate_limited'],
@@ -170,29 +170,6 @@ describe('search', () => {
     const pending = failureOf(client.search('ferrari fans', controller.signal));
     controller.abort();
     expect(await pending).toBe('aborted');
-  });
-});
-
-describe('unlock and lock', () => {
-  it('posts the code once as JSON to our own unlock function', async () => {
-    const { fetchMock, client } = setup(answer({ ok: true }));
-    await client.unlock('open-sesame-42');
-    const [url, init] = fetchMock.mock.calls[0] ?? [];
-    expect(url).toBe(UNLOCK_PATH);
-    expect(init).toMatchObject({ method: 'POST', credentials: 'same-origin' });
-    expect(JSON.parse(String(init?.body))).toEqual({ code: 'open-sesame-42' });
-  });
-
-  it('reports a wrong code', async () => {
-    const { client } = setup(answer({ error: 'wrong_code' }, 401));
-    expect(await failureOf(client.unlock('nope'))).toBe('wrong_code');
-  });
-
-  it('asks the server to forget the code', async () => {
-    const { fetchMock, client } = setup(answer({ ok: true }));
-    await client.lock();
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(LOCK_PATH);
-    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: 'POST' });
   });
 });
 
@@ -276,6 +253,102 @@ const DRAFT_RESPONSE = {
 };
 
 describe('draftCard', () => {
+  it('bounds streamed bodies before parsing oversized events', async () => {
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(200001));
+          controller.close();
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+    const { client } = setup(response);
+    expect(await failureOf(client.streamDraftCard!(DRAFT_BODY))).toBe('failed');
+  });
+
+  it('times out a stalled stream and cancels its reader', async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    const { client } = setup(
+      new Response(new ReadableStream({ cancel }), {
+        headers: { 'Content-Type': 'text/event-stream' },
+      }),
+    );
+    const result = failureOf(client.streamDraftCard!(DRAFT_BODY));
+    await vi.advanceTimersByTimeAsync(25000);
+    expect(await result).toBe('failed');
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  const stream = (chunks: Uint8Array[]) =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+
+  it('reads result events split across arbitrary UTF-8 chunk boundaries', async () => {
+    const body = { ...DRAFT_RESPONSE, card: { ...DRAFT_RESPONSE.card, label: 'हैलो 🌙' } };
+    const bytes = new TextEncoder().encode(
+      `event: started\ndata: {}\n\n: heartbeat\n\nevent: result\ndata: ${JSON.stringify(body)}\n\n`,
+    );
+    const { client, fetchMock } = setup(
+      stream(Array.from(bytes, (byte) => new Uint8Array([byte]))),
+    );
+    expect(await client.streamDraftCard!(DRAFT_BODY)).toEqual(body);
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Accept')).toBe(
+      'text/event-stream',
+    );
+  });
+
+  it.each([
+    'event: result\ndata: nope\n\n',
+    'event: started\ndata: {}\n\n',
+    'event: other\ndata: {}\n\n',
+  ])('rejects malformed or disconnected streams', async (text) => {
+    const { client } = setup(stream([new TextEncoder().encode(text)]));
+    expect(await failureOf(client.streamDraftCard!(DRAFT_BODY))).toBe('failed');
+  });
+
+  it('keeps typed terminal error details', async () => {
+    const { client } = setup(
+      stream([
+        new TextEncoder().encode(
+          'event: error\ndata: {"status":422,"body":{"error":"no_card","reason":"nothing_left","notUsed":[{"source":0,"why":"unsupported"}]}}\n\n',
+        ),
+      ]),
+    );
+    await expect(client.streamDraftCard!(DRAFT_BODY)).rejects.toMatchObject({
+      failure: 'no_card',
+      details: { reason: 'nothing_left', notUsed: [{ source: 0, why: 'unsupported' }] },
+    });
+  });
+
+  it('cancels an active streamed reader on user abort', async () => {
+    const cancel = vi.fn();
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: started\ndata: {}\n\n'));
+        },
+        cancel,
+      }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+    const { client } = setup(response);
+    const abort = new AbortController();
+    const result = failureOf(client.streamDraftCard!(DRAFT_BODY, abort.signal));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    abort.abort();
+    expect(await result).toBe('aborted');
+    expect(cancel).toHaveBeenCalled();
+  });
+
   it('posts the picks to /api/draft-card, never in the URL', async () => {
     const { fetchMock, client } = setup(answer(DRAFT_RESPONSE));
     expect(await client.draftCard(DRAFT_BODY)).toEqual(DRAFT_RESPONSE);

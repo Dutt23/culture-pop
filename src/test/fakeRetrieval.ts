@@ -116,8 +116,6 @@ export function unusedWebSearch() {
   const unused = () => Promise.reject(new Error('Wider-web search should not run in this test'));
   return {
     search: vi.fn<WebSearchClient['search']>(unused),
-    unlock: vi.fn<WebSearchClient['unlock']>(unused),
-    lock: vi.fn<WebSearchClient['lock']>(unused),
     draftCard: vi.fn<WebSearchClient['draftCard']>(unused),
   } satisfies WebSearchClient;
 }

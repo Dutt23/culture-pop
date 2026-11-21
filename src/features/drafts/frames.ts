@@ -4,6 +4,7 @@ import type { RetrievedCandidate } from '../../services/retrieval/types';
 import type { WebResult } from '../../services/retrieval/webSearch';
 
 export interface Frame {
+  provenance?: 'user';
   key: string;
   kind: SourceKind;
   from: string;
@@ -14,6 +15,9 @@ export interface Frame {
 }
 
 const WIKIS = ['wikipedia', 'wiktionary', 'wikiquote', 'wikidata'] as const;
+
+/** Ends with a full stop unless it already ends a sentence ("Bazinga!" stays as is). */
+const sentence = (s: string) => (/[.!?][)”"]?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
 const wikiFrom = (publisher: string, url: string) => {
   const hay = `${publisher} ${url}`.toLowerCase();
@@ -80,7 +84,11 @@ export function framesFrom(input: {
       from: own ? 'your card' : 'app card',
       title: reference.title,
       line: i.gist ?? i.summary,
-      text: [i.gist, i.summary, i.context].filter(Boolean).join(' '),
+      // Title and origin first: they name the work, and the server's length cut keeps the start.
+      text: [sentence(reference.title), reference.origin && sentence(reference.origin)]
+        .concat([i.gist, i.summary, i.context])
+        .filter(Boolean)
+        .join(' '),
     });
   }
   const keys = new Set<string>();

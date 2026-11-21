@@ -11,7 +11,7 @@ import type { Frame } from './frames';
 import { ToneFilters } from './ToneFilters';
 import { useCurationTray } from './useCurationTray';
 
-const frames: Frame[] = Array.from({ length: 7 }, (_, i) => ({
+const frames: Frame[] = Array.from({ length: 11 }, (_, i) => ({
   key: `app:${i}`,
   kind: 'app',
   from: 'app card',
@@ -72,7 +72,8 @@ const renderFlow = (preference: 'system' | 'reduce' = 'system') =>
     </MotionPreferenceProvider>,
   );
 
-const frameButton = (n: number) => screen.getByRole('button', { name: new RegExp(`Frame ${n}`) });
+const frameButton = (n: number) =>
+  screen.getByRole('button', { name: new RegExp(`Frame ${n} Line`) });
 const liveCount = () => document.querySelector('[aria-live="polite"]');
 
 afterEach(() => {
@@ -82,24 +83,27 @@ afterEach(() => {
 describe('film strip, filters and reel', () => {
   it('ticking a frame marks it pressed and updates the tray count', async () => {
     renderFlow();
-    expect(liveCount()).toHaveTextContent('0 of 6 frames');
+    expect(liveCount()).toHaveTextContent('0 of 10 frames');
+    expect(document.querySelectorAll('[data-filled]')).toHaveLength(10);
 
     await userEvent.click(frameButton(1));
 
     expect(frameButton(1)).toHaveAttribute('aria-pressed', 'true');
     expect(frameButton(2)).toHaveAttribute('aria-pressed', 'false');
-    expect(liveCount()).toHaveTextContent('1 of 6 frames');
+    expect(liveCount()).toHaveTextContent('1 of 10 frames');
+    expect(document.querySelectorAll('[data-filled="true"]')).toHaveLength(1);
+    expect(frameButton(1)).toHaveTextContent('✓ Selected');
     expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
   });
 
-  it('a 7th frame keeps the count at 6 and shows the limit hint', async () => {
+  it('an 11th frame keeps the count at 10 and shows the limit hint', async () => {
     renderFlow();
-    for (let n = 1; n <= 7; n++) await userEvent.click(frameButton(n));
+    for (let n = 1; n <= 11; n++) await userEvent.click(frameButton(n));
 
-    expect(frameButton(7)).toHaveAttribute('aria-pressed', 'false');
-    expect(liveCount()).toHaveTextContent('6 of 6 frames');
+    expect(frameButton(11)).toHaveAttribute('aria-pressed', 'false');
+    expect(liveCount()).toHaveTextContent('10 of 10 frames');
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('A card takes up to 6 frames.'),
+      expect(screen.getByRole('status')).toHaveTextContent('A card takes up to 10 frames.'),
     );
   });
 
@@ -107,17 +111,21 @@ describe('film strip, filters and reel', () => {
     vi.useFakeTimers();
     try {
       renderFlow();
-      for (let n = 1; n <= 7; n++) fireEvent.click(frameButton(n));
+      for (let n = 1; n <= 11; n++) fireEvent.click(frameButton(n));
       const status = screen.getByRole('status');
       act(() => vi.advanceTimersByTime(0));
-      expect(status).toHaveTextContent('A card takes up to 6 frames.');
+      expect(status).toHaveTextContent('A card takes up to 10 frames.');
 
-      fireEvent.click(frameButton(7)); // the same limit, while the first hint still shows
+      fireEvent.click(frameButton(11)); // the same limit, while the first hint still shows
       expect(status).toBeEmptyDOMElement();
       act(() => vi.advanceTimersByTime(0));
-      expect(status).toHaveTextContent('A card takes up to 6 frames.');
+      expect(status).toHaveTextContent('A card takes up to 10 frames.');
 
-      act(() => vi.advanceTimersByTime(2000)); // cleared after the fade
+      act(() => vi.advanceTimersByTime(2000)); // remains visible until another action
+      expect(status).toHaveTextContent('A card takes up to 10 frames.');
+
+      fireEvent.click(frameButton(1)); // the next pick clears it
+      act(() => vi.advanceTimersByTime(0));
       expect(status).toBeEmptyDOMElement();
     } finally {
       vi.useRealTimers();
@@ -155,6 +163,7 @@ describe('film strip, filters and reel', () => {
       this: HTMLElement,
     ) {
       if (!opened) return rect(0, 0);
+      if (this.hasAttribute('data-tray-dock')) return rect(380, 70);
       return this.tagName === 'DIALOG' ? rect(50, 600) : rect(120, 300);
     });
     const resized: ResizeObserverCallback[] = [];
@@ -178,6 +187,7 @@ describe('film strip, filters and reel', () => {
             onToggle={() => 'added'}
             scrollRoot={root}
           />
+          <div data-tray-dock />
         </dialog>
       );
     }
@@ -193,10 +203,10 @@ describe('film strip, filters and reel', () => {
       opened = true;
       act(() => resized.forEach((callback) => callback([], {} as ResizeObserver)));
 
-      // The strip runs from 120 to 420; the dialog's bottom (650) less the tray leaves all of it.
+      // The strip runs from 120 to 420; the gate stops at the measured tray's top (380).
       expect(rail.style.display).toBe('');
       expect(rail.style.top).toBe('0px');
-      expect(rail.style.height).toBe('300px');
+      expect(rail.style.height).toBe('260px');
     } finally {
       vi.unstubAllGlobals();
       vi.restoreAllMocks();

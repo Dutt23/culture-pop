@@ -51,8 +51,12 @@ export const COMMON_WORDS: ReadonlySet<string> = new Set(
 
 /** Share of a longer sentence's other content words that must appear (by stem) in the cited evidence. */
 export const MIN_SHARED_WORDS = 0.6;
-/** Below this many content words, every one must appear: "Doctor Doom dies." has only one. */
-const SHORT_SENTENCE_WORDS = 5;
+/**
+ * Below this many content words, every one must appear: "Doctor Doom dies." has only one.
+ * Was 5: claims of 3-4 words then failed on a single reworded verb ("tries" vs "try") that a
+ * longer line could carry, dropping supported entries (docs/eval/passage-selection-2026-11-19.md).
+ */
+const SHORT_SENTENCE_WORDS = 3;
 const STEM_CHARS = 5;
 const MIN_CONTENT_CHARS = 3;
 const POSSESSIVE = /['’]s\b/g;
@@ -75,10 +79,12 @@ function wordsOf(text: string): string[] {
  * ("dies" doesn't match "studies"). Strict on purpose: a paraphrase that drops a sentence is a
  * smaller loss than a made-up name, death or reversed meaning that is shown.
  */
-export function isGrounded(sentence: string, cited: string): boolean {
+export function isGrounded(sentence: string, cited: string, minShared = MIN_SHARED_WORDS): boolean {
   const evidence = ` ${wordsOf(cited).join(' ')} `;
   const hasWord = (word: string) => evidence.includes(` ${word} `);
-  const tokens = sentence.replace(POSSESSIVE, '').match(/[\p{L}\p{N}]+/gu) ?? [];
+  // Drop apostrophes as normalizePhrase does for the evidence, so "D'oh" is checked as "doh", not "d".
+  const plain = sentence.replace(POSSESSIVE, '').replace(APOSTROPHES, '');
+  const tokens = plain.match(/[\p{L}\p{N}]+/gu) ?? [];
   const names = new Set(
     tokens
       .filter((t) => /\p{N}/u.test(t) || (/^\p{Lu}/u.test(t) && !COMMON_WORDS.has(t.toLowerCase())))
@@ -95,5 +101,5 @@ export function isGrounded(sentence: string, cited: string): boolean {
   const shared = content.filter((w) => evidence.includes(` ${w.slice(0, STEM_CHARS)}`)).length;
   return content.length < SHORT_SENTENCE_WORDS
     ? shared === content.length
-    : shared / content.length >= MIN_SHARED_WORDS;
+    : shared / content.length >= minShared;
 }

@@ -116,3 +116,25 @@ Z, Evangelion, Cowboy Bebop, Akira, Your Name and My Neighbor Totoro are under i
 Story and Avatar: The Last Airbender are not. No country-of-origin fallback was needed. Franchise
 pages Wikidata files as manga (Naruto, Death Note, Attack on Titan, One Piece) match "comic" and stay
 under Comics; their anime series pages are separate Wikidata items and do file as anime.
+
+## Search scope correction (2026-11-19)
+
+Animation tags now constrain question and ranking results to Anime/Cartoons categories. Ordinary
+title and phrase lookups keep tag boosting and the opt-in Only these filter. Ranking fragments
+such as “biggest genocidal maniacs” are recognized without a question mark. Short titles such as
+Top Gun stay title lookups.
+
+Parallel receives explicit fictional-animation scope in its objective and scoped keyword queries.
+Anime/Cartoons tags take priority within the existing five-tag transport limit. Other custom
+tags remain hints. Reference retrieval keeps the original query and filters its returned categories
+on the page. Unknown or misclassified animation characters can consequently be missed.
+
+Wider-web live state and saved-result identity include mode and canonical tag context. Contextual
+rows never reuse legacy query-only rows. Legacy rows remain readable through the repository's
+original API until normal expiry or history clearing. Videos continue to be ephemeral and cannot
+replace saved ordinary searches. Only these now explains an empty filtered list and how to restore it.
+
+Regression checks cover objective scope, keyword scope, ranking fragments, context identity and
+repository isolation, tag-change reruns, and the empty Only these view. These checks use fixtures
+and mocked providers. Live search precision and recall have not been measured for this change,
+and no historical query/evaluation snapshots were changed.

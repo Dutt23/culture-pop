@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { roleOf, type FlagReason } from '../../../shared/cardCurate.js';
 import type { ToneCard } from '../../../shared/cardTypes.js';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { CardNoteButton } from './CardNoteButton';
 import type { Frame } from './frames';
 import film from './FilmStrip.module.css';
 import styles from './drafts.module.css';
@@ -104,6 +105,8 @@ interface SpliceCheckProps {
   kept: ReadonlySet<string>;
   /** The picked colour filters (tone cards). */
   tones: readonly ToneCard[];
+  styleGuidance?: { tone: string; structure: string };
+  userContext?: string;
   search: string;
   canMake: boolean;
   onKeep: (key: string) => void;
@@ -136,6 +139,18 @@ export function SpliceCheck(props: SpliceCheckProps) {
         Splice check
       </h2>
       <p className={styles.note}>Nothing is sent until you tap Make a card.</p>
+      {props.userContext && (
+        <aside className={styles.userContext}>
+          <strong>Added by you · unverified context</strong>
+          <p>{props.userContext}</p>
+        </aside>
+      )}
+      {props.styleGuidance?.tone && (
+        <p className={styles.note}>Tone · {props.styleGuidance.tone}</p>
+      )}
+      {props.styleGuidance?.structure && (
+        <p className={styles.note}>Structure · {props.styleGuidance.structure}</p>
+      )}
       <ol className={`${film.strip} ${styles.checkStrip}`}>
         {frames.map((frame) => (
           <CheckFrame
@@ -169,9 +184,9 @@ export function SpliceCheck(props: SpliceCheckProps) {
       {frames.length > 0 && !showsUse && (
         <p className={styles.note}>Add a web result to show how people use it.</p>
       )}
-      <button type="button" className={styles.make} disabled={!canMake} onClick={onMake}>
+      <CardNoteButton folder disabled={!canMake} onClick={onMake}>
         Make a card
-      </button>
+      </CardNoteButton>
       <button type="button" className={styles.small} onClick={onBack}>
         Back to the film
       </button>

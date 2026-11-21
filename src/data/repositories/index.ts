@@ -1,6 +1,7 @@
 import type { PopCultureDb } from '../db';
 import { createBackupRepository, type BackupRepository } from './backupRepository';
 import { createDraftRepository, type DraftRepository } from './draftRepository';
+import { createCurationJobRepository, type CurationJobRepository } from './curationJobRepository';
 import { createFavouriteRepository, type FavouriteRepository } from './favouriteRepository';
 import { createPackRepository, type PackRepository } from './packRepository';
 import { createReferenceRepository, type ReferenceRepository } from './referenceRepository';
@@ -25,12 +26,14 @@ export interface Repositories {
   savedLinks: SavedLinkRepository;
   /** Cards the reader kept from the AI draft; device only. Clear history leaves them. */
   drafts: DraftRepository;
+  /** Local activity and pending card snapshots; excluded from portable backups. */
+  curationJobs: CurationJobRepository;
   /** The reader's packs of existing references and their member rows. */
   packs: PackRepository;
   /** Backup files: what the reader made, never search history, kept web results or the code. */
   backup: BackupRepository;
   /**
-   * Clears favourites, packs, saved web links, kept cards, settings, search history (with the wider-web results
+   * Clears favourites, packs, saved web links, kept cards, activity jobs, settings, search history (with the wider-web results
    * kept for it) and cached online results together in one
    * transaction. Curated reference content is untouched.
    */
@@ -51,6 +54,7 @@ export function createRepositories(db: PopCultureDb): Repositories {
     webResults: createWebResultRepository(db),
     savedLinks,
     drafts,
+    curationJobs: createCurationJobRepository(db),
     packs: createPackRepository(db),
     backup: createBackupRepository(db, retrieval, savedLinks),
     resetUserData: () =>
@@ -62,6 +66,7 @@ export function createRepositories(db: PopCultureDb): Repositories {
           db.packMembers,
           db.savedLinks,
           db.draftCards,
+          db.curationJobs,
           db.settings,
           db.searchHistory,
           db.webResults,
@@ -75,6 +80,7 @@ export function createRepositories(db: PopCultureDb): Repositories {
           await db.packs.clear();
           await savedLinks.clear();
           await drafts.clear();
+          await db.curationJobs.clear();
           await db.settings.clear();
           await history.clear();
           await retrieval.clear();

@@ -7,11 +7,9 @@ export type SpoilerPreference = 'hide' | 'show';
 export type RetrievalPreference = 'ask' | 'on' | 'off';
 /**
  * Consent to send search text to the wider-web search (D45). `on` also runs it by itself on a miss,
- * once this device has unlocked (`webAccess`).
+ * once this device is signed in (D64).
  */
 export type WebSearchPreference = 'ask' | 'on' | 'off';
-/** Whether a wider-web search has worked on this device: never the code, only that one worked. */
-export type WebAccessState = 'unknown' | 'unlocked';
 /** Question searches lean to films, TV, anime, books, games, myths and legends (owner, D50). */
 export type StoriesPreference = 'on' | 'off';
 /** Favourites and opened results break ties in the library's order (search tags plan; on by default). */
@@ -26,7 +24,6 @@ export interface Settings {
   retrieval: RetrievalPreference;
   webSearch: WebSearchPreference;
   history: HistoryPreference;
-  webAccess: WebAccessState;
   stories: StoriesPreference;
   taste: TastePreference;
 }
@@ -40,7 +37,6 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   retrieval: 'ask',
   webSearch: 'ask',
   history: 'on',
-  webAccess: 'unknown',
   stories: 'on',
   taste: 'on',
 };
@@ -58,7 +54,6 @@ export const SETTING_LABELS: {
   retrieval: { ask: 'Ask first', on: 'On', off: 'Off' },
   webSearch: { ask: 'Ask first', on: 'On', off: 'Off' },
   history: { on: 'On', off: 'Off' },
-  webAccess: { unknown: 'Not yet', unlocked: 'Unlocked' },
   stories: { on: 'On', off: 'Off' },
   taste: { on: 'On', off: 'Off' },
 };

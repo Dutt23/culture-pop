@@ -40,7 +40,20 @@ describe('framesFrom', () => {
       ['web', 'site1.com', 'Doctor Doom snippet 1'],
       ['app', 'your card', 'Doom sum'],
     ]);
-    expect(out[2].text).toBe('Doom sum Doom ctx');
+    expect(out[2].text).toBe('Doctor Doom. Doom sum Doom ctx');
+  });
+
+  it('starts an app card source with its title and origin, so the cap keeps them', () => {
+    const reference = { ...app, origin: 'Marvel comics' } as Reference;
+    const long = { ...interp, context: 'x '.repeat(LIMITS.itemChars) };
+    const [frame] = frames({ appCards: [{ reference, interpretation: long, own: false }] });
+    expect(frame.text?.startsWith('Doctor Doom. Marvel comics. Doom sum')).toBe(true);
+    const body = readDraftBody({
+      search: 'doom',
+      sources: [{ kind: 'app', from: frame.from, title: frame.title, text: frame.text }],
+    });
+    expect(body?.sources[0].text?.startsWith('Doctor Doom. Marvel comics.')).toBe(true);
+    expect(Array.from(body?.sources[0].text ?? '').length).toBeLessThanOrEqual(LIMITS.itemChars);
   });
 
   it('collapses the same URL from two places into one frame', () => {
@@ -62,16 +75,15 @@ describe('useCurationTray', () => {
   };
   const start = () => renderHook(() => useCurationTray('doctor doom'));
 
-  it('refuses a 7th frame and a 4th web frame', () => {
+  it('accepts ten web frames and refuses an eleventh source', () => {
     const hook = start();
-    const webs = frames({ webResults: [1, 2, 3, 4].map((n) => web(n)) });
-    expect(webs.slice(0, 3).map((f) => pick(hook, f))).toEqual(['added', 'added', 'added']);
-    expect(pick(hook, webs[3])).toBe('limit_web');
-    const wikis = frames({ candidates: ['a', 'b', 'c', 'd'].map((i) => candidate(i)) });
-    wikis.slice(0, 3).forEach((f) => pick(hook, f));
-    expect(hook.result.current.picked).toHaveLength(LIMITS.sources);
-    expect(pick(hook, wikis[3])).toBe('limit_total');
+    const webs = frames({ webResults: Array.from({ length: 11 }, (_, n) => web(n)) });
+    webs.slice(0, 10).forEach((frame) => expect(pick(hook, frame)).toBe('added'));
+    expect(hook.result.current.picked).toHaveLength(10);
+    expect(hook.result.current.body().sources).toHaveLength(10);
+    expect(pick(hook, webs[10])).toBe('limit_total');
     expect(pick(hook, webs[0])).toBe('removed');
+    expect(pick(hook, webs[10])).toBe('added');
   });
 
   it('refuses a 3rd tone card', () => {
@@ -172,7 +184,7 @@ describe('requests the server accepts', () => {
     expect(readDraftBody(tray.body())).not.toBeNull();
   });
 
-  it('keeps a worst-case full tray under 48 KB (4-byte characters)', () => {
+  it('keeps a worst-case full tray under 80 KB (4-byte characters)', () => {
     const long = '𝒜'.repeat(5000);
     const hook = renderHook(() => useCurationTray('doctor doom'));
     frames({
@@ -191,7 +203,7 @@ describe('requests the server accepts', () => {
     act(() => void hook.result.current.toggleTone({ ...longTone, label: `${longTone.label}b` }));
     const body = hook.result.current.body(['x']);
     expect(body.sources).toHaveLength(6);
-    expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeLessThan(48 * 1024);
+    expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeLessThan(80 * 1024);
     expect(readDraftBody(body)).not.toBeNull();
   });
 

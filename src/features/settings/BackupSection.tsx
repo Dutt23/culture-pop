@@ -84,7 +84,7 @@ export function BackupSection() {
   return (
     <Section
       title="Backup"
-      description="Save your favourites, packs, saved web links and settings to a file, to keep or to move to another phone. It never holds your search history, wider web results or the access code. Restoring only adds: what's already on this phone, settings included, stays as it is."
+      description="Save your favourites, packs, saved web links and settings to a file, to keep or to move to another phone. It never holds your search history, wider web results or your sign-in. Restoring only adds: what's already on this phone, settings included, stays as it is."
     >
       <button type="button" className={styles.secondary} onClick={() => void save()}>
         Save a backup file

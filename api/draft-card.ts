@@ -1,7 +1,14 @@
-import { checkAccess, type AccessResult } from './_lib/access.js';
+import { checkWebAccess, WEB_ACCESS_REFUSALS, type WebAccess } from './_lib/webAccess.js';
 import { checkAnswer } from './_lib/cardCheck.js';
 import { curateEvidence } from '../shared/cardCurate.js';
-import { ANSWER_SCHEMA, PREFIX, PROMPT_VERSION, requestText } from './_lib/cardPrompt.js';
+import {
+  ANSWER_SCHEMA,
+  PREFIX,
+  PROMPT_VERSION,
+  TOPIC_PREFIX,
+  TOPIC_PROMPT_VERSION,
+  requestText,
+} from './_lib/cardPrompt.js';
 import {
   ProviderError,
   draftWithFallback,
@@ -18,8 +25,10 @@ import {
   type ToneCard,
 } from '../shared/cardTypes.js';
 import { devFlag } from './_lib/devFlags.js';
+import { withDraftStream } from './_lib/draftStream.js';
 import { isCrossSite, json, readCapped } from './_lib/http.js';
 import { extractPages } from './_lib/parallelExtract.js';
+import { bestSnippet, dropFanWorks, isFanSite } from './_lib/snippet.js';
 import { cut, validAbout, validQuery } from '../shared/text.js';
 
 /**
@@ -27,8 +36,8 @@ import { cut, validAbout, validQuery } from '../shared/text.js';
  * Provider keys stay on the server. Never logs or stores bodies, answers or keys.
  */
 
-// 48 KB: six 1,200-character texts, six 200-character titles and two tones of 4-byte characters.
-const MAX_REQUEST_BYTES = 48 * 1024;
+// 80 KB accommodates ten bounded sources, titles, URLs and tones, including 4-byte text.
+const MAX_REQUEST_BYTES = 80 * 1024;
 const MAX_TITLE = 200;
 const MIN_SNIPPET = 40;
 /** From the request's start: under the app's 25 s wait, so the reader always gets our answer. */
@@ -43,7 +52,8 @@ const TONE_FIELDS = ['label', 'gist', 'means', 'reply', 'summary'] as const;
 export interface DraftHandlerOptions {
   fetch?: typeof fetch;
   now?: () => Date;
-  checkAccess?: (request: Request) => AccessResult;
+  /** Who may use the wider web; defaults to the signed-in person's permission (webAccess.ts). */
+  checkAccess?: (request: Request) => WebAccess | Promise<WebAccess>;
   dailyCap?: number;
   providers?: DraftProvider[];
 }
@@ -76,7 +86,13 @@ function readSource(raw: unknown): DraftSourceInput | null {
   if (!raw.from.trim() || !title) return null;
   const allowedFrom = kind === 'wiki' ? WIKI_FROM : APP_FROM;
   if (kind !== 'web' && !allowedFrom.has(raw.from)) return null;
-  const base = { kind, from: raw.from, title };
+  if (raw.provenance !== undefined && raw.provenance !== 'user') return null;
+  const base = {
+    kind,
+    from: raw.from,
+    title,
+    ...(raw.provenance === 'user' ? { provenance: 'user' as const } : {}),
+  };
   if (kind === 'web') {
     const url = httpsUrl(raw.url);
     if (!url) return null;
@@ -112,6 +128,23 @@ export function readDraftBody(raw: unknown): DraftRequestBody | null {
   const urls = valid.filter((s) => s.kind === 'web').map((s) => s.url);
   if (urls.length > LIMITS.webSources || new Set(urls).size !== urls.length) return null;
 
+  if (
+    raw.kind !== undefined &&
+    !['reference', 'topic', 'list', 'ranking'].includes(String(raw.kind))
+  )
+    return null;
+  if (raw.userContext !== undefined && typeof raw.userContext !== 'string') return null;
+  let retry: DraftRequestBody['retry'];
+  if (raw.retry !== undefined) {
+    if (
+      !isObject(raw.retry) ||
+      !Array.isArray(raw.retry.preserveSources) ||
+      raw.retry.preserveSources.length > LIMITS.sources ||
+      raw.retry.preserveSources.some((n) => !Number.isInteger(n) || n < 0 || n >= valid.length)
+    )
+      return null;
+    retry = { preserveSources: [...new Set(raw.retry.preserveSources as number[])] };
+  }
   let tones: ToneCard[] = [];
   if (raw.tones !== undefined) {
     if (!Array.isArray(raw.tones) || raw.tones.length > LIMITS.tones) return null;
@@ -119,7 +152,32 @@ export function readDraftBody(raw: unknown): DraftRequestBody | null {
     if (read.some((t) => t === null)) return null;
     tones = read as ToneCard[];
   }
-  return { search, about: validAbout(raw.about), sources: valid, tones };
+  let styleGuidance: DraftRequestBody['styleGuidance'];
+  if (raw.styleGuidance !== undefined) {
+    const guidance = raw.styleGuidance;
+    if (
+      !isObject(guidance) ||
+      typeof guidance.tone !== 'string' ||
+      typeof guidance.structure !== 'string'
+    )
+      return null;
+    styleGuidance = {
+      tone: cut(clean(guidance.tone), LIMITS.styleGuidanceChars),
+      structure: cut(clean(guidance.structure), LIMITS.styleGuidanceChars),
+    };
+  }
+  return {
+    search,
+    about: validAbout(raw.about),
+    sources: valid,
+    ...(raw.kind ? { kind: raw.kind as DraftRequestBody['kind'] } : {}),
+    ...(typeof raw.userContext === 'string'
+      ? { userContext: cut(clean(raw.userContext), LIMITS.itemChars) }
+      : {}),
+    ...(retry ? { retry } : {}),
+    tones,
+    ...(styleGuidance ? { styleGuidance } : {}),
+  };
 }
 
 /** The `www.`-less host a reader would recognise. */
@@ -131,6 +189,8 @@ type Candidate = Omit<EvidenceItem, 'id' | 'role'>;
 function toCandidates(
   sources: readonly DraftSourceInput[],
   pages: ReadonlyMap<string, string | null>,
+  search: string,
+  kind: DraftRequestBody['kind'],
 ): { candidates: Candidate[]; unread: NotUsed[] } {
   const candidates: Candidate[] = [];
   const unread: NotUsed[] = [];
@@ -139,9 +199,18 @@ function toCandidates(
     let from = s.from;
     if (s.kind === 'web') {
       from = hostOf(s.url ?? '');
-      const page = pages.get(s.url ?? '');
-      const snippet = stripUrls(s.text ?? '').trim();
-      text = page ?? (snippet.length >= MIN_SNIPPET ? snippet : '');
+      if (isFanSite(from)) {
+        return void unread.push({ source, why: 'fan-made site, not the original work' });
+      }
+      // Fan-work fragments never reach packing, so they can't become the best-scoring anchor.
+      const raw = pages.get(s.url ?? '');
+      const page = raw && dropFanWorks(raw);
+      const snippet = dropFanWorks(stripUrls(s.text ?? '').trim());
+      // Anchor ranking to the picked result to reduce subject drift from generic query words.
+      text =
+        page && kind && kind !== 'reference' && Array.from(page).length > LIMITS.itemChars
+          ? bestSnippet([page], `${search} ${snippet}`, 2)
+          : (page ?? (snippet.length >= MIN_SNIPPET ? snippet : ''));
       if (!text) return void unread.push({ source, why: "couldn't be read" });
     }
     candidates.push({ from, title: s.title, text: stripUrls(cut(text, LIMITS.itemChars)), source });
@@ -159,7 +228,7 @@ export function createDraftHandler(
     options.fetch ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
   const dailyCap = options.dailyCap ?? DAILY_DRAFT_CAP;
   const now = options.now ?? (() => new Date());
-  const access = options.checkAccess ?? ((request) => checkAccess(request, now().getTime()));
+  const access = options.checkAccess ?? ((request: Request) => checkWebAccess(request));
   // shortcut: per-instance memory, so cold starts and parallel instances each get their own count;
   // the providers' spend limits are the real cap. Upgrade to a shared store if use grows.
   let day = '';
@@ -168,9 +237,11 @@ export function createDraftHandler(
   return async function handle(request) {
     const started = Date.now();
     if (isCrossSite(request)) return json(403, { error: 'cross_site' });
-    const allowed = access(request);
-    if (allowed === 'not_configured') return json(503, { error: 'not_configured' });
-    if (allowed === 'locked') return json(401, { error: 'locked' });
+    const allowed = await access(request);
+    if (allowed !== 'ok') {
+      const refusal = WEB_ACCESS_REFUSALS[allowed];
+      return json(refusal.status, { error: refusal.error });
+    }
 
     let body: DraftRequestBody | null;
     try {
@@ -196,16 +267,32 @@ export function createDraftHandler(
     const apiKey = process.env.PARALLEL_API_KEY;
     const canExtract = urls.length > 0 && (apiKey || devFlag('WEB_SEARCH_FAKE'));
     const pages = canExtract
-      ? await extractPages(urls, search, { fetch: doFetch, apiKey: apiKey ?? 'local-fake' })
+      ? await extractPages(
+          urls,
+          search,
+          { fetch: doFetch, apiKey: apiKey ?? 'local-fake' },
+          { kind: body.kind, about: body.about },
+        )
       : new Map<string, string | null>();
 
-    const { candidates, unread } = toCandidates(sources, pages);
-    const { items: curated, dropped } = curateEvidence(candidates, search);
+    const { candidates, unread } = toCandidates(sources, pages, search, body.kind);
+    const { items: curated, dropped } = curateEvidence(
+      candidates,
+      search,
+      body.kind && body.kind !== 'reference'
+        ? candidates.map((candidate) => candidate.source)
+        : body.retry?.preserveSources,
+    );
     const early = [...unread, ...dropped];
     // Whole items are dropped, never cut, so no sentence loses its end.
     let total = 0;
     const items = curated.filter((item) => {
-      if (total + item.text.length > LIMITS.totalChars) {
+      if (
+        total + item.text.length >
+        (body.kind && body.kind !== 'reference'
+          ? LIMITS.sources * LIMITS.itemChars
+          : LIMITS.totalChars)
+      ) {
         early.push({ source: item.source, why: 'over the length limit' });
         return false;
       }
@@ -218,14 +305,29 @@ export function createDraftHandler(
     }
 
     const controller = new AbortController();
+    const cancel = () => controller.abort();
+    request.signal.addEventListener('abort', cancel, { once: true });
+    if (request.signal.aborted) cancel();
     const timer = setTimeout(() => controller.abort(), started + DEADLINE_MS - Date.now());
+    const isTopic = body.kind !== undefined && body.kind !== 'reference';
+    const promptVersion = isTopic ? TOPIC_PROMPT_VERSION : PROMPT_VERSION;
     let drafted;
     try {
       drafted = await draftWithFallback(
         providers,
         {
-          prefix: PREFIX,
-          user: requestText({ search, about: body.about, evidence: items, tones }),
+          prefix: isTopic ? TOPIC_PREFIX : PREFIX,
+          promptVersion,
+          user: requestText({
+            search,
+            about: body.about,
+            evidence: items,
+            tones,
+            styleGuidance: body.styleGuidance,
+            kind: body.kind,
+            userContext: body.userContext,
+            retry: body.retry,
+          }),
           schema: ANSWER_SCHEMA,
         },
         controller.signal,
@@ -238,21 +340,25 @@ export function createDraftHandler(
       return json(502, { error: 'provider_failed' });
     } finally {
       clearTimeout(timer);
+      request.signal.removeEventListener('abort', cancel);
     }
 
-    const checked = checkAnswer(drafted.answer, items, search, tones);
+    const checked = checkAnswer(drafted.answer, items, search, tones, body.kind);
     if (!checked.card) {
       const notUsed = firstPerSource(early);
       return json(422, { error: 'no_card', reason: checked.reason, notUsed });
     }
     const response: DraftResponse = {
-      card: checked.card,
+      card:
+        body.kind && body.kind !== 'reference' && early.length > 0
+          ? { ...checked.card, partial: true }
+          : checked.card,
       notUsed: firstPerSource([...early, ...checked.notUsed]),
       provider: drafted.provider,
-      promptVersion: PROMPT_VERSION,
+      promptVersion,
     };
     return json(200, response);
   };
 }
 
-export const POST = createDraftHandler();
+export const POST = withDraftStream(createDraftHandler());

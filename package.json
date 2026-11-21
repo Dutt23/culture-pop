@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:live": "playwright test -c playwright.live.config.ts",
     "audit:gate": "node scripts/audit-gate.js",
     "check:dist": "node scripts/check-dist.js",
     "deploy:check": "npm run audit:gate && npm run typecheck && npm run lint && prettier --check src api shared scripts e2e && npm test && CI=1 npm run test:e2e && npm run check:dist",

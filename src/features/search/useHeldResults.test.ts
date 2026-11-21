@@ -42,4 +42,19 @@ describe('useHeldResults', () => {
     rerender({ items: [item('b'), item('a')], key: 'second' });
     expect(ids(result.current.shown)).toEqual(['b', 'a']);
   });
+
+  it('shows cards that arrived after the first batch once the lookup is finished', () => {
+    const { result, rerender } = renderHook(
+      ({ items, releaseHeld }) =>
+        useHeldResults(items, 'gundam', (x) => x.id === 'film', releaseHeld),
+      { initialProps: { items: [item('franchise')], releaseHeld: false } },
+    );
+    rerender({ items: [item('franchise'), item('film')], releaseHeld: false });
+    expect(ids(result.current.shown)).toEqual(['franchise']);
+    expect(ids(result.current.held)).toEqual(['film']);
+
+    rerender({ items: [item('franchise'), item('film')], releaseHeld: true });
+    expect(ids(result.current.shown)).toEqual(['film', 'franchise']);
+    expect(result.current.held).toEqual([]);
+  });
 });

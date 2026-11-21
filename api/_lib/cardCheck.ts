@@ -2,6 +2,7 @@
 // unsupported sentences, bad examples and made-up names, and map evidence ids to request sources.
 import type { ModelAnswer } from './cardPrompt.js';
 import type {
+  CardKind,
   CitedLine,
   DraftCard,
   EvidenceItem,
@@ -31,6 +32,10 @@ const FALLBACK_REPLY = 'What do you mean?';
 const GENERIC_REPLY =
   /^(nice( one)?|good luck( with that)?|fair (point|enough)|got it|cool|classic|same|sounds (wild|good|fun)|bring it on|nice move)[.!? ,]*$/i;
 const POSSESSIVE = /['’]s$/;
+/** Lower-case words that describe a source rather than state a fact (names keep their capitals). */
+const REPORTING_WORDS =
+  /\b(?:described|cited|identified|named|listed|called|calls|says|said|source|sources|example|examples|among|appears|mentioned|regarded)\b/g;
+const STRICT_SHARED_WORDS = 0.7;
 
 type Line = { t: string; ids: string[] };
 type ByIdMap = ReadonlyMap<string, EvidenceItem>;
@@ -73,14 +78,35 @@ function citedItems(ids: string[], byId: ByIdMap): EvidenceItem[] | null {
 const sourcesOf = (cited: EvidenceItem[]): number[] => [...new Set(cited.map((c) => c.source))];
 
 /** Lines whose ids all exist, whose words the cited items support, and that are short enough. */
-function keepLines(lines: Line[], byId: ByIdMap, max: number): CitedLine[] {
+function topicGrounded(text: string, evidence: string): boolean {
+  const claim = text
+    .replace(/,? according to (?:the )?(?:passage|source|evidence)\.?$/i, '')
+    .replace(/\b(?:said|reported|described) to (have|be)\b/gi, '$1');
+  const checked = /[“"]/.test(text)
+    ? text
+    : claim.replace(
+        /\b(\p{Lu}\p{L}*)\s+(\p{Lu}\p{L}*)\b/gu,
+        (pair, first: string, second: string) => {
+          const joined = `${first}${second}`;
+          return wordsOf(evidence).includes(joined.toLowerCase()) ? joined : pair;
+        },
+      );
+  if (isGrounded(checked, evidence)) return true;
+  // Words about the source ("is cited as", "the source says") aren't claims; without them, demand
+  // more of what's left so a reworded unsupported claim can't slip under the usual share.
+  const unreported = checked.replace(REPORTING_WORDS, ' ');
+  return unreported !== checked && isGrounded(unreported, evidence, STRICT_SHARED_WORDS);
+}
+
+function keepLines(lines: Line[], byId: ByIdMap, max: number, topic = false): CitedLine[] {
   const kept: CitedLine[] = [];
   for (const line of lines) {
     if (kept.length === max) break;
     const cited = citedItems(line.ids, byId);
     if (!cited || line.t.length > MAX_LINE_CHARS) continue;
-    if (!isGrounded(line.t, cited.map((c) => c.text).join(' '))) continue;
-    kept.push({ text: line.t, sources: sourcesOf(cited) });
+    const evidence = cited.map((c) => c.text).join(' ');
+    const grounded = topic ? topicGrounded : isGrounded;
+    if (grounded(line.t, evidence)) kept.push({ text: line.t, sources: sourcesOf(cited) });
   }
   return kept;
 }
@@ -162,15 +188,26 @@ export function checkAnswer(
   items: readonly EvidenceItem[],
   search: string,
   tones: readonly ToneCard[],
+  kind: CardKind = 'reference',
 ): CheckResult {
   const a = readAnswer(answer);
   if (!a) return { card: null, reason: 'unreadable' };
-  if (a.unclear) return { card: null, reason: 'unclear' };
+  if (a.unclear && kind === 'reference') return { card: null, reason: 'unclear' };
 
   const byId = new Map(items.map((i) => [i.id, i]));
-  const summary = keepLines(a.summary, byId, MAX_SUMMARY);
+  const summary = keepLines(
+    a.summary,
+    byId,
+    kind === 'reference' ? MAX_SUMMARY : 10,
+    kind !== 'reference',
+  );
   if (summary.length === 0) return { card: null, reason: 'nothing_left' };
-  const context = keepLines(a.context, byId, MAX_CONTEXT);
+  const context = keepLines(
+    a.context,
+    byId,
+    kind === 'reference' ? MAX_CONTEXT : 10,
+    kind !== 'reference',
+  );
   const example = keepExample(a.example, byId, search);
 
   const evidenceText = items.map((i) => i.text.toLowerCase()).join('\n');
@@ -195,8 +232,29 @@ export function checkAnswer(
     return [{ source: item.source, why: reason || FALLBACK_WHY }];
   });
 
+  if (kind !== 'reference') {
+    const cited = new Set(
+      [...summary, ...context, ...(example ? [example] : [])].flatMap((line) => line.sources),
+    );
+    for (const item of items) {
+      if (!cited.has(item.source) && !seen.has(item.source)) {
+        seen.add(item.source);
+        notUsed.push({ source: item.source, why: 'No supported claim included from this source' });
+      }
+    }
+  }
   return {
-    card: { label, gist, means, reply, summary, context, example, spoiler: a.spoiler },
+    card: {
+      ...(kind !== 'reference' ? { kind, partial: a.unclear || notUsed.length > 0 } : {}),
+      label,
+      gist,
+      means,
+      reply,
+      summary,
+      context,
+      example,
+      spoiler: a.spoiler,
+    },
     notUsed,
   };
 }

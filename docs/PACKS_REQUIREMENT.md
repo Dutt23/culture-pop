@@ -21,7 +21,7 @@ Worked example, not seed data: a pack named "Before X-Men" holds Xavier, Magneto
 7. A reference with `editorialState` `retrieved` or `source_curated` is invisible to pack search until it is filed into a pack.
 8. Seed and other curated references are invisible to pack search until filed. "All packs" means every filed card, not the whole library and not the web.
 9. The existing `/search` page, online retrieval, and wider-web search stay as they are. Pack search must not call `useRetrieval` or `api/web-search`.
-10. One folder level. No nested packs. No scores, streaks, or "I get this now". Removing a member never deletes the reference. Deleting a pack deletes only that pack and its member rows.
+10. One folder level. No nested packs. No scores, streaks, or done counts. "Got it" (D52, worded D60) keeps the card filed and folds it under "Cards you've got"; it is per pack. Removing a member never deletes the reference. Deleting a pack deletes only that pack and its member rows.
 11. Copy stays plain. Do not write "catch up", "you missed", or "beginner".
 
 ## Search
@@ -95,7 +95,7 @@ There is no card editor in this change. Characters must already be references.
 
 ## Data
 
-Dexie is at version 7 in `src/data/db.ts`. Add version 8 only. Do not edit the `SCHEMA_V1` … v7 blocks.
+Packs shipped as Dexie version 8 in `src/data/db.ts` (`SCHEMA_V8_CHANGES`). The current schema is version 13; later versions belong to other features. Never edit the `SCHEMA_V1` … v8 blocks.
 
 ```ts
 export type PackCeiling = 'before_watching' | 'open';
@@ -116,6 +116,8 @@ export interface PackMember {
   referenceId: string;
   position: number;
   addedAt: string;
+  /** Set by "Got it" (D52). The card stays filed; done rows sort after the cards still to learn. */
+  doneAt?: string;
 }
 ```
 
@@ -140,9 +142,11 @@ Ids: `pack:` + `crypto.randomUUID()`, `pm:` + `crypto.randomUUID()`.
 - `setNow(packId)` and `clearNow()`
 - `deletePack(packId)`
 - `members(packId)` in position order
-- `fileCard(referenceId, packId, index)`
+- `fileCard(referenceId, packId, index, fromPackId?)`
+- `markDone(packId, referenceId)` ("Got it")
 - `removeMember(packId, referenceId)`
 - `memberships()` for the all-packs search (pack, member, reference id)
+- `packsOf(referenceId)` for the "In your packs" chips
 
 `setNow` is one readwrite transaction: every pack `now = false`, then the target `now = true`.
 
@@ -152,7 +156,7 @@ If a reference row is deleted anywhere, delete its `packMembers` in that same tr
 
 v7 → v8 upgrade: empty new tables, existing references untouched. Test that with a real v7 database, the way `src/data/db.test.ts` tests earlier upgrades.
 
-Backup export is out of scope. When backup is built later, packs and members belong in it. Do not build backup here.
+Backup includes packs, their members in order, and their "Got it" state (D54). Search history, the online cache, and the consents are never in it.
 
 ## Screens
 
@@ -218,7 +222,7 @@ One Testing Library test: the Move sheet files a card into the chosen pack. No P
 ## Out of scope
 
 - Seeding an X-Men pack or a Doom pack. The owner files those after the cards exist.
-- The ~100 "you'll hear this" cards, WhatsApp share, same-world chips, on-device model, wider web, streaming.
+- Still parked: on-device model, streaming lookups. (Built since this doc was first written: the "you'll hear this" cards, WhatsApp share, same-world chips, backup.)
 - Nested folders, multi-select, cross-device sync, pack sharing.
 - A separate "pin five" list.
 

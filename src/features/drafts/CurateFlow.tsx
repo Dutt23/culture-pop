@@ -8,20 +8,32 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
-import type { DraftCard, DraftResponse, ToneCard } from '../../../shared/cardTypes.js';
+import {
+  CARD_COLORS,
+  CARD_KINDS,
+  isStructured,
+  LIMITS,
+  type CardColor,
+  type CardKind,
+  type DraftCard,
+  type DraftResponse,
+  type ToneCard,
+} from '../../../shared/cardTypes.js';
 import { useRepositories } from '../../app/RepositoriesContext';
-import { useRetrievalService } from '../../app/retrievalService';
+import { CurationCapacityError } from '../../data/repositories/curationJobRepository';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
+import { useCurationJobs } from '../../app/CurationJobsProvider';
 import type { DraftCardRecord } from '../../data/repositories/draftRepository';
 import type { Interpretation, Reference } from '../../domain/types';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import type { MotionPresets } from '../../motion/presets';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import {
   WebSearchError,
   type WebResult,
   type WebSearchFailure,
 } from '../../services/retrieval/webSearch';
-import { AccessCodeForm, FAILURE_TEXT, WebConsent } from '../search/WiderWebSearch';
+import { AccessNotice, WebConsent } from '../search/WiderWebSearch';
 import { useSettings } from '../settings/SettingsContext';
 import { CurationTray } from './CurationTray';
 import { gradeOf, keptName, LIMIT_HINTS } from './curationLook';
@@ -30,25 +42,21 @@ import { DraftReveal } from './DraftReveal';
 import { FilmStrip } from './FilmStrip';
 import { framesFrom, type Frame } from './frames';
 import { SpliceCheck } from './SpliceCheck';
-import { ToneFilters } from './ToneFilters';
+import { CardLibraryPicker } from './CardLibraryPicker';
+import { UserAdditions } from './UserAdditions';
 import { useCurationTray } from './useCurationTray';
 import styles from './drafts.module.css';
+import { DRAFT_FAILURE_TEXT } from './failureText';
 
-/** The search copy names the wider web search; a card has its own words. */
-const DRAFT_FAILURE_TEXT: Record<WebSearchFailure, string> = {
-  ...FAILURE_TEXT,
-  offline: "You're offline. Making a card needs a connection.",
-  bad_query: 'This search is too long to make a card from. Try fewer words.',
-  rate_limited: 'Too many cards just now. Try again in a minute.',
-  daily_cap: "Today's cards are used up. Try again tomorrow.",
-  out_of_credit: 'The card writer is paused for now. Try again later.',
-  not_configured: "The card writer isn't set up on the server yet.",
-  blocked: 'The server refused to make the card.',
-  failed: "The card writer didn't answer. Try again.",
+/** Where the sheet goes full screen (drafts.module.css): under the 40rem breakpoint, or short. */
+const PHONE = '(max-width: 39.99rem), (max-height: 30rem)';
+
+const KIND_LABELS: Record<CardKind, string> = {
+  reference: 'Reference and reply',
+  topic: 'Topic explanation',
+  list: 'List',
+  ranking: 'Ranking with a supported basis',
 };
-
-const PHONE = '(max-width: 600px)';
-const EASE_OUT: [number, number, number, number] = [0.2, 0.8, 0.2, 1];
 
 /** Where focus goes when the entry that opened the flow went away with its results. */
 const SEARCH_BOX = 'input[type="search"]';
@@ -59,24 +67,14 @@ const OPEN_ATTRIBUTE = 'data-sheet-open';
  * The sheet slides up on phones and scales in on wider screens; reduced motion: a short fade.
  * `--backdrop` dims the ::backdrop in and out (it inherits from the dialog).
  */
-function sheetMotion(reduced: boolean): HTMLMotionProps<'dialog'> {
-  if (reduced) {
-    return {
-      initial: { opacity: 0, '--backdrop': 0 },
-      animate: { opacity: 1, '--backdrop': 1 },
-      exit: { opacity: 0, '--backdrop': 0 },
-      transition: { duration: 0.12 },
-    };
-  }
+function sheetMotion(sheet: MotionPresets['sheet']): HTMLMotionProps<'dialog'> {
   const phone = typeof window.matchMedia === 'function' && window.matchMedia(PHONE).matches;
-  const hidden = phone
-    ? { y: '100%', '--backdrop': 0 }
-    : { opacity: 0, scale: 0.97, '--backdrop': 0 };
+  const { hidden, visible, transition } = sheet(phone);
   return {
-    initial: hidden,
-    animate: { opacity: 1, y: 0, scale: 1, '--backdrop': 1 },
-    exit: hidden,
-    transition: { duration: 0.32, ease: EASE_OUT },
+    initial: { ...hidden, '--backdrop': 0 },
+    animate: { ...visible, '--backdrop': 1 },
+    exit: { ...hidden, '--backdrop': 0 },
+    transition,
   };
 }
 
@@ -117,11 +115,14 @@ const fromKept = ({ card, search }: DraftCardRecord, reveal: boolean): ToneCard 
 function useLibraryCards(revealSpoilers: boolean) {
   const { favourites, references, drafts } = useRepositories();
   return useLiveQuery(async () => {
-    const saved = await references.getByIds((await favourites.list()).map((f) => f.referenceId));
+    const favouriteIds = new Set((await favourites.list()).map((f) => f.referenceId));
+    const saved = await references.getAll();
     const cards = await Promise.all(
       saved.map(async (reference) => {
         const [interpretation] = await references.getInterpretations(reference.id);
-        return interpretation ? [{ reference, interpretation, own: false }] : [];
+        return interpretation && (revealSpoilers || interpretation.spoiler !== 'major')
+          ? [{ reference, interpretation, own: false }]
+          : [];
       }),
     );
     const appCards = cards.flat();
@@ -129,18 +130,21 @@ function useLibraryCards(revealSpoilers: boolean) {
     const realLabels = new Map(
       kept.map((k): [string, string] => [keptName(k.card, k.search, revealSpoilers), k.card.label]),
     );
-    const tones = [...appCards.map(fromFavourite), ...kept.map((k) => fromKept(k, revealSpoilers))];
+    const tones = [
+      ...appCards.filter((card) => favouriteIds.has(card.reference.id)).map(fromFavourite),
+      ...kept.map((k) => fromKept(k, revealSpoilers)),
+    ];
     // A filter is keyed by its label: the first card with a label wins.
     const toneCards = tones.filter((t, i) => tones.findIndex((u) => u.label === t.label) === i);
-    return { appCards, toneCards, realLabels };
+    return { appCards, toneCards, realLabels, kept };
   }, [favourites, references, drafts, revealSpoilers]);
 }
 
 type Phase =
   | { kind: 'tray' }
+  | { kind: 'style' }
   | { kind: 'check' }
   | { kind: 'consent' }
-  | { kind: 'locked' }
   | { kind: 'drafting' }
   | { kind: 'reveal'; response: DraftResponse; sent: Frame[] };
 
@@ -158,7 +162,10 @@ interface CurateFlowProps {
  * modal dialog; Escape and a tap on the backdrop close it like Close does.
  */
 export function CurateFlow({ search, about, candidates, webResults, onClose }: CurateFlowProps) {
-  const { webSearch } = useRetrievalService();
+  const activity = useCurationJobs();
+  const cancelActivity = activity.cancel;
+  const activeJob = useRef<string | null>(null);
+  const cancelRequested = useRef(false);
   const { drafts } = useRepositories();
   const { settings, setSetting } = useSettings();
   const isOnline = useOnlineStatus();
@@ -166,9 +173,10 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   const tray = useCurationTray(search);
   const reelRef = useRef<SVGSVGElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const filmScrollRef = useRef<HTMLDivElement>(null);
   const pressedBackdrop = useRef(false);
   const headingId = useId();
-  const { reduced } = useMotionPresets();
+  const { sheet } = useMotionPresets();
   // Read once: focus goes back to whatever opened the flow.
   const [opener] = useState(() =>
     document.activeElement instanceof HTMLElement ? document.activeElement : null,
@@ -176,19 +184,43 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   const controller = useRef<AbortController | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'tray' });
   const [failure, setFailure] = useState<WebSearchFailure | null>(null);
+  const [sourceIssues, setSourceIssues] = useState<Record<string, string>>({});
   const [status, setStatus] = useState('');
+  const [kind, setKind] = useState<CardKind>('reference');
+  const [userContext, setUserContext] = useState('');
+  const [userLinks, setUserLinks] = useState<{ url: string; title: string }[]>([]);
+  const [preserveKeys, setPreserveKeys] = useState<string[]>([]);
+  const [color, setColor] = useState<CardColor>('lavender');
+  const [tone, setTone] = useState('');
+  const [structure, setStructure] = useState('');
   // After Keep or Drop the card is gone: focus goes back to the tray, not to the page.
   const [focusTray, setFocusTray] = useState(false);
   // Hint and shake change together: the tray shows a hint only when the key moves with it.
   const [shake, setShake] = useState({ key: 0, hint: '' });
 
   const frames = useMemo(
-    () =>
-      framesFrom({ candidates, webResults: [...webResults], appCards: library?.appCards ?? [] }),
-    [candidates, webResults, library],
+    () => [
+      ...framesFrom({ candidates, webResults: [...webResults], appCards: library?.appCards ?? [] }),
+      ...(library?.kept ?? [])
+        .filter((record) => record.card.spoiler !== 'major' || settings.spoilers === 'show')
+        .map((record): Frame => ({
+          key: record.id,
+          kind: 'app',
+          from: 'your card',
+          title: record.card.label,
+          line: record.card.gist,
+          text: [
+            record.card.gist,
+            record.card.means,
+            ...record.card.summary.map((line) => line.text),
+            ...record.card.context.map((line) => line.text),
+          ].join(' '),
+        })),
+    ],
+    [candidates, webResults, library, settings.spoilers],
   );
 
-  // Leaving the flow cancels a draft still running.
+  // Leaving stops local updates; the root runner keeps the job in Activity.
   useEffect(() => () => controller.current?.abort(), []);
 
   // Unmounting removes the dialog from the top layer, so the page is live again for the focus.
@@ -209,9 +241,11 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   useEffect(() => {
     if (isOnline || phase.kind !== 'drafting') return;
     controller.current?.abort();
+    cancelRequested.current = true;
+    if (activeJob.current) void cancelActivity(activeJob.current);
     setFailure('offline');
     setPhase({ kind: 'tray' });
-  }, [isOnline, phase.kind]);
+  }, [isOnline, phase.kind, cancelActivity]);
 
   const hint = (text: string) => setShake((s) => ({ key: s.key + 1, hint: text }));
   const limit = <R extends string>(result: R) => {
@@ -221,28 +255,69 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
 
   const draft = async () => {
     controller.current?.abort();
+    cancelRequested.current = false;
+    activeJob.current = null;
     const current = new AbortController();
     controller.current = current;
     const sent = tray.picked;
     setFailure(null);
+    setSourceIssues({});
     setStatus('');
     setPhase({ kind: 'drafting' });
     try {
-      const body = tray.body(about && [...about]);
+      const body = {
+        ...tray.body(about && [...about]),
+        ...(isStructured(kind) ? { kind } : {}),
+        ...(userContext.trim() ? { userContext: userContext.trim() } : {}),
+        ...(preserveKeys.length
+          ? {
+              retry: {
+                preserveSources: sent.flatMap((frame, index) =>
+                  preserveKeys.includes(frame.key) ? [index] : [],
+                ),
+              },
+            }
+          : {}),
+        ...(tone.trim() || structure.trim()
+          ? { styleGuidance: { tone: tone.trim(), structure: structure.trim() } }
+          : {}),
+      };
       // A hidden spoiler's filter shows the search; the AI still gets the card's own label.
       const tones = body.tones?.map((t) => ({
         ...t,
         label: library?.realLabels.get(t.label) ?? t.label,
       }));
-      const response = await webSearch.draftCard(tones ? { ...body, tones } : body, current.signal);
+      const started = await activity.start({
+        request: tones ? { ...body, tones } : body,
+        sent,
+        userContext,
+        color,
+      });
+      activeJob.current = started.job.id;
+      if (cancelRequested.current) {
+        await activity.cancel(started.job.id);
+        return;
+      }
+      const response = await started.completion;
       if (current.signal.aborted) return;
       setPhase({ kind: 'reveal', response, sent });
     } catch (error) {
       if (current.signal.aborted) return;
-      const failed = error instanceof WebSearchError ? error.failure : 'failed';
-      if (failed === 'locked') {
-        setPhase({ kind: 'locked' });
+      if (error instanceof CurationCapacityError) {
+        setStatus(error.message);
+        setPhase({ kind: 'tray' });
         return;
+      }
+      const failed = error instanceof WebSearchError ? error.failure : 'failed';
+      if (error instanceof WebSearchError && error.details) {
+        setSourceIssues(
+          Object.fromEntries(
+            error.details.notUsed.flatMap((item) => {
+              const frame = sent[item.source];
+              return frame ? [[frame.key, item.why]] : [];
+            }),
+          ),
+        );
       }
       setFailure(failed);
       setPhase({ kind: 'tray' });
@@ -256,10 +331,17 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
 
   const keep = (card: DraftCard, sent: readonly Frame[], promptVersion: string) =>
     drafts.save({
-      id: `draft:${crypto.randomUUID()}`,
+      id: activeJob.current ? `activity:${activeJob.current}` : `draft:${crypto.randomUUID()}`,
       search,
       card,
-      sources: sent.map(({ from, title, url }) => (url ? { from, title, url } : { from, title })),
+      sources: sent.map(({ from, title, url, provenance }) => ({
+        from,
+        title,
+        ...(url ? { url } : {}),
+        ...(provenance ? { provenance } : {}),
+      })),
+      ...(userContext.trim() ? { userContext: userContext.trim() } : {}),
+      ...(color !== 'lavender' ? { color } : {}),
       promptVersion,
       savedAt: new Date().toISOString(),
     });
@@ -269,6 +351,8 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
       case 'check':
         return (
           <SpliceCheck
+            userContext={userContext}
+            styleGuidance={{ tone, structure }}
             frames={tray.picked}
             flags={tray.flags}
             kept={tray.kept}
@@ -295,17 +379,13 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
             onCancel={() => setPhase({ kind: 'check' })}
           />
         );
-      case 'locked':
-        return (
-          <AccessCodeForm
-            onUnlocked={() => void draft()}
-            onCancel={() => setPhase({ kind: 'check' })}
-          />
-        );
       case 'drafting':
         return (
           <DraftingProjector
+            onContinue={onClose}
             onStop={() => {
+              cancelRequested.current = true;
+              if (activeJob.current) void activity.cancel(activeJob.current);
               controller.current?.abort();
               setPhase({ kind: 'tray' });
             }}
@@ -315,6 +395,12 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
         return (
           <DraftReveal
             response={phase.response}
+            userContext={userContext}
+            color={color}
+            onRetry={(keys) => {
+              setPreserveKeys(keys);
+              setPhase({ kind: 'tray' });
+            }}
             sent={phase.sent}
             revealSpoilers={settings.spoilers === 'show'}
             search={search}
@@ -326,33 +412,199 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
             }}
           />
         );
+      case 'style':
+        return (
+          <section className={styles.sheet} aria-label="Card style">
+            <h3 className={styles.heading}>Choose the style</h3>
+            <p className={styles.note}>
+              Optional. Pick up to {LIMITS.tones} cards for tone, length and organization. Their
+              facts stay out of your new card.
+            </p>
+            <CardLibraryPicker
+              mode="style"
+              cards={(library?.toneCards ?? []).map((card) => ({
+                id: card.label,
+                title: card.label,
+                description:
+                  library?.realLabels.get(card.label) !== undefined &&
+                  library.realLabels.get(card.label) !== card.label
+                    ? 'Spoiler hidden'
+                    : card.gist,
+                tone: card,
+              }))}
+              selected={tray.tones.map((card) => card.label)}
+              onSelect={(card) => {
+                if (card.tone) limit(tray.toggleTone(card.tone));
+              }}
+            />
+            <label>
+              Card format
+              <select
+                className={styles.styleInput}
+                value={kind}
+                onChange={(event) => setKind(event.target.value as CardKind)}
+              >
+                {CARD_KINDS.map((value) => (
+                  <option key={value} value={value}>
+                    {KIND_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Card colour
+              <select
+                className={styles.styleInput}
+                value={color}
+                onChange={(event) => setColor(event.target.value as CardColor)}
+              >
+                {CARD_COLORS.map((value) => (
+                  <option key={value} value={value}>
+                    {value.charAt(0).toUpperCase() + value.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {library && library.toneCards.length === 0 && (
+              <p className={styles.note}>
+                No example cards yet. Favourite a reference card or keep a draft to use it as a
+                colour filter. Filters are optional.
+              </p>
+            )}
+
+            <label>
+              Tone
+              <textarea
+                className={styles.styleInput}
+                maxLength={LIMITS.styleGuidanceChars}
+                value={tone}
+                onChange={(event) => setTone(event.target.value)}
+                placeholder="Warm, concise, beginner-friendly…"
+              />
+            </label>
+            <label>
+              Structure
+              <textarea
+                className={styles.styleInput}
+                maxLength={LIMITS.styleGuidanceChars}
+                value={structure}
+                onChange={(event) => setStructure(event.target.value)}
+                placeholder="Start with a plain explanation, then context and an example…"
+              />
+            </label>
+            <p className={styles.note}>
+              Your written preferences take priority over example cards. Card fields and evidence
+              rules still apply.
+            </p>
+            <button
+              type="button"
+              className={styles.keep}
+              onClick={() => setPhase({ kind: 'check' })}
+            >
+              Review sources and style
+            </button>
+            <button
+              type="button"
+              className={styles.small}
+              onClick={() => setPhase({ kind: 'tray' })}
+            >
+              Back to sources
+            </button>
+          </section>
+        );
       case 'tray':
         return (
           <>
-            <h3 className={styles.sec}>The film: tap frames to cut, up to 6 (3 web)</h3>
-            <FilmStrip
-              frames={frames}
-              pickedKeys={new Set(tray.picked.map((f) => f.key))}
-              onToggle={(frame) => limit(tray.toggleFrame(frame))}
-              reelRef={reelRef}
-              scrollRoot={dialogRef}
+            <h3 className={styles.sec}>
+              The film: tap frames to cut, up to {LIMITS.sources} (including web)
+            </h3>
+            <div
+              ref={filmScrollRef}
+              className={styles.filmScroll}
+              role="region"
+              aria-label="Film results"
+              tabIndex={0}
+            >
+              <FilmStrip
+                issues={sourceIssues}
+                frames={frames.filter((frame) => frame.kind !== 'app')}
+                pickedKeys={new Set(tray.picked.map((f) => f.key))}
+                onToggle={(frame) => limit(tray.toggleFrame(frame))}
+                reelRef={reelRef}
+                scrollRoot={filmScrollRef}
+              />
+            </div>
+            <CardLibraryPicker
+              mode="source"
+              cards={frames
+                .filter((frame) => frame.kind === 'app')
+                .map((frame) => ({
+                  id: frame.key,
+                  title: frame.title,
+                  description: frame.line,
+                  frame,
+                }))}
+              selected={tray.picked.map((frame) => frame.key)}
+              onSelect={(card) => {
+                if (card.frame) limit(tray.toggleFrame(card.frame));
+              }}
             />
-            {library && library.toneCards.length > 0 && (
-              <>
-                <h3 className={styles.sec}>Colour filters: the tone, up to 2</h3>
-                <ToneFilters
-                  cards={library.toneCards}
-                  picked={tray.tones}
-                  onToggle={(card) => limit(tray.toggleTone(card))}
-                  reelRef={reelRef}
-                />
-              </>
+            {Object.keys(sourceIssues).length > 0 && (
+              <fieldset className={styles.sheet}>
+                <legend>Reconsider omitted sources</legend>
+                {tray.picked
+                  .filter((frame) => sourceIssues[frame.key])
+                  .map((frame) => (
+                    <label key={frame.key}>
+                      <input
+                        type="checkbox"
+                        checked={preserveKeys.includes(frame.key)}
+                        onChange={(event) =>
+                          setPreserveKeys((keys) =>
+                            event.target.checked
+                              ? [...keys, frame.key]
+                              : keys.filter((key) => key !== frame.key),
+                          )
+                        }
+                      />
+                      {frame.title} · {sourceIssues[frame.key]}
+                    </label>
+                  ))}
+                <p className={styles.note}>
+                  Retry considers checked sources again. Unsupported claims remain excluded and
+                  explained.
+                </p>
+              </fieldset>
             )}
+            <UserAdditions
+              context={userContext}
+              onContextChange={setUserContext}
+              links={userLinks}
+              onAddLink={(link) => {
+                const frame: Frame = {
+                  key: link.url,
+                  kind: 'web',
+                  from: new URL(link.url).hostname,
+                  title: link.title,
+                  line: 'Added by you',
+                  url: link.url,
+                  provenance: 'user',
+                };
+                if (tray.picked.some((picked) => picked.key === frame.key)) return;
+                if (limit(tray.toggleFrame(frame)) === 'added')
+                  setUserLinks((links) => [...links, link]);
+              }}
+              onRemoveLink={(url) => {
+                const frame = tray.picked.find((picked) => picked.key === url);
+                if (frame) tray.toggleFrame(frame);
+                setUserLinks((links) => links.filter((link) => link.url !== url));
+              }}
+            />
             <CurationTray
               count={tray.picked.length}
               tones={tray.tones}
               onOpen={() =>
-                tray.picked.length ? setPhase({ kind: 'check' }) : hint('Cut a frame first.')
+                tray.picked.length ? setPhase({ kind: 'style' }) : hint('Cut a frame first.')
               }
               shakeKey={shake.key}
               hint={shake.hint}
@@ -371,7 +623,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
       data-scene="night"
       aria-labelledby={headingId}
       tabIndex={-1}
-      {...sheetMotion(reduced)}
+      {...sheetMotion(sheet)}
       onKeyDown={(event) => {
         if (event.key !== 'Escape' || event.defaultPrevented) return;
         event.preventDefault();
@@ -407,7 +659,7 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
         </p>
         {failure && (
           <p className={styles.error} role="alert">
-            {DRAFT_FAILURE_TEXT[failure]}
+            <AccessNotice failure={failure} text={DRAFT_FAILURE_TEXT} />
           </p>
         )}
         {stage()}

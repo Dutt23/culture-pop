@@ -4,6 +4,8 @@ const PORT = 4173;
 
 export default defineConfig({
   testDir: 'e2e',
+  // Live specs need the real backend and a Supabase test user: playwright.live.config.ts.
+  testIgnore: '**/*.live.spec.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,

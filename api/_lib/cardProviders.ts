@@ -1,4 +1,4 @@
-import { PROMPT_VERSION, type ModelAnswer } from './cardPrompt.js';
+import { PROMPT_VERSION, TOPIC_PROMPT_VERSION, type ModelAnswer } from './cardPrompt.js';
 import { devFlag } from './devFlags.js';
 import { readCapped } from './http.js';
 
@@ -23,6 +23,7 @@ export class ProviderError extends Error {
 
 export interface DraftInput {
   prefix: string;
+  promptVersion?: string;
   user: string;
   schema: object;
 }
@@ -33,15 +34,19 @@ export interface DraftProvider {
 }
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
-const OPENAI_MODEL = 'gpt-6-luna';
-const CLOUDFLARE_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const DEFAULT_OPENAI_MODEL = 'gpt-6-luna';
+const DEFAULT_CLOUDFLARE_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_OUTPUT_TOKENS = 800;
+/** Topic cards write longer answers; both providers get the same cap. */
+const MAX_TOPIC_OUTPUT_TOKENS = 1600;
 const MAX_UPSTREAM_BYTES = 256 * 1024;
 const OUT_OF_CREDIT = /neurons|allocation|daily/i;
 const JSON_MODE = /json/i;
 
 type Obj = Record<string, unknown>;
 const isObj = (value: unknown): value is Obj => typeof value === 'object' && value !== null;
+const outputTokens = (promptVersion: string) =>
+  promptVersion === TOPIC_PROMPT_VERSION ? MAX_TOPIC_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS;
 
 function parseJson(text: string, what: string): unknown {
   try {
@@ -86,22 +91,26 @@ function openAiText(body: unknown): string {
     .join('');
 }
 
-export function openAiProvider(deps: { fetch: typeof fetch; apiKey: string }): DraftProvider {
+export function openAiProvider(deps: {
+  fetch: typeof fetch;
+  apiKey: string;
+  model?: string;
+}): DraftProvider {
   return {
     name: 'openai',
-    async draft({ prefix, user, schema }, signal) {
+    async draft({ prefix, user, schema, promptVersion = PROMPT_VERSION }, signal) {
       const response = await post(
         deps.fetch,
         OPENAI_URL,
         deps.apiKey,
         {
-          model: OPENAI_MODEL,
+          model: deps.model ?? DEFAULT_OPENAI_MODEL,
           store: false,
           reasoning: { effort: 'none' },
           temperature: 0.2,
-          max_output_tokens: MAX_OUTPUT_TOKENS,
+          max_output_tokens: outputTokens(promptVersion),
           prompt_cache_options: { mode: 'explicit', ttl: '30m' },
-          prompt_cache_key: PROMPT_VERSION,
+          prompt_cache_key: promptVersion,
           text: { format: { type: 'json_schema', name: 'card', schema, strict: true } },
           input: [
             {
@@ -142,7 +151,15 @@ function cloudflareMessages(body: unknown): string {
   return body.errors.map((e: unknown) => (isObj(e) ? String(e.message ?? '') : '')).join('; ');
 }
 
+/**
+ * Status first where it is unambiguous. Cloudflare sends both a used-up daily allowance and a busy
+ * model as 429 (or another 4xx) and documents no stable `errors[].code` for either, so the message
+ * text is the only way to tell them apart.
+ * shortcut: the regexes break if Cloudflare rewords its messages; switch to codes once documented.
+ */
 function cloudflareFailure(status: number, messages: string): ProviderError {
+  if (status === 401 || status === 403) return new ProviderError('failed', `status ${status}`);
+  // Fallback: allowance and JSON-mode failures are told apart by message only.
   if (OUT_OF_CREDIT.test(messages)) return new ProviderError('out_of_credit', 'allowance used up');
   if (status === 429) return new ProviderError('rate_limited', 'rate limited');
   if (JSON_MODE.test(messages)) return new ProviderError('format', 'JSON mode failed');
@@ -153,17 +170,20 @@ export function cloudflareProvider(deps: {
   fetch: typeof fetch;
   accountId: string;
   token: string;
+  model?: string;
 }): DraftProvider {
   return {
     name: 'cloudflare',
-    async draft({ prefix, user, schema }, signal) {
+    async draft({ prefix, user, schema, promptVersion = PROMPT_VERSION }, signal) {
       const account = encodeURIComponent(deps.accountId);
+      const model = deps.model ?? DEFAULT_CLOUDFLARE_MODEL;
       const response = await post(
         deps.fetch,
-        `https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${CLOUDFLARE_MODEL}`,
+        `https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`,
         deps.token,
         {
-          max_tokens: MAX_OUTPUT_TOKENS,
+          temperature: 0.2,
+          max_tokens: outputTokens(promptVersion),
           response_format: { type: 'json_schema', json_schema: schema },
           messages: [
             { role: 'system', content: prefix },
@@ -215,7 +235,13 @@ export function providersFromEnv(env: NodeJS.ProcessEnv, doFetch: typeof fetch):
   if (devFlag('CARD_DRAFT_FAKE')) return [fakeProvider()];
   const providers: DraftProvider[] = [];
   if (env.OPENAI_API_KEY) {
-    providers.push(openAiProvider({ fetch: doFetch, apiKey: env.OPENAI_API_KEY }));
+    providers.push(
+      openAiProvider({
+        fetch: doFetch,
+        apiKey: env.OPENAI_API_KEY,
+        model: env.OPENAI_MODEL || undefined,
+      }),
+    );
   }
   if (env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_API_TOKEN) {
     providers.push(
@@ -223,18 +249,19 @@ export function providersFromEnv(env: NodeJS.ProcessEnv, doFetch: typeof fetch):
         fetch: doFetch,
         accountId: env.CLOUDFLARE_ACCOUNT_ID,
         token: env.CLOUDFLARE_API_TOKEN,
+        model: env.CLOUDFLARE_MODEL || undefined,
       }),
     );
   }
   return providers;
 }
 
-/** Tries each provider in order; any `ProviderError` moves on, and the last one is thrown if all fail. */
 /** Each provider but the last gets at most this long, so a hanging one leaves time for the next. */
 export const FALLBACK_AFTER_MS = 11_000;
 
 /**
- * Tries each provider in turn. `signal` is the whole request's deadline (or the reader leaving):
+ * Tries each provider in turn; any `ProviderError` moves on, and the last one is thrown if all
+ * fail. `signal` is the whole request's deadline (or the reader leaving):
  * once it aborts, nothing more is tried. The last provider gets whatever time `signal` leaves.
  */
 export async function draftWithFallback(

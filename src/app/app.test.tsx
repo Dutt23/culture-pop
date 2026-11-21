@@ -1301,24 +1301,21 @@ describe('search UX (D37)', () => {
     expect(within(region).queryByText(/Also searched|Also looked for/)).not.toBeInTheDocument();
   });
 
-  it('shows when a saved answer was saved and refreshes it only on request', async () => {
+  it('looks up again when a saved answer is on screen, so later cards are not stuck behind Refresh', async () => {
     const db = await withConsent();
     await cacheOnlineResults(db, 'the matrix');
     const retrieval = fixtureRetrievalService('the matrix');
-    const { user } = renderApp('/search?q=the%20matrix', db, retrieval);
+    const saves = vi.spyOn(db.sources, 'bulkPut');
+    renderApp('/search?q=the%20matrix', db, retrieval);
 
     const saved = await screen.findByRole('region', { name: 'Saved from earlier online searches' });
     const card = within(saved)
       .getAllByRole('link', { name: /The Matrix/ })
       .find((link) => link.textContent?.includes('1999'));
     expect(card).toHaveTextContent(/Saved \d{1,2} \w{3,4} \d{4}/);
-    // No timed refresh: a saved answer that resolves the query stays offline.
-    expect(retrieval.retrieve$).not.toHaveBeenCalled();
-
-    const saves = vi.spyOn(db.sources, 'bulkPut');
-    await user.click(within(saved).getByRole('button', { name: 'Refresh' }));
+    // A saved answer is not the whole lookup: online search on looks the query up without a tap.
+    await waitFor(() => expect(retrieval.retrieve$).toHaveBeenCalledWith('the matrix'));
     expect(await screen.findByRole('heading', { name: 'Found online' })).toBeInTheDocument();
-    expect(retrieval.retrieve$).toHaveBeenCalledWith('the matrix');
     await waitFor(() => expect(saves).toHaveBeenCalled());
   });
 

@@ -45,6 +45,10 @@
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
 
+  /* Breakpoints, for reference only: custom properties can't be used in media queries, so write
+     the value itself. Phone 40rem, tablet 48rem, desktop 64rem; a max-width query uses the value
+     less 0.01rem (e.g. max-width: 39.99rem) so it never overlaps the min-width one. */
+
   --z-nav: 10;
   --z-skip: 20;
 

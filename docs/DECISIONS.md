@@ -69,3 +69,63 @@ Reversible decisions made within a phase without asking, per spec §0.
 | D61 | **Security review fixes** (Phase 5 step 9, 2026-11-17; no critical or high findings). (1) A message (more than 8 words) waits for "Search online" before going to the reference sites, even with online search on, wherever it came from (shared, linked, pasted); every online lookup is cut to 200 characters. (2) Wrong access codes are counted per visitor (`x-real-ip`), and each attempt is counted before it is checked, so a burst can't slip past and one guesser can't lock others out. (3) A wider-web result's title is shortened before its markdown is stripped. **Not done:** the full CSP as an HTTP header (workers run without it); per-deployment search cap; single-cookie revocation (rotate `ACCESS_CODE` or `ACCESS_COOKIE_SECRET` to sign everyone out). **Owner to confirm in dashboards:** the Vercel firewall rule on `/api/unlock` and the Parallel spending limit. |
 | D62 | **"Search videos" and shorter wider-web queries** (owner, 2026-11-18). A second button beside "Search the wider web" asks Parallel for YouTube videos only (`source_policy.include_domains: ["youtube.com"]`, and the server drops anything else again); same consent, access code and daily cap, nothing kept on the device (kept results are keyed by the search alone). Text longer than six words also gets a short keyword query (filler words dropped, at most six), as Parallel's guide asks; the full text still goes first and in the objective, and shorter text is never cut. The YouTube tap-link opens on YouTube's own Videos filter. **Why:** concert prep needs videos, and long questions were sent as one long sentence. **Not done:** an LLM writing the queries (another provider would see the search; owner's call). No YouTube or Spotify API. |
 | D63 | **AI card drafts: server drafts, curation in code** (owner, 2026-11-18; spec `docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md`). A reader picks sources (up to 6, at most 3 web links) and up to 2 tone cards, and `/api/draft-card` asks a model to write one card. The model only curates what it is given: it invents no facts, and it is called from the backend only (keys never reach the browser). **Providers:** OpenAI `gpt-6-luna` first, Cloudflare Llama 3.3 70B as the fallback when OpenAI fails or is busy. **Prompt `card-draft-v7`:** example (tone) cards steer tone, length and what kind of information a card includes, never facts. **Checks:** a strict wrong-link check runs before anything is sent, so a page that isn't about the search is flagged for the reader to keep or cut; the answer is checked again afterwards. **Kept cards** live on the device only and can be reused as tone examples only, not as sources (owner). Reset deletes them; Clear history does not. **Privacy:** Parallel's page text is used only for the person who searched, and the AI never sees a URL. The consent card and Settings say the search, picked results and style cards go to OpenAI or Cloudflare, that Parallel reads the picked pages, and that they don't train on it. **Why:** plain-language cards for references the library doesn't have, without the model making things up. **Not done:** images, sharing cards between readers, an on-phone model. **Addendum (owner, 2026-11-18):** prompt `card-draft-v8` asks for the creator, who says it to whom, the attitude and every everyday use, only when the evidence states them; web page text keeps only the sentences that name the search; the ship metric is now the evidence-only judge score (spec, v8). |
+
+## D64 — Supabase for account identity and durable curation
+
+### Status
+
+Accepted architecture; integration not implemented. Owner selected Supabase built-ins and backend-only tokens on 2026-11-19. Login method, retention, region and quota policy remain open in the [implementation plan](SUPABASE_PLAN.md).
+
+### Date
+
+2026-11-19
+
+### Context
+
+Curation takes long enough that the reader must keep browsing while several cards run. Current Activity jobs persist in IndexedDB and survive in-app navigation, but browser shutdown can stop execution. The current shared access cookie does not identify individual users or enforce per-user spending limits. The owner wants minimal infrastructure and less sensitive information in browser JavaScript.
+
+### Decision
+
+Use built-in Supabase Auth, Postgres with RLS, Vault, Queues, Edge Functions, Cron and private Realtime. Retain the React PWA and same-origin API boundary. Add only the backend session and progress-relay glue required by these constraints.
+
+- Supabase owns identity and token issuance. Keep Supabase access/refresh tokens and upstream provider credentials on the backend. The browser receives only an opaque HttpOnly, Secure session cookie; do not mint custom app JWTs. Serialize refresh and revoke sessions through the backend.
+- Admit jobs transactionally in Postgres with ownership, idempotency, quota reservations and at most five queued/running jobs per user. Use durable Queues and bounded Edge workers. Dispatch immediately after commit through built-in pg_net; Cron recovers failed dispatch or expired leases.
+- Persist job results independently of browser connections. Relay authorized private Realtime updates through same-origin SSE authenticated by the app cookie. Reconnect from an authorized snapshot/cursor, without periodic browser polling.
+- Keep IndexedDB for offline UI and account-scoped caching. Preserve current local-only wider-web storage boundaries until retention/licensing and consent are reviewed.
+- Use existing Supabase logs and a transactional usage ledger. Keep secrets and raw private content out of routine logs. Do not add another queue service, auth service or client-visible provider-token system.
+
+The [Supabase integration plan](SUPABASE_PLAN.md) contains source references, integration points, session lifecycle, worker failure handling, costs and implementation gates. It remains the detailed execution plan for this decision.
+
+### Alternatives considered
+
+- **IndexedDB-only execution:** already available and sufficient for navigation, but cannot guarantee jobs continue after the browser exits or enforce quotas across devices. Retained as the local cache, not the durable worker.
+- **Standard browser Supabase sessions and direct Realtime:** less backend glue, but exposes session JWTs to browser JavaScript and conflicts with the selected token boundary.
+- **Separate queue/auth services or custom JWTs:** adds infrastructure and credential management that Supabase already supplies. Rejected for this scope.
+
+### Consequences
+
+Durable workers can finish after a browser closes, and ownership/quota checks move to a shared transactional authority. These benefits require integration and tests; the present browser-owned runner has not gained them yet.
+
+Backend-only tokens require session storage, refresh coordination, CSRF protection and an SSE relay. RLS ownership rules, privileged worker functions, account-cache isolation and secret redaction must be tested. Supabase reduces infrastructure work but does not automatically close application security gaps.
+
+Queue delivery does not guarantee exactly-once upstream calls or billing. Persist provider attempts, fence stale workers and reconcile ambiguous outcomes before retrying paid operations. Validate hosting stream limits, worker latency, recovery, costs and backup/restore behavior before release.
+
+This decision selects architecture only. No Supabase project, credentials, migration, deployment or paid provider call is created by recording it.
+
+## D65 — Wider web search for chosen accounts; the shared access code is removed
+
+### Status
+
+Built 2026-11-21 (owner: "remove the code stuff"); not deployed. Extends D45, D50, D61 and D64.
+
+### Decision
+
+Wider web search and AI card drafts (`/api/web-search`, `/api/draft-card`) need a signed-in account the owner turned it on for, in `app_private.wider_web_access` (migration `20261121000100_wider_web_access.sql`), checked on every call by `api/_lib/webAccess.ts`. Signed out answers 401 `signed_out`; signed in without the permission answers 403 `not_allowed`; the app says so in plain words, with a "Sign in" link when signed out. The shared access code is gone: `/api/unlock`, `/api/lock`, `api/_lib/access.ts`, the code form, "Forget access code", the `webAccess` setting, and the `ACCESS_CODE` / `ACCESS_COOKIE_SECRET` variables. "On" searches by itself only on a device that has signed in. Owner grants or removes access with one SQL line (docs/SUPABASE_SETUP.md).
+
+### Why
+
+The owner wants per-person control and no codes to share or type; one shared code can't be taken back from one person, and the backend session already proves who is asking.
+
+### Consequences
+
+Delete `ACCESS_CODE` and `ACCESS_COOKIE_SECRET` from Vercel after deploying. The D61 firewall rule on `/api/unlock` can go too. Old backups and old devices may still hold a `webAccess` setting; it is ignored.

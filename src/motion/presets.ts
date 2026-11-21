@@ -2,7 +2,7 @@ import type { Transition, Variants } from 'motion/react';
 
 /**
  * Central motion vocabulary (Motion for React): `reveal` = enter + stagger + exit, `deal` = a card
- * reaching the screen, `expand`.
+ * reaching the screen, `expand`, `sheet` = a modal sheet opening.
  * `reduced` swaps every value for a short, transform-free fade. CSS micro-interactions
  * (hover, press, ambient drift) use the matching tokens in design/tokens.css.
  */
@@ -37,6 +37,14 @@ export interface MotionPresets {
     exit: { height: number; opacity: number };
     transition: Transition;
   };
+  /** A modal sheet: slides up from the bottom on a phone, scales in elsewhere. */
+  sheet: (phone: boolean) => SheetMotion;
+}
+
+export interface SheetMotion {
+  hidden: { opacity?: number; y?: string; scale?: number };
+  visible: { opacity: number; y?: number; scale?: number };
+  transition: Transition;
 }
 
 export function createMotionPresets(reduced: boolean): MotionPresets {
@@ -82,5 +90,17 @@ export function createMotionPresets(reduced: boolean): MotionPresets {
       exit: { height: 0, opacity: 0 },
       transition: { duration, ease: EASE_OUT },
     },
+    sheet: (phone) =>
+      reduced
+        ? {
+            hidden: { opacity: 0 },
+            visible: { opacity: 1 },
+            transition: { duration: DURATION_REDUCED },
+          }
+        : {
+            hidden: phone ? { y: '100%' } : { opacity: 0, scale: SCALE_FROM },
+            visible: { opacity: 1, y: 0, scale: 1 },
+            transition: { duration: DURATION_BASE, ease: EASE_OUT },
+          },
   };
 }

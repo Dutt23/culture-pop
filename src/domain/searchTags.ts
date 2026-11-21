@@ -166,7 +166,13 @@ export function aboutHint(state: SearchTagState): string[] {
     return label === label.toUpperCase() ? label : label.toLowerCase();
   });
   const custom = state.custom.filter((c) => c.on).map((c) => c.text);
-  return [...types, ...custom].slice(0, MAX_HINT_TAGS);
+  // Explicit animation scope must survive the five-tag transport cap.
+  const scope = types.filter((tag) => tag === 'anime' || tag === 'cartoons');
+  return [
+    ...scope,
+    ...types.filter((tag) => tag !== 'anime' && tag !== 'cartoons'),
+    ...custom,
+  ].slice(0, MAX_HINT_TAGS);
 }
 
 /** The lean needs this many favourites or opened references in one category… */

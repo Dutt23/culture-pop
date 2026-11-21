@@ -11,9 +11,16 @@
   max-height: 90dvh;
   padding: 0;
   overflow-y: auto;
+  /* The native bar draws outside the rounded sheet. Wheel, trackpad and keys still scroll. */
+  scrollbar-width: none;
   overscroll-behavior: contain;
+  /* The curation tray (CurationTray) and the room it needs at the sheet's bottom: its height, its
+     gap and the phone's safe area. FilmStrip measures the tray itself for its gate. */
+  --tray-height: 62px;
+  --tray-inset: calc(var(--tray-height) + var(--space-5) + env(safe-area-inset-bottom, 0px));
   /* Focus and scrollIntoView stop clear of the sticky head and the tray pinned at the bottom. */
-  scroll-padding-block: calc(var(--tap-min) + var(--space-6)) 84px;
+  scroll-padding-block: calc(var(--tap-min) + var(--space-6) + env(safe-area-inset-top, 0px))
+    var(--tray-inset);
   border: none;
   border-radius: var(--radius-lg);
   background: var(--color-bg);
@@ -34,7 +41,9 @@
   overflow: hidden;
 }
 
-@media (max-width: 600px) {
+/* Phones (the 40rem breakpoint, design/tokens.css) and landscape phones (short viewports): the
+   sheet takes the whole screen. */
+@media (max-width: 39.99rem), (max-height: 30rem) {
   .dialog {
     max-width: none;
     height: 100vh;
@@ -43,16 +52,21 @@
     margin: 0;
     border-radius: 0;
   }
+
+  /* Full screen reaches under the notch: the sticky head keeps clear of it. */
+  .head {
+    padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0px));
+  }
 }
 
 .flow {
   --g1: var(--grade-1, #b6aed6);
   --g2: var(--grade-2, var(--g1));
-  --sheet: #18153a;
-  --card: #221d4a;
-  --ink: #0d0b1f;
-  --muted: #b6aed6;
-  --warn: #ff8a80;
+  --sheet: var(--color-surface);
+  --card: var(--color-surface-muted);
+  --ink: var(--color-bg);
+  --muted: var(--color-text-muted);
+  --warn: var(--color-warn);
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-3);
@@ -130,8 +144,7 @@
 }
 
 .small:focus-visible,
-.keep:focus-visible,
-.make:focus-visible {
+.keep:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);
 }
@@ -188,7 +201,11 @@
 .flagged {
   border-color: var(--warn);
   background: var(--frame, #241f45)
-    repeating-linear-gradient(115deg, transparent 0 22px, #ff8a8022 22px 23px);
+    repeating-linear-gradient(
+      115deg,
+      transparent 0 22px,
+      color-mix(in srgb, var(--color-warn) 13%, transparent) 22px 23px
+    );
 }
 
 .warn {
@@ -197,7 +214,6 @@
   font-size: 12px;
 }
 
-/* Wakes up (full colour) once nothing is waiting. */
 .tones {
   display: grid;
   gap: 6px;
@@ -212,29 +228,6 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-}
-
-.make {
-  width: 100%;
-  margin-top: 10px;
-  padding: 11px;
-  border: none;
-  border-radius: 12px;
-  background: var(--g1);
-  color: var(--ink);
-  font: inherit;
-  font-size: 14px;
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition:
-    background 0.3s,
-    color 0.3s;
-}
-
-.make:disabled {
-  background: #3a3470;
-  color: #8d84bd;
-  cursor: not-allowed;
 }
 
 /* Drafting projector */
@@ -275,7 +268,7 @@
 }
 
 .beam {
-  width: min(200px, 40vw);
+  width: min(180px, 27vw);
   height: 90px;
   clip-path: polygon(0 0, 100% 30%, 100% 70%, 0 100%);
   background: linear-gradient(
@@ -284,6 +277,49 @@
     color-mix(in srgb, var(--g2) 10%, transparent)
   );
   animation: flicker 0.4s infinite;
+}
+
+.gather {
+  display: grid;
+  inline-size: var(--space-8);
+  block-size: var(--space-7);
+}
+
+.gather::before,
+.gather::after,
+.gather span {
+  grid-area: 1 / 1;
+  border: 1px solid var(--g1);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  animation: gatherFrames 480ms var(--motion-ease-out) both;
+  content: '';
+}
+
+.gather::before {
+  --gather-from: translate(-45%, -70%) rotate(-18deg) scale(0.7);
+  transform: translate(-4px, -4px);
+}
+
+.gather::after {
+  --gather-from: translate(-65%, 70%) rotate(15deg) scale(0.7);
+  transform: translate(-2px, -2px);
+}
+
+.gather span {
+  --gather-from: translate(35%, -55%) rotate(12deg) scale(0.7);
+  z-index: 1;
+  background:
+    linear-gradient(var(--g1), var(--g1)) 8px 9px / 24px 2px no-repeat,
+    linear-gradient(var(--g2), var(--g2)) 8px 16px / 16px 2px no-repeat,
+    var(--card);
+}
+
+@keyframes gatherFrames {
+  from {
+    opacity: 0;
+    transform: var(--gather-from);
+  }
 }
 
 .projectorLine {
@@ -457,7 +493,10 @@
 
 /* Reduced motion: no spin, flicker or pop; entrances are a short fade. */
 .still .spinReel,
-.still .beam {
+.still .beam,
+.still .gather::before,
+.still .gather::after,
+.still .gather span {
   animation: none;
 }
 
@@ -490,4 +529,61 @@
     opacity: 0;
     transform: translateY(12px) scale(0.6);
   }
+}
+
+.dialog::-webkit-scrollbar,
+.filmScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filmScroll {
+  min-height: 100px;
+  /* vh first: older WebView Chrome has no dvh. */
+  max-height: 45vh;
+  max-height: 45dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  scroll-padding-block: var(--space-2);
+}
+
+.styleInput {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  margin-block: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.userContext {
+  margin-block: var(--space-4);
+  padding: var(--space-3);
+  border: 1px dashed var(--color-warm);
+  border-radius: var(--radius-sm);
+  background: #302331;
+  color: #ffe0c7;
+  white-space: pre-wrap;
+}
+
+.cardList {
+  display: grid;
+  gap: var(--space-3);
+  padding-inline-start: var(--space-5);
+  list-style: disc;
+}
+
+.reveal[data-card-color='sage'] {
+  --g1: #8ac9af;
+  --g2: #8ac9af;
+}
+
+.reveal[data-card-color='peach'] {
+  --g1: #e2b49a;
+  --g2: #e2b49a;
 }

@@ -41,20 +41,60 @@ function score(sentence: string, queryStems: readonly string[]): number {
 }
 
 /**
- * From the best-scoring sentence (earliest on a tie) to the end of its excerpt; the first non-empty
- * excerpt whole when no sentence mentions any word of the search.
+ * From the best-scoring sentence (earliest on a tie) to the end of its excerpt; optional preceding
+ * sentences retain attribution and subject context. Keeps the first excerpt when nothing matches.
  */
-export function bestSnippet(excerpts: readonly string[], query: string): string {
+export function bestSnippet(
+  excerpts: readonly string[],
+  query: string,
+  contextSentences = 0,
+): string {
   const queryStems = stems(query);
   let best = { score: 0, text: excerpts.find(Boolean) ?? '' };
   for (const excerpt of excerpts) {
     const sentences = excerpt.split(/(?<=[.!?])\s+/);
     for (const [index, sentence] of sentences.entries()) {
       const value = score(sentence, queryStems);
-      if (value > best.score) best = { score: value, text: sentences.slice(index).join(' ') };
+      if (value > best.score)
+        best = {
+          score: value,
+          text: sentences.slice(Math.max(0, index - contextSentences)).join(' '),
+        };
     }
   }
   return best.text;
+}
+
+/** A fragment about fan fiction or another fan-made work, not the original work. */
+const FAN_WORK =
+  /\bfan[- ]?(?:fic(?:tion)?s?|made|created|works?|animations?|comics?|games?|films?|series|stor(?:y|ies))\b/i;
+/**
+ * Fan-fiction archives and "fanon" wikis (fan-invented canon, `<name>fanon.fandom.com`), matched on
+ * whole host labels like `shared/cardCurate.ts`. Ordinary fandom wikis pass.
+ */
+const FAN_SITE =
+  /(^|\.)(archiveofourown\.org|ao3\.org|fanfiction\.net|wattpad\.com|fimfiction\.net|[a-z0-9-]*fanon\.fandom\.com)$/i;
+/** A section heading for fan works (TV Tropes folder names), when one survives extraction. */
+const FAN_HEADING = /\b(?:Fan Works|Fan Fiction|Fan Fics?|Fanfics?|Fanfiction)\b/;
+/** Parallel joins a page's excerpts with " ... "; most section headings don't survive extraction. */
+const EXCERPT_GAP = /\s+\.\.\.\s+/;
+
+export const isFanSite = (host: string): boolean => FAN_SITE.test(host);
+
+/**
+ * The page without fan-work text: each excerpt fragment is cut at a fan-works heading, and a
+ * fragment that still describes a fan-made work is dropped. A fan work named with no such marker
+ * (a fanfic title alone) is not caught.
+ */
+export function dropFanWorks(text: string): string {
+  return text
+    .split(EXCERPT_GAP)
+    .map((fragment) => {
+      const heading = fragment.search(FAN_HEADING);
+      return heading < 0 ? fragment : fragment.slice(0, heading).trim();
+    })
+    .filter((fragment) => fragment && !FAN_WORK.test(fragment))
+    .join(' ... ');
 }
 
 const TRACKING = /^utm_/i;

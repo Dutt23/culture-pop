@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
-import { useRetrievalService } from '../../app/retrievalService';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { resetTours, TOUR_PARAM } from '../../components/tour/useTour';
 import { SETTING_LABELS, type SettingKey, type Settings } from '../../domain/settings';
+import { AccountSection } from '../account/AccountSection';
 import { BackupSection } from './BackupSection';
 import { useSettings } from './SettingsContext';
 import styles from './SettingsPage.module.css';
@@ -56,7 +56,6 @@ function Note({ lead, topic, children }: NoteProps) {
 export function SettingsPage() {
   const { settings, setSetting, resetLocalData } = useSettings();
   const { history } = useRepositories();
-  const { webSearch } = useRetrievalService();
   const navigate = useNavigate();
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
@@ -91,17 +90,6 @@ export function SettingsPage() {
       setMessage({ tone: 'ok', text: 'Search history was cleared.' });
     } catch {
       setMessage({ tone: 'error', text: "Couldn't clear search history. Please try again." });
-    }
-  };
-
-  const forgetAccessCode = async () => {
-    try {
-      await webSearch.lock();
-      // Without the cookie a search can't run by itself; the button comes back.
-      await setSetting('webAccess', 'unknown');
-      setMessage({ tone: 'ok', text: 'The access code was forgotten on this device.' });
-    } catch {
-      setMessage({ tone: 'error', text: "Couldn't reach the server. Please try again." });
     }
   };
 
@@ -156,21 +144,18 @@ export function SettingsPage() {
             topic="wider web search"
             lead="When nothing explains a search, you can tap “Search the wider web”; Off hides the button."
           >
-            With On, once a search has worked on this device, it runs by itself on those searches.
-            Your search text then goes through our server to a web-search provider (Parallel), which
-            may keep it and use it to improve its service. Nothing else is sent. The links it finds
-            are not checked. Results from the wider web can be kept on this device, for you only,
-            for 30 days while search history is on; they are never sent anywhere, and Clear history
-            deletes them. A link you save with the heart keeps only its title and address, on this
-            device, until you remove it or reset. If you make a card from results, the search, the
-            results you picked and any style cards go through our server to OpenAI (or Cloudflare if
-            OpenAI is busy), and Parallel reads the pages you picked; they don't use it to train
-            their models, and the card is kept only on this device. It needs an access code from the
-            owner; the app never stores the code, only a sign-in cookie from our server.
+            With On, once you're signed in on this device, it runs by itself on those searches. Your
+            search text then goes through our server to a web-search provider (Parallel), which may
+            keep it and use it to improve its service. Nothing else is sent. The links it finds are
+            not checked. Results from the wider web can be kept on this device, for you only, for 30
+            days while search history is on; they are never sent anywhere, and Clear history deletes
+            them. A link you save with the heart keeps only its title and address, on this device,
+            until you remove it or reset. If you make a card from results, the search, the results
+            you picked and any style cards go through our server to OpenAI (or Cloudflare if OpenAI
+            is busy), and Parallel reads the pages you picked; they don't use it to train their
+            models, and the card is kept only on this device. It needs you to sign in, and the owner
+            to turn it on for your account.
           </Note>
-          <button type="button" className={styles.reset} onClick={forgetAccessCode}>
-            Forget access code
-          </button>
         </div>
         <div className={styles.withNote}>
           <SegmentedControl
@@ -209,6 +194,8 @@ export function SettingsPage() {
           </Note>
         </div>
       </div>
+
+      <AccountSection />
 
       <BackupSection />
 

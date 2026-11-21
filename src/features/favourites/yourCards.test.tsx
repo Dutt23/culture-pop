@@ -119,7 +119,7 @@ describe('Your cards', () => {
     for (const text of hidden) expect(shown).toHaveTextContent(text);
   });
 
-  it('offers kept cards as tone filters but not as frames', async () => {
+  it('offers kept cards as merge frames', async () => {
     const { db } = await seed(record('a', 'Polite brush-off', '2026-11-01T00:00:00.000Z'));
     render(
       <AppProviders db={db} retrieval={unusedRetrievalService()}>
@@ -139,9 +139,8 @@ describe('Your cards', () => {
       </AppProviders>,
     );
 
-    expect(await screen.findByRole('button', { name: 'Polite brush-off' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Polite brush-off/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /BBC page/ })).toBeInTheDocument();
-    expect(screen.queryByText('your card')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Your card/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Add saved cards as sources' })).toBeInTheDocument();
   });
 });

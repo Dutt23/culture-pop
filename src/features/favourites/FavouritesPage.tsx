@@ -127,6 +127,8 @@ export function FavouritesPage() {
                     // The card's colours live on the flow, as in the card flow itself.
                     <div className={draftStyles.flow} data-scene="night">
                       <DraftReveal
+                        userContext={kept.userContext}
+                        color={kept.color}
                         readOnly
                         revealSpoilers={settings.spoilers === 'show'}
                         search={kept.search}

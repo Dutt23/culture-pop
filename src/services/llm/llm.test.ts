@@ -113,6 +113,45 @@ describe('isGrounded', () => {
     expect(isGrounded('Doctor Doom is the ruler of Latveria.', doom)).toBe(true);
   });
 
+  it('reads a name with an apostrophe as one word, as the evidence is read', () => {
+    const doh =
+      "D'oh! Character: Homer Simpson. In 2006, d'oh was listed among TV catchphrases of The Simpsons.";
+    expect(isGrounded("D'oh! is Homer Simpson's catchphrase in The Simpsons.", doh)).toBe(true);
+    expect(isGrounded("O'Brien says d'oh in The Simpsons.", doh)).toBe(false);
+  });
+
+  describe('three- and four-word claims', () => {
+    const patry =
+      'Patry along with the other elves from Black Clover were massacred by royals. To avenge his ' +
+      'murdered tribe he resurrected the Third Eye to kill all the humans in the Clover Kingdom.';
+
+    it('keeps a supported claim with one reworded verb, as a longer line already could', () => {
+      expect(
+        isGrounded('Patry (Black Clover) tries to kill all humans in the Clover Kingdom.', patry),
+      ).toBe(true);
+      expect(
+        isGrounded('Patry seeks to kill humans in the Clover Kingdom in Black Clover.', patry),
+      ).toBe(true);
+    });
+
+    it('still rejects a name the evidence lacks, or two unsupported words', () => {
+      expect(isGrounded('Patry Yeager tries to kill humans in the Clover Kingdom.', patry)).toBe(
+        false,
+      );
+      expect(isGrounded('Patry rescues and protects humans in the Clover Kingdom.', patry)).toBe(
+        false,
+      );
+    });
+
+    // Known trade-off, pinned on purpose: one swapped verb in a 3-4 word claim can pass, as it
+    // already could in a longer line. Names, numbers, quotes and negations stay strict.
+    it('cannot tell a swapped verb from a reworded one', () => {
+      expect(isGrounded('Patry rescues the murdered humans.', patry)).toBe(true);
+      // Two content words stay strict.
+      expect(isGrounded('Patry saves all humans in the Clover Kingdom.', patry)).toBe(false);
+    });
+  });
+
   it('rejects a sentence mostly made of words the evidence never uses', () => {
     expect(isGrounded('Doom is beloved, misunderstood, tragic and heroic overall.', cited)).toBe(
       false,

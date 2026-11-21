@@ -13,12 +13,13 @@ const LINES = [
 const LINE_MS = 850;
 
 interface DraftingProjectorProps {
+  onContinue?: () => void;
   /** Cancels the draft and goes back to the film. */
   onStop: () => void;
 }
 
 /** While a card is drafted: the mascot at the projector, a spinning reel and the graded beam. */
-export function DraftingProjector({ onStop }: DraftingProjectorProps) {
+export function DraftingProjector({ onStop, onContinue }: DraftingProjectorProps) {
   const { reduced } = useMotionPresets();
   const [line, setLine] = useState(0);
   // Filled after mount: a live region's first text is often not read if it arrives with it.
@@ -64,6 +65,9 @@ export function DraftingProjector({ onStop }: DraftingProjectorProps) {
           <circle cx="11.6" cy="28" r="5" className={styles.hole} />
         </svg>
         <div className={styles.beam} />
+        <div className={styles.gather}>
+          <span />
+        </div>
       </div>
       {/* Keyed, so each new line plays its entrance. */}
       <p key={line} className={styles.projectorLine} aria-hidden="true">
@@ -72,6 +76,16 @@ export function DraftingProjector({ onStop }: DraftingProjectorProps) {
       <button type="button" className={styles.small} onClick={onStop}>
         Back to the film
       </button>
+      {onContinue && (
+        <>
+          <p className={styles.note}>
+            Your card is being made in Activity. You can keep using the app.
+          </p>
+          <button type="button" className={styles.keep} onClick={onContinue}>
+            Continue browsing
+          </button>
+        </>
+      )}
     </div>
   );
 }

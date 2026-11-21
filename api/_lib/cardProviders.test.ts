@@ -8,7 +8,7 @@ import {
   providersFromEnv,
   type DraftProvider,
 } from './cardProviders.js';
-import { PROMPT_VERSION } from './cardPrompt.js';
+import { PROMPT_VERSION, TOPIC_PROMPT_VERSION } from './cardPrompt.js';
 
 const input = { prefix: 'PREFIX', user: 'USER', schema: { type: 'object' } };
 const signal = new AbortController().signal;
@@ -40,6 +40,14 @@ const kindOf = async (promise: Promise<unknown>) =>
   );
 
 describe('openAiProvider', () => {
+  it('uses the topic cache version and larger bounded output for topic input', async () => {
+    const fetchFn = mock(openAiOk());
+    await openAi(fetchFn).draft({ ...input, promptVersion: TOPIC_PROMPT_VERSION }, signal);
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toMatchObject({
+      prompt_cache_key: TOPIC_PROMPT_VERSION,
+      max_output_tokens: 1600,
+    });
+  });
   it('sends the OpenAI request with store false, no thinking, the cache breakpoint and the prompt version as cache key', async () => {
     const fetchFn = mock(openAiOk());
     await expect(openAi(fetchFn).draft(input, signal)).resolves.toEqual(answer);
@@ -111,6 +119,11 @@ describe('openAiProvider', () => {
 });
 
 describe('cloudflareProvider', () => {
+  it('uses the larger bounded output for topic input', async () => {
+    const fetchFn = mock(reply({ success: true, result: { response: answer } }));
+    await cloudflare(fetchFn).draft({ ...input, promptVersion: TOPIC_PROMPT_VERSION }, signal);
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toMatchObject({ max_tokens: 1600 });
+  });
   it("reads Cloudflare's response field and its chat-shaped answer", async () => {
     const asObject = mock(reply({ success: true, result: { response: answer } }));
     await expect(cloudflare(asObject).draft(input, signal)).resolves.toEqual(answer);
@@ -119,6 +132,7 @@ describe('cloudflareProvider', () => {
       'https://api.cloudflare.com/client/v4/accounts/acct-1/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast',
     );
     expect(JSON.parse(init.body as string)).toEqual({
+      temperature: 0.2,
       max_tokens: 800,
       response_format: { type: 'json_schema', json_schema: input.schema },
       messages: [
@@ -147,6 +161,7 @@ describe('cloudflareProvider', () => {
     expect(await kind(failure(429, 'Too many requests'))).toBe('rate_limited');
     expect(await kind(failure(400, "JSON Mode couldn't be met"))).toBe('format');
     expect(await kind(failure(500, 'boom'))).toBe('failed');
+    expect(await kind(failure(403, 'daily token check failed'))).toBe('failed');
     expect(await kind(reply({ success: true, result: { response: 'not json' } }))).toBe('format');
   });
 });
@@ -229,9 +244,26 @@ describe('providersFromEnv', () => {
     ).toEqual(['openai', 'cloudflare']);
   });
 
+  it('reads the model ids from OPENAI_MODEL and CLOUDFLARE_MODEL', async () => {
+    const fetchFn = vi.fn(async () => openAiOk());
+    const env = {
+      OPENAI_API_KEY: 'k',
+      OPENAI_MODEL: 'gpt-test',
+      CLOUDFLARE_ACCOUNT_ID: 'a',
+      CLOUDFLARE_API_TOKEN: 't',
+      CLOUDFLARE_MODEL: '@cf/test/model',
+    };
+    const [openai, cf] = providersFromEnv(env, fetchFn as unknown as typeof fetch);
+    await openai!.draft(input, signal);
+    await cf!.draft(input, signal).catch(() => {});
+    const calls = fetchFn.mock.calls as unknown as [string, RequestInit][];
+    expect(JSON.parse(calls[0]![1].body as string).model).toBe('gpt-test');
+    expect(calls[1]![0]).toMatch(/\/ai\/run\/@cf\/test\/model$/);
+  });
+
   it('uses only the fake with CARD_DRAFT_FAKE', async () => {
     vi.stubEnv('CARD_DRAFT_FAKE', '1');
-    vi.stubEnv('VERCEL_ENV', '');
+    vi.stubEnv('VERCEL_ENV', 'development');
     try {
       const providers = providersFromEnv({ OPENAI_API_KEY: 'k' }, doFetch);
       expect(providers.map((p) => p.name)).toEqual(['fake']);

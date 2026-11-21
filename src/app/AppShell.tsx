@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router';
 import { classNames } from '../components/ui/classNames';
 import {
   CompassIcon,
+  ActivityIcon,
   FolderIcon,
   HeartIcon,
   SearchIcon,
@@ -10,17 +11,26 @@ import {
 } from '../components/ui/icons';
 import styles from './AppShell.module.css';
 import { useOnlineStatus } from './useOnlineStatus';
+import { useCurationJobs } from './CurationJobsProvider';
 
 const NAV_ITEMS = [
   { to: '/discover', label: 'Discover', Icon: CompassIcon },
   { to: '/search', label: 'Search', Icon: SearchIcon },
   { to: '/favourites', label: 'Favourites', Icon: HeartIcon },
   { to: '/packs', label: 'Packs', Icon: FolderIcon },
+  { to: '/activity', label: 'Activity', Icon: ActivityIcon },
   { to: '/settings', label: 'Settings', Icon: SettingsIcon },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const isOnline = useOnlineStatus();
+  const { activeCount, jobs } = useCurationJobs();
+  const [openedAt] = useState(() => Date.now());
+  const finished = jobs.find(
+    (job) =>
+      (job.status === 'completed' || job.status === 'failed') &&
+      Date.parse(job.updatedAt) >= openedAt,
+  );
   return (
     <div className={styles.shell}>
       <a href="#main" className={styles.skipLink}>
@@ -35,6 +45,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
       </header>
+      {finished && (
+        <p className={styles.activityNotice} role="status">
+          <Link to="/activity">
+            {finished.status === 'completed'
+              ? 'Card ready in Activity'
+              : 'Card needs attention in Activity'}{' '}
+            · {finished.request.search}
+          </Link>
+        </p>
+      )}
       {!isOnline && (
         <p className={styles.offline} role="status">
           You're offline. Everything saved on this device still works.
@@ -52,7 +72,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className={({ isActive }) => classNames(styles.navLink, isActive && styles.active)}
               >
                 <Icon />
-                <span>{label}</span>
+                <span>
+                  {label}
+                  {to === '/activity' && activeCount > 0 ? ` (${activeCount})` : ''}
+                </span>
               </NavLink>
             </li>
           ))}

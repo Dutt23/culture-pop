@@ -163,3 +163,19 @@
 .still .filter[aria-pressed='true'] .lens {
   transform: none;
 }
+
+.on .cut {
+  background: var(--color-success);
+  color: #102b20;
+  font-weight: var(--weight-bold);
+}
+
+.issue {
+  display: block;
+  margin-block: var(--space-2) var(--space-4);
+  padding: var(--space-2);
+  border-inline-start: 3px solid #ffb27a;
+  background: #18153a;
+  color: #ffd2af;
+  font-size: var(--text-sm);
+}

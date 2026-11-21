@@ -9,6 +9,9 @@
 }
 
 .result {
+  padding: var(--space-4);
+  border: 1px dotted var(--color-text-muted);
+  border-radius: var(--radius-md);
   display: grid;
   gap: var(--space-1);
 }

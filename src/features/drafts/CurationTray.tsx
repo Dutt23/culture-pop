@@ -17,15 +17,6 @@ const BUMP: Keyframe[] = [
   { transform: 'scale(1.2)' },
   { transform: 'scale(1)' },
 ];
-/** The hint fades in, stays about 1.6 s, then fades out. */
-const HINT: Keyframe[] = [
-  { opacity: 0 },
-  { opacity: 1, offset: 0.1 },
-  { opacity: 1, offset: 0.9 },
-  { opacity: 0 },
-];
-const HINT_MS = 1800;
-
 const canAnimate = (el: Element | null): el is Element => typeof el?.animate === 'function';
 
 interface CurationTrayProps {
@@ -51,6 +42,13 @@ export function CurationTray(props: CurationTrayProps) {
   const hintTimers = useRef<number[]>([]);
   const gradient = `reel${useId().replace(/[^\w-]/g, '')}`;
 
+  // The next pick (a frame or filter added or removed) clears the hint. Declared before the shake
+  // effect so a hint set in the same render wins.
+  useEffect(() => {
+    hintTimers.current.forEach(clearTimeout);
+    if (hintRef.current) hintRef.current.textContent = '';
+  }, [count, tones.length]);
+
   useEffect(() => {
     if (shakeKey === shaken.current) return;
     shaken.current = shakeKey;
@@ -58,14 +56,11 @@ export function CurationTray(props: CurationTrayProps) {
     const status = hintRef.current;
     if (canAnimate(tray)) tray.animate(reduced ? FADE : SHAKE, { duration: reduced ? 150 : 320 });
     if (!status) return;
-    if (canAnimate(status)) status.animate(HINT, { duration: HINT_MS });
+
     // Empty, then refill, so a status with the same text as last time is announced again.
     hintTimers.current.forEach(clearTimeout);
     status.textContent = '';
-    hintTimers.current = [
-      window.setTimeout(() => (status.textContent = hint ?? ''), 0),
-      window.setTimeout(() => (status.textContent = ''), HINT_MS),
-    ];
+    hintTimers.current = [window.setTimeout(() => (status.textContent = hint ?? ''), 0)];
   }, [shakeKey, hint, reduced]);
 
   useEffect(() => () => hintTimers.current.forEach(clearTimeout), []);
@@ -78,7 +73,7 @@ export function CurationTray(props: CurationTrayProps) {
 
   const frames = `${count} of ${LIMITS.sources} frames`;
   return (
-    <div className={styles.dock} data-scene="night">
+    <div className={styles.dock} data-scene="night" data-tray-dock>
       {/* Text is set by the shake effect, not rendered: see above. */}
       <p ref={hintRef} role="status" className={styles.hint} />
       <span className="sr-only" aria-live="polite">
@@ -102,9 +97,19 @@ export function CurationTray(props: CurationTrayProps) {
           <circle cx="22" cy="22" r="20" fill={`url(#${gradient})`} opacity=".35" />
           <circle cx="22" cy="22" r="20" fill="none" stroke={`url(#${gradient})`} strokeWidth="3" />
           <circle cx="22" cy="22" r="4" fill={`url(#${gradient})`} />
-          <circle cx="22" cy="10" r="5" className={styles.hole} />
-          <circle cx="32.4" cy="28" r="5" className={styles.hole} />
-          <circle cx="11.6" cy="28" r="5" className={styles.hole} />
+          {Array.from({ length: LIMITS.sources }, (_, index) => {
+            const angle = (index / LIMITS.sources) * Math.PI * 2 - Math.PI / 2;
+            return (
+              <circle
+                key={index}
+                cx={22 + Math.cos(angle) * 13}
+                cy={22 + Math.sin(angle) * 13}
+                r="2.8"
+                className={index < count ? styles.filledHole : styles.hole}
+                data-filled={index < count}
+              />
+            );
+          })}
         </svg>
         <span className={styles.text}>
           <span ref={countRef} className={styles.count}>

@@ -4,6 +4,7 @@ import { SettingsProvider } from '../features/settings/SettingsContext';
 import { RepositoriesProvider } from './RepositoriesContext';
 import { RetrievalProvider, type RetrievalService } from './RetrievalContext';
 import { StorageGate } from './StorageGate';
+import { CurationJobsProvider } from './CurationJobsProvider';
 
 interface AppProvidersProps {
   db: PopCultureDb;
@@ -17,7 +18,9 @@ export function AppProviders({ db, retrieval, children }: AppProvidersProps) {
     <StorageGate db={db}>
       <RepositoriesProvider db={db}>
         <RetrievalProvider service={retrieval}>
-          <SettingsProvider>{children}</SettingsProvider>
+          <SettingsProvider>
+            <CurationJobsProvider>{children}</CurationJobsProvider>
+          </SettingsProvider>
         </RetrievalProvider>
       </RepositoriesProvider>
     </StorageGate>

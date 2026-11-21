@@ -19,6 +19,8 @@ export function useHeldResults<T extends { id: string }>(
   items: readonly T[],
   key: string,
   isLead: (item: T) => boolean = () => false,
+  /** Lookup finished: show every card. Holding them past the end is how a result stays missing. */
+  releaseHeld = false,
 ): HeldResults<T> {
   const [state, setState] = useState<{ key: string; ids: string[] }>({ key, ids: [] });
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -31,9 +33,14 @@ export function useHeldResults<T extends { id: string }>(
   const shownIds = new Set(ids);
   const held = items.filter((item) => !shownIds.has(item.id));
   const idsOf = (list: readonly T[]) => list.map((item) => item.id);
+  const released = releaseHeld && held.length > 0;
+  const visibleIds = released
+    ? [...idsOf(held.filter(isLead)), ...ids, ...idsOf(held.filter((item) => !isLead(item)))]
+    : ids;
+  if (released) setState({ key, ids: visibleIds });
   return {
-    shown: ids.flatMap((id) => byId.get(id) ?? []),
-    held,
+    shown: visibleIds.flatMap((id) => byId.get(id) ?? []),
+    held: released ? [] : held,
     showHeld: () =>
       setState({
         key,

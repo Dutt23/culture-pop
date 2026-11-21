@@ -98,6 +98,7 @@ type Kept = Candidate & { role: EvidenceRole };
 export function curateEvidence(
   items: readonly Candidate[],
   search: string,
+  preserveSources: readonly number[] = [],
 ): { items: EvidenceItem[]; dropped: NotUsed[] } {
   const latinSearch = latinShare(search) > LATIN_SEARCH_SHARE;
   const dropped: NotUsed[] = [];
@@ -137,5 +138,11 @@ export function curateEvidence(
     ofRole.slice(CAPS[role]).forEach((k) => drop(k, `over the ${role} cap`));
     return ofRole.slice(0, CAPS[role]);
   });
-  return { items: ordered.map((k, i) => ({ ...k, id: `E${i + 1}` })), dropped };
+  const preserved = kept.filter(
+    (k) => preserveSources.includes(k.source) && !ordered.some((o) => o.source === k.source),
+  );
+  ordered.unshift(...preserved);
+  const sentSources = new Set(ordered.map((k) => k.source));
+  const omitted = dropped.filter((d) => !sentSources.has(d.source));
+  return { items: ordered.map((k, i) => ({ ...k, id: `E${i + 1}` })), dropped: omitted };
 }

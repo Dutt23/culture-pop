@@ -10,8 +10,8 @@ const PITCH = 20;
 const SPEED = 1.6;
 const SETTLE_AFTER_MS = 90;
 const SETTLE_MS = 160;
-/** The gate stops above the tray pinned at the bottom of the scroll area. */
-const TRAY_INSET = 84;
+/** The curation tray's dock (CurationTray): the gate stops above it where it overlaps the view. */
+const TRAY_DOCK = '[data-tray-dock]';
 const GATE_TOP = 4;
 const MIN_RAIL = 8;
 
@@ -37,10 +37,13 @@ function useProjectorGate(
       const r = strip.getBoundingClientRect();
       const view = scrollRoot?.current?.getBoundingClientRect() ?? {
         top: 0,
-        bottom: window.innerHeight,
+        bottom: document.documentElement.clientHeight,
       };
+      // Measured from the tray itself, so a taller tray (a hint showing, a safe area) still fits.
+      const dockTop = strip.ownerDocument.querySelector(TRAY_DOCK)?.getBoundingClientRect().top;
+      const inset = dockTop === undefined ? 0 : Math.max(0, view.bottom - dockTop);
       const top = Math.max(0, view.top + GATE_TOP - r.top);
-      const height = Math.min(r.height, view.bottom - TRAY_INSET - r.top) - top;
+      const height = Math.min(r.height, view.bottom - inset - r.top) - top;
       for (const rail of rails) {
         rail.style.display = height > MIN_RAIL ? '' : 'none';
         rail.style.top = `${top}px`;
@@ -79,6 +82,8 @@ function useProjectorGate(
     const sized = typeof ResizeObserver === 'function' ? new ResizeObserver(() => place()) : null;
     sized?.observe(strip);
     if (scrollRoot?.current) sized?.observe(scrollRoot.current);
+    const dock = strip.ownerDocument.querySelector(TRAY_DOCK);
+    if (dock) sized?.observe(dock);
     return () => {
       sized?.disconnect();
       document.removeEventListener('scroll', onScroll, { capture: true });
@@ -97,9 +102,17 @@ interface FilmStripProps {
   reelRef?: RefObject<Element | null>;
   /** The element the strip scrolls in, when it isn't the window. */
   scrollRoot?: RefObject<HTMLElement | null>;
+  issues?: Readonly<Record<string, string>>;
 }
 
-export function FilmStrip({ frames, pickedKeys, onToggle, reelRef, scrollRoot }: FilmStripProps) {
+export function FilmStrip({
+  frames,
+  pickedKeys,
+  onToggle,
+  reelRef,
+  scrollRoot,
+  issues,
+}: FilmStripProps) {
   const { reduced } = useMotionPresets();
   const stripRef = useRef<HTMLDivElement>(null);
   useProjectorGate(stripRef, reduced, scrollRoot);
@@ -134,8 +147,11 @@ export function FilmStrip({ frames, pickedKeys, onToggle, reelRef, scrollRoot }:
             </span>
             <span className={styles.title}>{frame.title}</span>
             <span className={styles.line}>{frame.line}</span>
+            {issues?.[frame.key] && (
+              <span className={styles.issue}>Not used · {issues[frame.key]}</span>
+            )}
             <span className={styles.cut} aria-hidden="true">
-              ✂ cut
+              {on ? '✓ Selected' : 'Select frame'}
             </span>
             <span className={styles.flash} aria-hidden="true" />
           </button>

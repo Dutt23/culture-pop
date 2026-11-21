@@ -1,5 +1,7 @@
 # Backend plan: wider-web search through Parallel
 
+> **Update 2026-11-21: the access code is gone.** Wider web search (and card drafts) now need a signed-in account that the owner turned it on for (`app_private.wider_web_access`, D64; steps in `docs/SUPABASE_SETUP.md`, "Turn on wider web search for a person"). `/api/unlock`, `/api/lock`, `api/_lib/access.ts`, `ACCESS_CODE` and `ACCESS_COOKIE_SECRET` were removed. Signed out: 401 `signed_out`; signed in but not turned on: 403 `not_allowed`. Sections below that describe the code and its cookie are history.
+
 Status (2026-11-16): **built, not run.** Server, client and tests are written (D45). No build, test
 or deploy has been run. The owner's steps are in section 10.
 
@@ -343,7 +345,7 @@ ES modules need at run time (the project is `"type": "module"`).
   caps (10 results, 120/300 characters); our answer under 16 KB with long multi-byte text; Parallel's
   answer over 256 KB → 502; repeated and unsafe URLs dropped; errors (500 → 502, 429 → 429, network,
   bad JSON, timeout); daily cap; headers; nothing logged (query, key, cookie).
-- `api/devMode.test.ts`: dev flags off unless `1` and always off on production and preview; the fake
+- `api/devMode.test.ts`: dev flags off unless `1` and outside explicit local development; the fake
   provider answers cleaned, capped, `device` results without a key or calling Parallel, still needs
   the cookie, and is ignored in production; the insecure dev cookie drops `Secure` only locally.
 - `api/access.test.ts`: right and wrong code, the 1 s delay, `timingSafeEqual` used, cookie flags,
@@ -404,18 +406,32 @@ ES modules need at run time (the project is `"type": "module"`).
 
 ## 10. Owner to-do list
 
+Do this list before `npm run deploy` to the Vercel account that should own the app (2026-11-19).
+
 1. **Sign up at parallel.ai**, add a card, create an API key. Keep it out of chat, code and files.
-2. In Parallel's dashboard: **auto-reload off**, **monthly spend limit** of a few dollars.
-3. **Link the Vercel project** from the repo folder, if not linked yet.
-4. **Set three Production environment variables in Vercel** (the CLI asks for each value, so it
-   doesn't land in shell history; mark them **Sensitive** in the dashboard if offered):
-   `PARALLEL_API_KEY`, `ACCESS_CODE` (12+ characters, ideally 4 random words, see section 6),
-   `ACCESS_COOKIE_SECRET` (32+ random characters).
+2. **Spend caps, before sharing the code.** Parallel: **auto-reload off**, **monthly spend limit**
+   of a few dollars. OpenAI: a monthly usage limit if that key is set. Cloudflare too, if that key
+   is set. These are the real brakes. The caps in `api/web-search.ts` and `api/draft-card.ts` reset
+   on each warm instance.
+3. **Link the Vercel account for this deploy.** Log into that account. If `.vercel/` in the repo
+   folder points at an older project, delete that folder, then link and create a new project.
+4. **Production environment variables** (the CLI asks for each value, so it doesn't land in shell
+   history; mark them **Sensitive**): `PARALLEL_API_KEY`, `ACCESS_CODE` (4 random words, 12+
+   characters, see section 6), `ACCESS_COOKIE_SECRET` (32+ random characters). For card drafts, also
+   `OPENAI_API_KEY`, or both `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Without a draft
+   provider, drafts answer "not configured" and the rest of the app still runs. Repeat the same
+   variables on Preview only if using `deploy:preview`.
 5. **Vercel Authentication: off** (section 6).
-6. **Firewall (do this before sharing the code):** the unlock rule (5 per 10 minutes per IP). On
-   Pro, also the search rule.
-7. Run the checks, deploy, and test from the phone.
-8. Share the code with friends in person or a private message, never in the repo.
+6. **Firewall, optional.** One rule, path `/api/unlock` only (5 per 10 minutes per IP). Skip it
+   when the code is four random words. Do not rate-limit search or drafts with that single Hobby
+   rule. On Pro, a second rule can cap `/api/web-search`.
+7. **After any env edit, redeploy.** Production keeps the old values until that deploy finishes.
+   To sign everyone out later: change `ACCESS_CODE`, or change `ACCESS_COOKIE_SECRET` to keep the
+   same code, then redeploy (section 6). No rotation library and no rotation function.
+8. Run the checks, deploy, and test from the phone.
+9. Share the code with friends in person or a private message, never in the repo.
+
+Not part of this deploy: Supabase, a rate-limit library, a shared counter.
 
 ### Commands (for the owner to run)
 
@@ -433,6 +449,12 @@ rtk npx --yes vercel@65.9.0 env add ACCESS_CODE production
 
 ```bash
 rtk npx --yes vercel@65.9.0 env add ACCESS_COOKIE_SECRET production
+```
+
+Card drafts, if they should work on this deploy:
+
+```bash
+rtk npx --yes vercel@65.9.0 env add OPENAI_API_KEY production
 ```
 
 Check, then deploy. `deploy:check` runs every gate check in order and stops at the first failure:
@@ -464,8 +486,8 @@ rtk npx --yes vercel@65.9.0 rollback
 ```
 
 Then on the phone: search "why are ferrari fans depressed", tap **Search the wider web**, agree,
-enter the code, and check the "Community suggests… (unverified)" list. In Settings, tap **Forget
-access code** and search again: the code form should come back.
+sign in if asked, and check the "Community suggests… (unverified)" list. Sign out in Settings and
+search again: a "Sign in" message should replace the results.
 
 ---
 
@@ -476,14 +498,15 @@ the Vite app and the `api/` functions together on one origin. The Vercel CLI is 
 (`vercel@65.9.0`, published 2026-10-31) and run with `--local`, so **no Vercel login and no
 `vercel link` are needed**; settings come from `vercel.json` and `.env`.
 
-Two local-only switches (`api/_lib/devFlags.ts`), honoured only when set to `1` and **ignored on any
-Vercel deployment** (`VERCEL_ENV` `production` or `preview`; tested):
+Two local-only switches (`api/_lib/devFlags.ts`), honoured only when set to `1` and **only in explicit
+local development** (`VERCEL_ENV=development`, which `vercel dev` sets, or `NODE_ENV=development`
+with no `VERCEL_ENV`); off everywhere else, including a host that sets neither (fail closed; tested):
 
 - `WEB_SEARCH_FAKE=1`: the function answers with three canned results ("Local test result 1–3",
   `https://example.com/local-test/…`) in Parallel's own shape. They go through the same cleaning,
   caps and `storage: "device"` level as real answers. Parallel is never called, so no key and no
-  spending. The access code still applies, so the whole flow can be tested.
-- `ACCESS_COOKIE_INSECURE_DEV=1`: the access cookie is set without `Secure`, for a phone on plain
+  spending. Sign-in and the per-person permission still apply, so the whole flow can be tested.
+- `ACCESS_COOKIE_INSECURE_DEV=1`: the sign-in cookie is set without `Secure`, for a phone on plain
   http (below). Everything else about the cookie stays the same.
 
 ### On this computer
@@ -494,9 +517,9 @@ Vercel deployment** (`VERCEL_ENV` `production` or `preview`; tested):
    rtk npm install
    ```
 
-2. Create `.env` (git-ignored) from the template, then open it and fill in `ACCESS_CODE`
-   (12+ characters) and `ACCESS_COOKIE_SECRET` (32+ random characters; the template shows a command
-   that makes one). Keep `WEB_SEARCH_FAKE=1` and leave `PARALLEL_API_KEY` empty.
+2. Create `.env` (git-ignored) from the template, then fill in the `SUPABASE_*` values and
+   `APP_ORIGIN=http://localhost:3000` (docs/SUPABASE_SETUP.md). Keep `WEB_SEARCH_FAKE=1` and leave
+   `PARALLEL_API_KEY` empty. Turn wider web search on for your own account (SUPABASE_SETUP.md).
 
    ```bash
    cp .env.example .env
@@ -511,8 +534,7 @@ Vercel deployment** (`VERCEL_ENV` `production` or `preview`; tested):
 4. Open http://localhost:3000. Browsers accept `Secure` cookies on `http://localhost`, so no switch
    is needed here.
 5. Search **why are ferrari fans depressed**. Under "Look it up elsewhere", tap **Search the wider
-   web**, agree in the card, then type your `ACCESS_CODE` in **Enter access code** and tap
-   **Unlock**. Three "Local test result" links appear under "Community suggests… (unverified)",
+   web**, agree in the card (sign in first at `/sign-in` if asked). Three "Local test result" links appear under "Community suggests… (unverified)",
    marked "Kept on this device for 30 days, for you only."
 6. **Device-only saving:**
    - Reload the page: the same block comes back with "Saved <date>" and **Refresh**. Refresh asks
@@ -525,7 +547,8 @@ Vercel deployment** (`VERCEL_ENV` `production` or `preview`; tested):
 7. **Offline:** with the page open, DevTools → Network → **Offline**, then search the same question
    again from the search box (no reload: the dev server has no service worker). The saved block
    shows, and Refresh is disabled. Switch back to **No throttling** afterwards.
-8. **Access code:** Settings → **Forget access code**, then tap Refresh: the code form comes back.
+8. **Who may search:** sign out (Settings → Your account), then tap Refresh: a "Sign in" message
+   replaces the results. Signed in without the permission, it says wider web search isn't on yet.
 9. **Real Parallel, optional:** put the key in `PARALLEL_API_KEY`, set `WEB_SEARCH_FAKE=` (empty)
    and restart. This spends Parallel credit.
 
@@ -580,14 +603,16 @@ secure" flag, is **not verified** (no source confirms it). So use the local-only
 
 Spec: `docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md`; decision D63. Status: **built, not run against real providers.**
 
-**What it does.** Takes the search, up to 6 picked sources (at most 3 web links) and up to 2 tone cards. Parallel Extract reads the picked web pages, then a model writes one card from them. The model curates only; the prompt (`card-draft-v8`) says to invent no facts. The AI never sees a URL. Same access-code cookie as `/api/web-search`.
+**What it does.** Takes the search, up to 10 picked sources (including up to 10 web links) and up to 2 tone cards. Parallel Extract reads the picked web pages, then a model writes one card from them. The model curates only; the prompt (`card-draft-v8`) says to invent no facts. The AI never sees a URL. Same access-code cookie as `/api/web-search`.
 
 **Environment** (Vercel project settings; never in the repo):
 
 | Name                                            | Use                                                   |
 | ----------------------------------------------- | ----------------------------------------------------- |
 | `OPENAI_API_KEY`                                | OpenAI, first provider (`gpt-6-luna`)                 |
+| `OPENAI_MODEL`                                  | Optional OpenAI model id (default `gpt-6-luna`)       |
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Cloudflare Workers AI, fallback (Llama 3.3 70B fast)  |
+| `CLOUDFLARE_MODEL`                              | Optional Workers AI model id (default Llama 3.3 fast) |
 | `PARALLEL_API_KEY`                              | Parallel Extract (and Search)                         |
 | `CARD_DRAFT_FAKE`                               | `1` on a local machine only: a canned answer, no cost |
 
@@ -595,6 +620,81 @@ With `WEB_SEARCH_FAKE=1` Extract also answers locally (inline in `api/_lib/paral
 
 **Providers and fallback.** OpenAI first; if it fails or takes over 11 s, Cloudflare is tried. A cancelled request does not start the next provider.
 
-**Limits.** Request body 48 KB; 50 drafts a day per server instance (the providers' spend limits are the real cap); a 23 s deadline from the request's start (OpenAI gets at most 11 s, so Cloudflare is still tried if it hangs; Cloudflare gets the rest; the app waits 25 s); Vercel `maxDuration` 30 s (`vercel.json`); at most 800 output tokens.
+**Limits.** Request body 80 KB; 50 drafts a day per server instance (the providers' spend limits are the real cap); a 23 s deadline from the request's start (OpenAI gets at most 11 s, so Cloudflare is still tried if it hangs; Cloudflare gets the rest; the app waits 25 s); Vercel `maxDuration` 30 s (`vercel.json`); at most 800 output tokens.
 
 **Caching.** OpenAI: explicit prompt cache, 30 m, breakpoint after the fixed prefix, `prompt_cache_key` = the prompt version. Drafts themselves are never cached on the server.
+
+Both providers send the same fixed instructions and worked examples first, followed by one dynamic
+user message containing search, tags, evidence and tone cards. Tags already follow the cached
+breakpoint, so their position inside that dynamic message does not affect prefix reuse. Both hosted
+providers use temperature 0.2 and an 800-token output cap. OpenAI uses reasoning effort `none`,
+`store: false` and strict JSON schema output. Cloudflare uses JSON schema output.
+
+OpenAI's [prompt caching documentation](https://developers.openai.com/api/docs/guides/prompt-caching)
+supports the explicit breakpoint and 30-minute TTL used here. Cloudflare enables
+[prefix caching for select models](https://developers.cloudflare.com/workers-ai/features/prompt-caching/).
+The selected [Llama model page](https://developers.cloudflare.com/workers-ai/models/llama-3.3-70b-instruct-fp8-fast/)
+does not document prefix-cache compatibility. This app calls Workers AI directly and has no AI Gateway
+response cache. Live cache hits have not been measured. Provider usage metadata is currently discarded,
+and no existing diagnostics sink records cache-token counts. Do not infer a cache hit from a successful
+request or the cache key alone.
+
+Curation formats and retries, 2026-11-19. Draft requests may set kind to reference, topic, list
+or ranking. Missing kind retains the original reference behavior. Topic formats use a dynamic task
+instruction after the fixed prefix, retain readable selected evidence through keyword/role heuristics,
+and return a grounded partial card when only part of the selection supports output. Selection and
+total text limits still apply. Claims keep citations. Unsupported comparative ranking is instructed
+to remain an unranked list; semantic ranking correctness is not established by a deterministic check.
+
+retry.preserveSources contains selected request-source indices to reconsider. Indices are validated
+against the current submitted source array. Reference retries bypass keyword and role filters only
+for those sources. Missing/unreadable pages and unsupported content still receive omission reasons.
+This does not add autonomous retrieval or waive grounding.
+
+userContext is bounded supplemental text, explicitly unverified and excluded from evidence.
+User-added source URLs use provenance user and follow the existing HTTPS/extraction path.
+The UI persists userContext and source provenance with the saved draft, displays a distinct added-by-you
+panel, and preserves existing cards without these fields. Card colour is a local presentation choice.
+Style examples guide tone and organization; written styleGuidance overrides conflicting examples
+within the supported card fields. UI supports searching the local library for merge sources and
+favourite/kept cards for style examples.
+
+Parallel fallback evaluation (official documentation checked 2026-11-19).
+
+Keep Search plus targeted Extract for selected-page curation. Published USD costs are $0.001 per
+fast Search, $0.005 per advanced Search, and $0.001 per extracted URL. Three extracted pages plus
+fast Search therefore cost about $0.004, excluding card-generation LLM charges.
+[Parallel pricing](https://docs.parallel.ai/getting-started/pricing)
+
+Responses low is a candidate for a separate, cancellable missing-evidence research step at
+$0.01 per successful request, with documented typical latency around 5–10 seconds. Medium costs
+$0.05 and high $0.25. Model parallel uses reasoning.effort to choose effort; default is medium.
+At 100 low-effort research fallbacks per month, published base cost is $1, excluding subsequent
+extraction/drafting, retries, taxes and any account-specific pricing.
+[Responses quickstart](https://docs.parallel.ai/responses-api/responses-quickstart)
+[Parallel pricing](https://docs.parallel.ai/getting-started/pricing)
+
+Task API is more appropriate for explicit background research. Lite/base/core cost $0.005/$0.01/
+$0.025 per successful run. Official processor observations put lite around 45s median and 90s p90,
+excluding queue time. This exceeds the app's 23-second draft deadline and would need a separate
+job/polling or webhook flow. Task provides richer field/item research basis. Responses citations
+should be treated as leads for extracting supporting passages before existing card checks.
+[Task processor timing](https://docs.parallel.ai/task-api/guides/choose-a-processor)
+[Task research basis](https://docs.parallel.ai/task-api/guides/access-research-basis)
+[Responses citations](https://docs.parallel.ai/responses-api/features/citations)
+
+No research fallback was enabled. Prices/latencies are published figures, not an application
+benchmark. Evaluate held-out missing-evidence cases before enabling automatic routing.
+
+## Browser-owned background curation (2026-11-19)
+
+Draft POST supports `Accept: text/event-stream` with started/result/error events; existing JSON
+callers remain supported. The app-level curation runner persists immutable inputs, terminal
+responses and per-source failure details in IndexedDB, without status polling. Activity supports
+cancel, retry, review and idempotent Keep. An atomic local transaction admits at most five running
+jobs across tabs sharing the same database. Navigation and closing the composer preserve work.
+
+This runner still depends on an open browser. Reload/close can interrupt execution; Web Locks
+recovery marks abandoned jobs interrupted instead of silently repeating paid requests. Provider
+deadlines remain unchanged. Durable server execution, per-account admission and backend-only auth
+tokens are proposed in [SUPABASE_PLAN.md](SUPABASE_PLAN.md), not yet integrated.

@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRepositories } from '../../data/repositories';
 import type { Settings } from '../../domain/settings';
 import {
@@ -19,7 +19,12 @@ const RESULT: WebResult = {
   storage: 'none',
 };
 
-async function setUp(webSearch: Settings['webSearch']) {
+/**
+ * `signedIn`: this device signed in before, so with "On" the wider web searches by itself (D50,
+ * D65), as it does for a new search lean or new tags.
+ */
+async function setUp(webSearch: Settings['webSearch'], signedIn = false) {
+  if (signedIn) localStorage.setItem('pcd-account', 'reader@example.test');
   const db = createTestDatabase();
   await db.open();
   const repos = createRepositories(db);
@@ -32,6 +37,10 @@ async function setUp(webSearch: Settings['webSearch']) {
   return { ...renderApp(ROUTE, db, retrieval), repos };
 }
 
+afterEach(() => {
+  localStorage.removeItem('pcd-account');
+});
+
 describe('search page: make a card', () => {
   it('offers "Make a card from these" under wider-web results and opens the film', async () => {
     const { user } = await setUp('on');
@@ -42,6 +51,19 @@ describe('search page: make a card', () => {
     // A frame's name starts with the site on its film edge (the heart's starts with "Save link").
     const frame = await screen.findByRole('button', { name: /^reddit\.com\s*Why are Ferrari/ });
     expect(frame).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('reruns the wider web with changed tags and removes old-context results', async () => {
+    const { user, retrieval } = await setUp('on', true);
+    await screen.findByRole('link', { name: /Why are Ferrari fans always sad/ });
+    vi.mocked(retrieval.webSearch.search).mockResolvedValueOnce([]);
+    const row = await screen.findByRole('group', { name: /Search tags/ });
+    await user.click(within(row).getByRole('button', { name: 'Anime' }));
+    await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(retrieval.webSearch.search).mock.calls[1]?.[3]).toEqual(['anime']);
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /Why are Ferrari fans always sad/ })).toBeNull(),
+    );
   });
 
   it('puts the entry above the results and opens the flow in a dialog', async () => {
@@ -87,8 +109,7 @@ describe('search page: make a card', () => {
   });
 
   it('keeps an open flow and its picks when the results on the page go away', async () => {
-    const { user, retrieval, repos } = await setUp('on');
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    const { user, retrieval, repos } = await setUp('on', true);
     await user.click(await screen.findByRole('button', { name: 'Make a card from these' }));
     const flow = await screen.findByRole('dialog');
     await user.click(

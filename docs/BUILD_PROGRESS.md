@@ -20,40 +20,40 @@ Phase 2 must not start until the owner runs the checks below and approves.
 
 ### Phase 1 build checklist
 
-| Requirement | Where | State |
-|---|---|---|
-| Installable PWA (manifest, 192/512/maskable icons, service worker, offline navigation fallback) | `vite.config.ts`, `public/` | Written, not run |
-| ≥12 original demo references | `src/data/seed.ts` (16) | Written |
-| ≥2 ambiguous queries → different references | "hakuna matata", "let it go" | Written + test |
-| ≥1 spoiler-gated interpretation | Titanic door, Avengers snap | Written + test |
-| Title/alias search, deterministic ranking, multiple interpretations | `src/domain/ranking.ts` | Written + test |
-| Cache-eligibility decision (per interpretation) | `src/domain/eligibility.ts` | Written + test |
-| Favourites toggle + persistence | `favouriteRepository`, `ReferencePage` | Written + test |
-| Spoiler-free default + reveal + setting | `InterpretationCard`, `settings.ts` | Written + test |
-| Light/dark/system theme | `themes.css`, `SettingsContext` | Written + test |
-| Reduced motion (setting + device preference) | `tokens.css`, `motion/` | Written + test |
-| Local discovery (eras, categories, surprise) | `DiscoverPage` | Written + test |
-| Offline shell, offline notice | `AppShell`, PWA config | Written + test |
-| Empty / error / not-found states | Search, StorageGate, NotFound | Written + test |
-| User-initiated external search link | `ExternalSearchLinks` | Written + test |
-| Settings + reset | `SettingsPage` | Written + test |
-| Versioned Dexie schema via repositories | `src/data/` | Written + test |
-| No network search calls, no query history | Whole app | Written + test |
+| Requirement                                                                                     | Where                                  | State            |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------- |
+| Installable PWA (manifest, 192/512/maskable icons, service worker, offline navigation fallback) | `vite.config.ts`, `public/`            | Written, not run |
+| ≥12 original demo references                                                                    | `src/data/seed.ts` (16)                | Written          |
+| ≥2 ambiguous queries → different references                                                     | "hakuna matata", "let it go"           | Written + test   |
+| ≥1 spoiler-gated interpretation                                                                 | Titanic door, Avengers snap            | Written + test   |
+| Title/alias search, deterministic ranking, multiple interpretations                             | `src/domain/ranking.ts`                | Written + test   |
+| Cache-eligibility decision (per interpretation)                                                 | `src/domain/eligibility.ts`            | Written + test   |
+| Favourites toggle + persistence                                                                 | `favouriteRepository`, `ReferencePage` | Written + test   |
+| Spoiler-free default + reveal + setting                                                         | `InterpretationCard`, `settings.ts`    | Written + test   |
+| Light/dark/system theme                                                                         | `themes.css`, `SettingsContext`        | Written + test   |
+| Reduced motion (setting + device preference)                                                    | `tokens.css`, `motion/`                | Written + test   |
+| Local discovery (eras, categories, surprise)                                                    | `DiscoverPage`                         | Written + test   |
+| Offline shell, offline notice                                                                   | `AppShell`, PWA config                 | Written + test   |
+| Empty / error / not-found states                                                                | Search, StorageGate, NotFound          | Written + test   |
+| User-initiated external search link                                                             | `ExternalSearchLinks`                  | Written + test   |
+| Settings + reset                                                                                | `SettingsPage`                         | Written + test   |
+| Versioned Dexie schema via repositories                                                         | `src/data/`                            | Written + test   |
+| No network search calls, no query history                                                       | Whole app                              | Written + test   |
 
 ### Gate checks — owner to run (results: NOT RUN)
 
-| Check | Command | Result |
-|---|---|---|
-| Install | `npm install && npx playwright install chromium` | not run |
-| Lint | `npm run lint` | not run |
-| Typecheck (strict) | `npm run typecheck` | not run |
-| Unit + integration | `npm test` | not run |
-| Production build | `npm run build` | not run |
-| Playwright mobile 360px + 390px | `npm run test:e2e` | not run |
-| Mobile visual walkthrough | `npm run preview`, open on a phone / devtools at 360 & 390 | not done |
-| Real mid-range Android device | — | **not verified** |
-| iOS Safari / Firefox | — | **not verified** |
-| Desktop browsers | — | **not verified** (Phase 5) |
+| Check                           | Command                                                    | Result                     |
+| ------------------------------- | ---------------------------------------------------------- | -------------------------- |
+| Install                         | `npm install && npx playwright install chromium`           | not run                    |
+| Lint                            | `npm run lint`                                             | not run                    |
+| Typecheck (strict)              | `npm run typecheck`                                        | not run                    |
+| Unit + integration              | `npm test`                                                 | not run                    |
+| Production build                | `npm run build`                                            | not run                    |
+| Playwright mobile 360px + 390px | `npm run test:e2e`                                         | not run                    |
+| Mobile visual walkthrough       | `npm run preview`, open on a phone / devtools at 360 & 390 | not done                   |
+| Real mid-range Android device   | —                                                          | **not verified**           |
+| iOS Safari / Firefox            | —                                                          | **not verified**           |
+| Desktop browsers                | —                                                          | **not verified** (Phase 5) |
 
 ### Known limitations
 
@@ -110,10 +110,10 @@ record in `SOURCE_INVENTORY.md`, then build replaceable adapters with consent di
   Needs the owner's Parallel key, `ACCESS_CODE`, `ACCESS_COOKIE_SECRET` and the Firewall rule before
   it works; no checks have been run.
 
-
 ## Current phase: 2 — permitted multi-source retrieval (started 2026-11-15, owner approved)
 
 ### Plan
+
 1. Verify sources (done, see `SOURCE_INVENTORY.md`): Wikipedia + Wiktionary Action APIs, Wikidata Query Service.
 2. Schema v2: `kind` (work / phrase / quote / meme / character / other), sourced `year` + `yearSourceId`,
    `sourceIds` on references, `retrieved` editorial state, `other` category, richer `Source` records.
@@ -130,20 +130,21 @@ record in `SOURCE_INVENTORY.md`, then build replaceable adapters with consent di
 
 ### Phase 2 build status — code complete, NOT VERIFIED. STOP FOR OWNER REVIEW.
 
-| Gate item | Where | State |
-|---|---|---|
+| Gate item                                                                                                    | Where                                                                                                                                | State                                                  |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
 | Live, browser-compatible retrieval: movie ("the matrix"), cartoon ("swat kats"), ambiguous ("hakuna matata") | Endpoints probed live 2026-11-15 with browser `Origin` and preflight; responses recorded as fixtures; orchestrator tests run on them | Probed live by agent; **in-app live run: owner to do** |
-| Meme/slang: encyclopedic evidence if available, else link-out | "ok boomer" has a Wikipedia article and Wikidata meme class; KYM/UD stay link-only | Fixture-tested |
-| No-results vs offline vs provider-failed vs blocked states | `OnlineResults`, typed `RetrievalFailure` | Unit + integration + e2e written |
-| Citations and safe fallback | `SourceList` on the reference page; external links | Written + tested |
-| Adapter failures | `http.test.ts`, `retrieve.test.ts`, e2e outage test | Written |
-| Privacy consent | Consent card, Settings option, "no requests before consent" e2e | Written |
-| Cache never satisfies cache-only resolution; no query stored | `db.test.ts` retrieval cache tests | Written |
-| Schema v1→v2 upgrade | `db.test.ts` | Written |
+| Meme/slang: encyclopedic evidence if available, else link-out                                                | "ok boomer" has a Wikipedia article and Wikidata meme class; KYM/UD stay link-only                                                   | Fixture-tested                                         |
+| No-results vs offline vs provider-failed vs blocked states                                                   | `OnlineResults`, typed `RetrievalFailure`                                                                                            | Unit + integration + e2e written                       |
+| Citations and safe fallback                                                                                  | `SourceList` on the reference page; external links                                                                                   | Written + tested                                       |
+| Adapter failures                                                                                             | `http.test.ts`, `retrieve.test.ts`, e2e outage test                                                                                  | Written                                                |
+| Privacy consent                                                                                              | Consent card, Settings option, "no requests before consent" e2e                                                                      | Written                                                |
+| Cache never satisfies cache-only resolution; no query stored                                                 | `db.test.ts` retrieval cache tests                                                                                                   | Written                                                |
+| Schema v1→v2 upgrade                                                                                         | `db.test.ts`                                                                                                                         | Written                                                |
 
 All tests: **written, not run** (agent does not run tests).
 
 ### Phase 2 open items for the owner
+
 - Supply a project URL or contact for the `Api-User-Agent` string (D29).
 - Run the live walkthrough: Settings → Online search: On, then search "the matrix", "swat kats",
   "hakuna matata song", "ok boomer" and open a result to see its citations.
@@ -156,25 +157,27 @@ All tests: **written, not run** (agent does not run tests).
   baseline before any MiniSearch adoption.
 
 ### Phase 2 status update (end of build)
+
 Done in code (all tests **written, not run**): streaming results, curated answers protected from
 cached results, cache hygiene (Discover, reset, URL de-dup), session-long "Not now", MediaWiki
 error and body-timeout handling, exact-page links from Wikidata, grouped tap-only search links,
 match-reason labels, consent prompt fixes. Known, not fixed (latent): a re-created page could delete
 a source that curated content also cites; no curated content cites sources yet.
 
-
 ### Owner direction for Phase 3 (2026-11-15)
+
 - **No hand-curated lists.** The 16 seeds are demo content only. Coverage comes from retrieval;
   plain-language meanings come from automatic, evidence-grounded curation (deterministic curator,
   optional on-device LLM), plus user-authored notes for inside jokes. Nothing is written by hand.
 - **Layered meanings.** One phrase can be an original work, a quote/reference inside another work,
   a parody, a meme remix, or an everyday phrase (e.g. "point break": the 1991 film, and Tony Stark's
-  nickname for Thor in *The Avengers*). Phase 2 labels each online result with its role (original
+  nickname for Thor in _The Avengers_). Phase 2 labels each online result with its role (original
   work / quoted in / dictionary / related) from what the source says. Phase 3 adds a persisted
   relation between interpretations (origin ↔ referenced in ↔ parody ↔ common phrase), set only when
   evidence supports it; otherwise both pieces of evidence are shown side by side.
 
 ### Proposed long-tail architecture: pointer → verify → curate (owner idea, 2026-11-15; needs approval)
+
 1. Search permitted sources (Wikimedia, TVmaze, MusicBrainz, Wikiquote).
 2. Community pointers from a **licensed web-search API** called from a small backend (result titles +
    snippets, e.g. Reddit threads, Know Your Meme, forums). The app never calls Reddit's API or scrapes
@@ -187,9 +190,10 @@ a source that curated content also cites; no curated content cites sources yet.
 5. Curator/LLM writes plain-language meanings only from verified evidence, with citations; model
    output is never auto-marked `source_supported`.
 6. Cached on device as today.
-Without step 2 the rest still works; step 2 is what reaches long-tail memes and inside jokes automatically.
+   Without step 2 the rest still works; step 2 is what reaches long-tail memes and inside jokes automatically.
 
 ### Orchestration library (owner preference: RxJS; decided 2026-11-15, pending Phase 3 approval)
+
 - Phase 3 opens by moving the retrieval orchestration to **RxJS**: `debounceTime` + `switchMap`
   (cancel on new query) + per-provider streams merged with `scan` snapshots + `timeout`/`retry`
   (honouring `Retry-After`) + per-provider `catchError`. Phase 3's LLM token streaming, model
@@ -205,6 +209,7 @@ Without step 2 the rest still works; step 2 is what reaches long-tail memes and 
   9.x is beta). New Phase 2 sources stay plain promise adapters, so the later port stays small.
 
 ### Data format notes for Phase 3 (owner questions, 2026-11-15)
+
 - Data stays native structured objects (IndexedDB via Dexie, immutable typed objects in memory).
   JSON exists only at the network boundary (parsed once, validated into types) and in Phase 5
   backup files. No JSON string manipulation anywhere.
@@ -217,9 +222,10 @@ Without step 2 the rest still works; step 2 is what reaches long-tail memes and 
   package's current name, version and licence before adopting.
 
 ### Coverage evidence (2026-11-15; `docs/research/query-demand.md`, `docs/research/web-search-providers.md`)
+
 - 60 real questions (42 Reddit threads). Right answer in top 5: Wikipedia 53%, Wikipedia+Wiktionary 60%,
   all five free sources 67%. Indian pop culture 30%. Sound-alike misremembering misses everywhere.
-- Gaps: Indian film *lines* (Wikipedia indexes titles, not dialogue), memes without a Wikipedia page,
+- Gaps: Indian film _lines_ (Wikipedia indexes titles, not dialogue), memes without a Wikipedia page,
   brainrot characters. These are the case for the Phase 3 web-search pointer trial.
 - Web-search providers: Mojeek (cheapest; AI use allowed; caching on Business) and Brave (strong index;
   no storage beyond transient use, so store only verified facts, never snippets) to be trialled on free
@@ -228,20 +234,21 @@ Without step 2 the rest still works; step 2 is what reaches long-tail memes and 
 - The 60 queries seed the Phase 3 evaluation set.
 
 ### Phase 2 gate results (run by the agent at the owner's request, 2026-11-15, Node 22.21.1, npm 11.21)
-| Check | Result |
-|---|---|
-| Clean install (`npm install`, npm 11) | ✅ 548 packages, no peer conflicts |
-| `npm run audit:gate` | ✅ passed; 0 shipped advisories; 3 upstream dev-only warnings (deepmerge, glob, minimatch) |
-| `npm run typecheck` (strict) | ✅ 0 errors |
-| `npm run lint` | ✅ 0 errors, 5 warnings (react-refresh notice on context files; dev-only) |
-| `npm test` (Vitest) | ✅ 247/247 in 15 files; re-run 247/247. Fixed during the run: one stale "Searching…" expectation |
-| `npm run test:e2e` (Playwright, 360 and 390 px, production build) | ✅ 24/24; then 72/72 with `--repeat-each=3` (no flakes). Fixed during the run: a loose locator that matched two different cards |
-| `npm run check:dist` | ✅ 18 files, no tests, fixtures, dev pages or source maps |
-| Bundle | Main JS 169.8 KB gzipped (single chunk); measure and split in Phase 5 |
-| Not verified | Real devices (Android/iOS), Safari/Firefox, live Wikimedia/TVmaze in the running app (tests use recorded responses), Prettier `format:check` |
 
+| Check                                                             | Result                                                                                                                                       |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clean install (`npm install`, npm 11)                             | ✅ 548 packages, no peer conflicts                                                                                                           |
+| `npm run audit:gate`                                              | ✅ passed; 0 shipped advisories; 3 upstream dev-only warnings (deepmerge, glob, minimatch)                                                   |
+| `npm run typecheck` (strict)                                      | ✅ 0 errors                                                                                                                                  |
+| `npm run lint`                                                    | ✅ 0 errors, 5 warnings (react-refresh notice on context files; dev-only)                                                                    |
+| `npm test` (Vitest)                                               | ✅ 247/247 in 15 files; re-run 247/247. Fixed during the run: one stale "Searching…" expectation                                             |
+| `npm run test:e2e` (Playwright, 360 and 390 px, production build) | ✅ 24/24; then 72/72 with `--repeat-each=3` (no flakes). Fixed during the run: a loose locator that matched two different cards              |
+| `npm run check:dist`                                              | ✅ 18 files, no tests, fixtures, dev pages or source maps                                                                                    |
+| Bundle                                                            | Main JS 169.8 KB gzipped (single chunk); measure and split in Phase 5                                                                        |
+| Not verified                                                      | Real devices (Android/iOS), Safari/Firefox, live Wikimedia/TVmaze in the running app (tests use recorded responses), Prettier `format:check` |
 
 ### Phase 2 live walkthrough (agent, built-in browser, production build, 375 px, 2026-11-15)
+
 Works live: Discover; curated disambiguation + match-reason labels (no network for curated hits);
 consent card; live online search (only en.wikipedia.org, query.wikidata.org, en.wiktionary.org,
 en.wikiquote.org contacted for "the matrix"); streaming cards with Film · 1999 and role labels;
@@ -251,8 +258,9 @@ Hot Fuzz, Robot Chicken as Quoted in; Wiktionary surfing slang); "catch me outsi
 first; dark-mode Settings.
 
 Found, to address:
+
 - Search placeholder truncated at 375 px: fixed ("Quote, meme or show…").
-- "point break" also returns the Indian docuseries *Break Point* (Wikipedia fuzzy match): Phase 3
+- "point break" also returns the Indian docuseries _Break Point_ (Wikipedia fuzzy match): Phase 3
   reranker should demote reordered-word titles.
 - The Avengers (2012) "Point Break" quote doesn't surface (Thor: Ragnarok's does): Phase 3 tuning of
   Wikiquote limits/ranking.
@@ -267,6 +275,7 @@ Found, to address:
 ## Current phase: 3: grounded curation and local model feasibility (owner approved 2026-11-15)
 
 ### Plan (spec §5 Phase 3, owner decisions D22–D34 and the notes above)
+
 1. **RxJS orchestration refactor** (`retrieve.ts`, `useRetrieval`), RxJS 7.8.2.
 2. **Evaluation set** from `docs/research/query-demand.md` (≥30 labelled queries incl. Indian pop
    culture, misremembered forms) + metrics harness (Recall@5, MRR@10, wrong-top-result, ambiguity
@@ -275,18 +284,19 @@ Found, to address:
    interpretations only from retrieved evidence, with source IDs; layered relations (origin ↔ quoted
    in ↔ dictionary sense) persisted only when sources state them. Schema v3 with an upgrade test.
 4. Query rewriting (Wikipedia spelling suggestion, Wiktionary+Wikipedia together, variants).
-5. MiniSearch trial vs baseline; domain reranker (demote reordered-word titles like *Break Point*).
+5. MiniSearch trial vs baseline; domain reranker (demote reordered-word titles like _Break Point_).
 6. On-device LLM benchmark (WebLLM / Transformers.js) in a Web Worker, consent before download,
    schema-validated output with support IDs, TOON vs JSON evidence input; enable only if it passes.
 7. ~~Web-search pointer trial (Mojeek/Brave)~~: **moved to the backend phase after Phase 5** (owner,
    2026-11-15). Phase 3 stays website-only; the "Not what I meant" hook stays in place.
-Gate: 30-case corpus validated, provenance, model fallback, consent, persistence, errors.
+   Gate: 30-case corpus validated, provenance, model fallback, consent, persistence, errors.
 
 ### Owner decisions, 2026-11-15 (to record as D37 when built)
+
 - **Search history: ON by default** (owner overrides spec §4 "no history"), disclosed in the consent
   card, with a Settings switch and "Clear history". Stays on the device. Never exported without the user.
-- **Two-tier history (2Q / segmented LRU):** a *Recent* list (~50, LRU, new searches) and a
-  *Frequent* list (~150, ranked by decayed frequency; promoted after ≥2 searches, ideally on different
+- **Two-tier history (2Q / segmented LRU):** a _Recent_ list (~50, LRU, new searches) and a
+  _Frequent_ list (~150, ranked by decayed frequency; promoted after ≥2 searches, ideally on different
   days; demoted back to Recent rather than deleted). Discover's "Your regulars" reads Frequent only.
   Frequent's score is stored as a single time-invariant value (log score + decay rate × time) so an
   index gives top-k and eviction without recomputing. Items expire after 90 days untouched.
@@ -305,11 +315,13 @@ Gate: 30-case corpus validated, provenance, model fallback, consent, persistence
   offer "Search the wider web" (Brave/Mojeek, after owner approves backend + keys).
 
 ### Phase 3 steps 1–3 built and checked (agent, 2026-11-15, at the owner's request)
+
 Done: RxJS refactor, evaluation set (baseline **not run** yet), deterministic curator + schema v3.
 Checks run by the agent: typecheck clean, lint 0 errors (5 react-refresh warnings), unit 313/313,
 e2e 24/24, `check:dist` clean.
 
 Independent review (opus) findings and what changed:
+
 - Just-found results jumped into the library once saving explained them and the online section
   vanished. Fixed: online-derived references (`retrieved` and `source_curated`) never join the library
   list or Discover, and online mode is latched per query in `SearchPage` (test added).
@@ -321,15 +333,18 @@ Independent review (opus) findings and what changed:
 - Saved online results are hidden when a library match already resolves the query.
 
 Deferred (fix before recording the baseline or later in Phase 3):
-- Eval counts `enwikiquote:*` / `enwiki:*` first results as wrong tops (e.g. *Sholay* for "kitne aadmi
+
+- Eval counts `enwikiquote:*` / `enwiki:*` first results as wrong tops (e.g. _Sholay_ for "kitne aadmi
   the"). Decide: accept Wikiquote page titles in meanings, or drop those candidates from the ranked list.
 - A Wikiquote reference's title isn't the phrase, so a later search for the phrase won't find it locally.
 - `selection: user_confirmed` survives re-curation that changes the text.
 - The v3 upgrade calls today's curator, so later curator changes alter what a v3 upgrade produces.
 
 ### Search history and search UX built (agent, 2026-11-15) — NOT RUN
+
 Built the owner decisions above as **D37** (see `DECISIONS.md`). Code and tests are written; the agent
 ran no typecheck, lint, unit or e2e checks (owner's rule), so nothing here is verified yet.
+
 - Pure rules in `src/domain/history.ts`; Dexie access in `src/data/repositories/searchHistoryRepository.ts`;
   schema v4 adds the `searchHistory` table (v1–v3 untouched). New dependency: `double-metaphone` 2.0.1.
 - Settings: Search history On/Off (default On), Clear history; Reset also clears history.
@@ -344,6 +359,7 @@ ran no typecheck, lint, unit or e2e checks (owner's rule), so nothing here is ve
   list, MiniSearch `autoSuggest`, embedding merges, wider-web search (needs owner approval and keys).
 
 ### Phase 3 remaining work, agreed with the owner (2026-11-15)
+
 1. Finish the search baseline once a live run has no degraded cases.
 2. Small pieces. **Written, not run (2026-11-16):** `withSessionCache` in
    `src/services/retrieval/sessionCache.ts`, wrapped around `retrieve$` in `createRetrievalService`:
@@ -377,6 +393,7 @@ ran no typecheck, lint, unit or e2e checks (owner's rule), so nothing here is ve
 7. Phase 3 gate review with the owner.
 
 ### Phase 3 step 4: reranker and MiniSearch trial (agent, 2026-11-16, at the owner's request)
+
 Done and adopted: a reranker for online results (`src/services/retrieval/rerank.ts`, called from `retrieve$`)
 and MiniSearch typo plus sound-alike matching behind `rankReferences` (D40, D41). Offline held-out half:
 Recall@5 76.6% to 80.9%, wrong first result 38.3% to 34.0%; local typo set Recall@5 50% to 100%.
@@ -385,6 +402,7 @@ Live confirmation (98 cases, 2 degraded only in the scoring lookup): Recall@5 78
 Checks run by the agent: `npm test`, typecheck (clean in these files), lint (0 errors). e2e not run (parent session).
 
 ### On-device model: how it loads once enabled (owner, 2026-11-16)
+
 - Never on app start. Start the worker the first time a feature needs it, only with download consent;
   keep it warm 5 minutes (`IDLE_MS`), then terminate to free memory.
 - Never block on it. Expose a status stream from the LLM client (RxJS `BehaviorSubject`: off,
@@ -395,6 +413,7 @@ Checks run by the agent: `npm test`, typecheck (clean in these files), lint (0 e
 - Today nothing outside `src/features/dev/` imports `src/services/llm/`, so users never load it.
 
 ### Phase 3 step 3: query rewriting without AI (agent, 2026-11-16, at the owner's request)
+
 Built and measured (D43): Wikipedia's "did you mean" (free, from the plain search's request) and a
 first-two-words search for long queries, each only on a miss, at most one per search (at most 2 extra
 requests). An unquoted Wikiquote search was tried and dropped (no effect). Very small gain (Recall@5 80.4% to
@@ -404,6 +423,7 @@ built on `safeHref`, M1 one `src/domain/sources.ts` for publisher names and sour
 Checks run by the agent: `npm test`, typecheck, lint, e2e (24 of 24) and `check:dist`, all passing.
 
 ### Question-style searches (agent, 2026-11-16, at the owner's request; D44)
+
 "why are ferrari fans depressed" style queries are searched by their subject, show the community sites first
 (Know Your Meme, Urban Dictionary, Reddit) when nothing online explains them, and fold related pages that
 share no word with the question into a collapsed "Other pages found". Detection is one rule next to
@@ -423,6 +443,7 @@ community-first rendering, folded vs visible hits, the searched-subject note.
   REVIEW.**
 
 ### Deploy scripts and bundle size (agent, 2026-11-16, at the owner's request; D48)
+
 `npm run deploy:check`, `deploy:preview` and `deploy` (Vercel 65.9.0 pinned); the owner guide in
 `docs/BACKEND_PLAN.md` section 10 now uses them. Pages other than Discover load on first open and
 Motion uses `LazyMotion`: first load 635 KB → 534 KB (gzip 204 → 176 KB), measured on a scratch build.
@@ -434,6 +455,7 @@ No phone run for the model (not achieved, off). Install and offline checks on th
 ## Current phase: 4: discovery and editorial depth (owner approved 2026-11-16)
 
 ### Phase 4 built and checked (agent, 2026-11-16, at the owner's request; D49)
+
 Discover shows the library plus online references the reader opened or favourited; browse by era or
 by type; reasoned related links; Surprise me explains itself; hearts on Discover; offline hints and an
 offline browser test. `npm run deploy:check` passes (816 unit, 26 browser tests). Gate:
@@ -442,3 +464,148 @@ offline browser test. `npm run deploy:check` passes (816 unit, 26 browser tests)
 ## Phase 4: approved by the owner, 2026-11-16
 
 Next: Phase 5 (polish and release), including the owner's request to polish the UI and make it faster.
+
+### Contextual search and card controls (2026-11-19)
+
+Selected Anime/Cartoons constrain question and ranking searches, including ranking fragments without
+a question mark. Wider-web state and saved results are separated by mode and canonical tag context.
+Ordinary named-reference lookups retain tag boosting. Empty Only these results explain how to restore
+the list. Draft requests carry fictional scope in the dynamic suffix. Cloudflare temperature is now
+explicitly 0.2, matching OpenAI. Search uses the scribbly note and review uses the cream folder tab;
+film results have a separate scroll area with native scrollbars hidden.
+
+Verification on the finished search/provider changes passed 1,280 unit tests across 80 files,
+32 mobile browser tests, TypeScript, code formatting, bundle inspection, and the existing offline
+reranking benchmark. Lint has zero errors and six existing warnings. Dependency audit gate passes
+with three warnings. A concurrent extra search-page test run timed out waiting for a button;
+the isolated rerun passed all six tests.
+
+Quality limits remain. No new live tagged-query precision/recall or provider cache-hit measurements
+were taken. Reference category metadata may omit legitimate fictional characters. Wider-web and
+draft scope instructions still depend on provider compliance. Historical benchmark queries and
+snapshots were preserved. These checks establish regressions and request behavior, not a measured
+percentage gain in vague-question answer quality.
+
+### Ten-frame selection and result boundaries (2026-11-19)
+
+Cards accept ten sources total, including ten web sources. Shared UI/server limits agree.
+Request cap is 80 KB for ten bounded Unicode sources, titles and tones. Reel displays ten
+holes and fills one per selection. Selected frames show a green checkmark and Selected text.
+Limit warnings persist in a solid panel above the reel. Each wider-web result has a dotted
+boundary grouping its title, host, snippet and favourite button.
+
+Verified 1,280 unit tests, both mobile card-flow browser tests, TypeScript, formatting and diff
+checks. Regression tests cover ten web selections, the eleventh rejection, reel fills, persistent
+warnings and request size boundaries. Paid live drafting with ten web sources was not exercised.
+
+### Source/style steps and no-card diagnosis (2026-11-19)
+
+Flow now separates source selection, optional style selection/written guidance, and review.
+Kept drafts can be merged as source frames; hidden major-spoiler drafts are excluded from merge
+sources. Favourite and kept cards remain available as style examples in the second step.
+Written tone/structure use a dedicated bounded styleGuidance request field and dynamic prompt
+suffix. This required request validation and prompt wiring; evidence caps and retrieval behavior
+were preserved. Review shows the written preferences before sending.
+
+Client preserves validated no_card source reasons and shows them beside the corresponding frames
+using indices from the submitted selection, preserving picks. Empty example-card libraries explain
+how to add style examples. The attached failed request included anime/cartoons tags. The failure
+does not establish the model's reasoning; the current reference/reply-oriented task can mismatch
+list/topic requests. New verified retrieval remains a separate scope decision.
+
+Final UI/style verification passed 1,284 unit tests across 80 files, both mobile card-flow browser
+tests, TypeScript and code formatting. Owner chose UI completion first and retrieval design next.
+Live model compliance with custom tone/structure remains unmeasured.
+
+Curation expansion, 2026-11-19. Work divided across backend/prompt handling, saved-card picker,
+and user additions. Root integrated source/style/review, explicit reference/topic/list/ranking formats,
+colour choices, omitted-source selection and retry, added links/context, list preview and saved
+provenance. Local library search covers all available source cards, with hidden major spoilers
+excluded. Style display/search hides descriptions of veiled spoiler cards.
+
+The original 32 mobile browser tests passed. Four card-flow tests subsequently passed, including
+partial-list retry with an explicitly reconsidered source, user URL/context, saving and reopening
+the highlighted user context, on 360px and 390px. Provider/schema tests cover malformed indices,
+grounded partial output, topic handling, provenance and compatibility. Final unit run recorded below.
+No paid live model output or comparative-ranking quality was measured. Grounding checks are bounded
+heuristics; unsupported ranks and hallucinations still require user review.
+
+Final curation checks passed 1,296 tests across 82 unit-test files, TypeScript, formatting and
+bundle inspection. Existing full browser suite passed 32 tests; expanded card suite passed four
+mobile tests after retry/provenance coverage was added. Lint reports zero errors and six existing
+warnings. The UI defaults to reference format for compatibility; users choose topic/list/ranking
+explicitly in the style step. Live output adherence and semantic rank quality remain unmeasured.
+
+Interactive Playwright skill smoke check (2026-11-19). Installed official openai/skills Playwright
+CLI skill and used an isolated headed browser against local Vite. API responses were mocked.
+Exercised consent, two source selections, List/Sage choices, written tone/structure, review and
+partial-card preview with omission reason and retry checkbox. At 390px, document and dialog widths
+were both 390px. Browser console reported zero errors and zero warnings. Screenshot saved under
+output/playwright/partial-card-mobile.png. This check validates UI operation, not live LLM quality.
+
+Live provider check, 2026-11-19. Owner explicitly approved Parallel/OpenAI with Cloudflare fallback
+and paid charges. Fake flags off. Query genocidal maniacs with anime/cartoons tags. Live search
+returned nine results in 2.786s. Original ten-source List draft returned 200 through OpenAI in
+9.720s, partial true, two sources cited and eight omitted. Generated content was a definition
+paragraph rather than a useful character list. Model incorrectly described Code Geass as outside
+cartoon scope despite Anime being selected. Other omissions conflict with original visible
+snippets; exact extracted model-input text was not captured. Functional live flow passed, intended
+content quality failed. Raw request/result and assessment retained locally under
+.cache/live-card-test-2026-11-19. No secrets saved. This is one example, not an accuracy benchmark.
+
+Dedicated topic prompt and extraction correction (2026-11-19). Topic/list/ranking requests now
+use TOPIC_PREFIX/topic-card-v1 with independent cache identity and worked examples. Reference
+requests retain their prior prompt path. Extract receives format and tags with explicit Anime OR
+Cartoons scope; topic passages retain useful examples without literal query words. Topic evidence
+budget is 12,000 characters and hosted output limit 1,600 tokens. Reference limits are preserved.
+
+Live diagnostic runs captured exact extracted evidence, raw provider output and validated response
+without keys or request headers, under .cache/live-topic-eval. First new-prompt OpenAI answer
+contained Ryunka/Frieza entries but validator rejected name-spacing/reporting grammar. Topic-only
+comparison fixes recognize source-supported compound spelling and reporting attribution while
+preserving negation/quote/name/number checks. Semicolon salvage was reviewed and removed after
+citation/quote issues were found. Recorded OpenAI output passes offline replay with two entries.
+A later live default-path run returned HTTP 200 through Cloudflare fallback in 22.379s, with one
+Ryunka entry plus context. Scope/coverage consistency across providers remains unresolved.
+An earlier OpenAI repeat reported 1,985 cached input tokens, confirming prefix reuse in that call.
+
+Focused prompt/provider/handler tests passed 55/55; final verifier suite passed 25/25. Full suite
+attempts encountered load/timing failures, including two splash/route failures in a two-worker
+run (1301 passed, 2 failed). Both files and verifier passed in isolated rerun (109 tests).
+Do not describe this as an entirely green single full-suite run. Live output quality remains
+variable and is not an aggregate accuracy gain. Parallel fallback cost research is in BACKEND_PLAN.
+
+Final production build passed, including TypeScript. Lint has zero errors and six existing warnings;
+changed API/shared formatting and diff checks passed. The final live default-provider run used
+Cloudflare fallback and produced one named entry, so this change is not evidence of consistent
+multi-entry coverage across providers. A recorded OpenAI answer yields two supported entries in
+offline replay. Further held-out live evaluation is required before claiming reliability gains.
+
+Background curation and Activity (2026-11-19). App-level runner survives composer close and route
+navigation. IndexedDB schema 14 stores immutable request/source/style snapshots, terminal cards,
+errors and source omission reasons. Atomic admission allows five running jobs across connections
+to the same local database; cancellation cannot be overwritten by a late completion. Activity
+offers cancel/retry/review/Keep, and saved status survives reload without duplicate cards.
+
+Draft requests use POST SSE lifecycle events with bounded parsing, cancellation and typed errors;
+JSON callers remain compatible. No browser status polling was added. Mobile browser coverage
+holds a streamed request while navigating, releases it, reloads the completed result and saves it.
+A separate reload test proves abandoned browser-owned work becomes interrupted without automatic
+resubmission. Both tests passed at 360px and 390px. Tests use mocked providers, not paid live calls.
+
+Full-suite checks caught an empty Activity status competing with Undo announcements; the shell
+now renders the announcement only when a result exists. Splash keyboard skip now listens before
+settings finish loading, matching pointer skip behavior. Existing tests cover both regressions.
+
+Current execution still requires an open browser. IndexedDB preserves data, not execution; reload
+recovery uses Web Locks where supported, with manual cancellation available for stale jobs. The
+five-job limit is local-device admission, not server-enforced per-user quota. Provider deadlines
+and generation quality are unchanged. Durable Supabase jobs and backend-only auth are researched
+in SUPABASE_PLAN.md. No Supabase project, credentials, auth rollout or deployment was created.
+
+Final checks: 1,335 unit tests across 86 files passed with two workers; all 38 mobile Playwright
+tests passed in a single full run. TypeScript, source formatting, diff checks and production bundle
+inspection passed. Lint has zero errors and seven warnings. Default-concurrency unit execution
+previously timed out one long curation interaction test; the bounded-worker full run passed without
+changing test timeouts. Browser tests rebuilt the production app. No paid live provider call or
+Supabase security/durability test was performed for this background-job change.

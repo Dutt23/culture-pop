@@ -1,5 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import type { CitedLine, DraftCard, DraftResponse } from '../../../shared/cardTypes.js';
+import {
+  isStructured,
+  type CardColor,
+  type CitedLine,
+  type DraftCard,
+  type DraftResponse,
+} from '../../../shared/cardTypes.js';
 import { Antennae, Body, Smile } from '../../components/mascot/Mascot';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
@@ -37,6 +43,9 @@ const canAnimate = (el: Element | null): el is Element => typeof el?.animate ===
 type LineField = 'summary' | 'context';
 
 interface DraftRevealProps {
+  userContext?: string;
+  color?: CardColor;
+  onRetry?: (keys: string[]) => void;
   response: DraftResponse;
   /** The frames sent, in order: a line's `sources` index into these. */
   sent: readonly Frame[];
@@ -62,11 +71,21 @@ export function DraftReveal(props: DraftRevealProps) {
   const titleId = useId();
   const [card, setCard] = useState(response.card);
   const [editing, setEditing] = useState(false);
+  const [retryKeys, setRetryKeys] = useState<string[]>([]);
+  const citedCount = new Set(
+    [...card.summary, ...card.context, ...(card.example ? [card.example] : [])].flatMap(
+      (line) => line.sources,
+    ),
+  ).size;
   const [revealedHere, setRevealedHere] = useState(false);
   const isSpoiler = card.spoiler === 'major';
   const veiled = isSpoiler && !revealSpoilers && !revealedHere;
   // Keep saves the card as shown, so the fields a card can't do without must not be blank.
-  const blank = [card.label, card.gist, card.means, card.reply].some((v) => !v.trim());
+  const blank = (
+    isStructured(card.kind)
+      ? [card.label, card.gist]
+      : [card.label, card.gist, card.means, card.reply]
+  ).some((v) => !v.trim());
   const [busy, setBusy] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -160,6 +179,7 @@ export function DraftReveal(props: DraftRevealProps) {
           ) : (
             frame.title
           )}
+          {frame.provenance === 'user' && ' · Added by you'}
         </span>
       );
     });
@@ -199,7 +219,10 @@ export function DraftReveal(props: DraftRevealProps) {
     );
 
   return (
-    <div className={reduced ? `${styles.reveal} ${styles.still}` : styles.reveal}>
+    <div
+      className={reduced ? `${styles.reveal} ${styles.still}` : styles.reveal}
+      data-card-color={props.color ?? 'lavender'}
+    >
       {cheering && (
         // The mascot's thumbs-up: the usual body with one arm raised.
         <svg className={styles.cheer} viewBox="-10 -14 150 134" role="img" aria-label="Thumbs up">
@@ -234,12 +257,49 @@ export function DraftReveal(props: DraftRevealProps) {
           </div>
         ) : (
           <div ref={bodyRef}>
+            <p className={styles.note}>
+              {citedCount} of {sent.length} selected sources cited
+            </p>
+            {(card.partial || response.notUsed.length > 0) && (
+              <p className={styles.note}>
+                Partial draft · some selected material could not be included.
+              </p>
+            )}
             {editing && text('Label', card.label, (label) => setCard((c) => ({ ...c, label })))}
             {text('Gist', card.gist, (gist) => setCard((c) => ({ ...c, gist })))}
-            {text('What they mean', card.means, (means) => setCard((c) => ({ ...c, means })))}
-            {text('You could say', card.reply, (reply) => setCard((c) => ({ ...c, reply })))}
-            {lines('Summary', 'summary')}
-            {lines('How it’s used', 'context')}
+            {(card.means || editing) &&
+              text(isStructured(card.kind) ? 'Takeaway' : 'What they mean', card.means, (means) =>
+                setCard((c) => ({ ...c, means })),
+              )}
+            {(card.reply || editing) &&
+              text(
+                isStructured(card.kind) ? 'Next question' : 'You could say',
+                card.reply,
+                (reply) => setCard((c) => ({ ...c, reply })),
+              )}
+            {card.kind === 'list' || card.kind === 'ranking' ? (
+              <ul className={styles.cardList}>
+                {card.summary.map((line, index) => (
+                  <li key={index}>
+                    {text(
+                      `Item ${index + 1}`,
+                      line.text,
+                      (value) => setLine('summary', index, value),
+                      chips(line.sources),
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              lines('Summary', 'summary')
+            )}
+            {lines(isStructured(card.kind) ? 'Context' : 'How it’s used', 'context')}
+            {props.userContext && (
+              <aside className={styles.userContext}>
+                <strong>Added by you · unverified context</strong>
+                <p>{props.userContext}</p>
+              </aside>
+            )}
             {card.example &&
               text(
                 'Example',
@@ -251,7 +311,23 @@ export function DraftReveal(props: DraftRevealProps) {
               <ul className={styles.unused}>
                 {response.notUsed.map((n) => (
                   <li key={n.source}>
-                    {`Not used: ${sent[n.source]?.from ?? 'a source'} (${n.why})`}
+                    {`Not used: ${sent[n.source]?.title ?? 'a source'} (${n.why})`}
+                    {!readOnly && props.onRetry && sent[n.source] && (
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={retryKeys.includes(sent[n.source].key)}
+                          onChange={(event) =>
+                            setRetryKeys((keys) =>
+                              event.target.checked
+                                ? [...keys, sent[n.source].key]
+                                : keys.filter((key) => key !== sent[n.source].key),
+                            )
+                          }
+                        />{' '}
+                        Reconsider this source
+                      </label>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -266,6 +342,16 @@ export function DraftReveal(props: DraftRevealProps) {
       )}
       {!readOnly && (
         <div className={styles.actions}>
+          {props.onRetry && (
+            <button
+              type="button"
+              className={styles.small}
+              disabled={busy}
+              onClick={() => props.onRetry?.(retryKeys)}
+            >
+              Revise sources and curate again
+            </button>
+          )}
           {/* Busy from the Keep tap on: a drop or edit can't race the save or the flight. */}
           <button
             type="button"

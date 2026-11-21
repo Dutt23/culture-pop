@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable, type InsertType, type Transaction } from 'dexie';
 import type { HistoryEntry } from '../domain/history';
 import type { DraftCardRecord } from './repositories/draftRepository';
+import type { CurationJob } from './repositories/curationJobRepository';
 import type { SavedWebResults } from './repositories/webResultRepository';
 import type {
   Alias,
@@ -34,6 +35,7 @@ export type PopCultureDb = Dexie & {
   packs: EntityTable<Pack, 'id'>;
   packMembers: EntityTable<PackMember, 'id'>;
   draftCards: EntityTable<DraftCardRecord, 'id'>;
+  curationJobs: EntityTable<CurationJob, 'id'>;
 };
 
 /** Shipped schema v1. Exported so upgrade tests can create a genuine v1 database. */
@@ -229,6 +231,9 @@ export function createDatabase(
 
   // v13: cards the reader kept from the AI draft, on this device only. A new table; nothing to migrate.
   db.version(13).stores({ draftCards: 'id, savedAt' });
+
+  // v14: local activity snapshots. Existing records stay in their original stores.
+  db.version(14).stores({ curationJobs: 'id, status, createdAt, ownerId' });
 
   db.on('populate', (tx) => {
     const seed = buildSeed();

@@ -2,10 +2,12 @@ import type { DraftCard } from '../../../shared/cardTypes.js';
 import type { PopCultureDb } from '../db';
 
 export interface DraftCardRecord {
+  userContext?: string;
+  color?: 'lavender' | 'sage' | 'peach';
   id: string;
   search: string;
   card: DraftCard;
-  sources: { from: string; title: string; url?: string }[];
+  sources: { from: string; title: string; url?: string; provenance?: 'user' }[];
   promptVersion: string;
   savedAt: string;
 }

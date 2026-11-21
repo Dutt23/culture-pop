@@ -1,11 +1,9 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { COOKIE_NAME, issueToken } from './_lib/access';
 import { createHandler, type HandlerOptions } from './web-search';
 
 const QUERY = 'why are ferrari fans depressed';
 const DUMMY_KEY = 'test-only-not-a-real-key';
-const ACCESS = { code: 'test-code-1234', secret: 'test-secret-'.padEnd(40, 'x') };
 
 const URL_PATH = 'https://app.example.test/api/web-search';
 
@@ -71,8 +69,6 @@ async function read(response: Response): Promise<Read> {
 
 beforeEach(() => {
   vi.stubEnv('PARALLEL_API_KEY', DUMMY_KEY);
-  vi.stubEnv('ACCESS_CODE', ACCESS.code);
-  vi.stubEnv('ACCESS_COOKIE_SECRET', ACCESS.secret);
 });
 
 afterEach(() => {
@@ -81,30 +77,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('access code', () => {
-  it('answers 401 without a cookie and never calls Parallel', async () => {
+describe('who may search the wider web', () => {
+  it.each([
+    ['signed_out', 401],
+    ['not_allowed', 403],
+    ['unavailable', 503],
+    ['not_configured', 503],
+  ] as const)('answers %s with %i and never calls Parallel', async (access, status) => {
     const fetchMock = vi.fn<typeof fetch>();
-    const handle = createHandler({ fetch: fetchMock });
-    expect(await read(await handle(request(QUERY)))).toEqual({
-      status: 401,
-      body: { error: 'locked' },
-    });
+    const handle = createHandler({ fetch: fetchMock, checkAccess: async () => access });
+    expect(await read(await handle(request(QUERY)))).toEqual({ status, body: { error: access } });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('searches with a valid cookie', async () => {
+  it('searches for a signed-in person who has it turned on', async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => upstream({ results: [hit()] }));
-    const handle = createHandler({ fetch: fetchMock });
-    const cookie = `${COOKIE_NAME}=${issueToken(ACCESS, Date.now())}`;
-    expect((await handle(request(QUERY, { Cookie: cookie }))).status).toBe(200);
+    const handle = createHandler({ fetch: fetchMock, checkAccess: async () => 'ok' as const });
+    expect((await handle(request(QUERY))).status).toBe(200);
   });
 
-  it('answers 503 when the access settings are missing, never open by default', async () => {
-    vi.stubEnv('ACCESS_CODE', '');
+  it('is closed, never open, when sign-in is not set up', async () => {
+    vi.stubEnv('SUPABASE_URL', '');
     const fetchMock = vi.fn<typeof fetch>();
     const handle = createHandler({ fetch: fetchMock });
-    const cookie = `${COOKIE_NAME}=${issueToken(ACCESS, Date.now())}`;
-    expect(await read(await handle(request(QUERY, { Cookie: cookie })))).toEqual({
+    expect(await read(await handle(request(QUERY)))).toEqual({
       status: 503,
       body: { error: 'not_configured' },
     });
@@ -112,7 +108,7 @@ describe('access code', () => {
   });
 
   it('checks access before reading the query', async () => {
-    const handle = createHandler({ fetch: vi.fn<typeof fetch>() });
+    const handle = createHandler({ fetch: vi.fn<typeof fetch>(), checkAccess: () => 'signed_out' });
     expect((await handle(request('a'))).status).toBe(401);
   });
 });
@@ -337,12 +333,24 @@ describe('video searches', () => {
 describe('search tags hint', () => {
   const withAbout = (about: unknown) => rawRequest(JSON.stringify({ q: 'red pill', about }));
 
-  it('adds the tags to what it asks for, never to the search text', async () => {
+  it('constrains anime searches in the objective and keyword query', async () => {
     const { fetchMock, handle } = setup();
     expect((await handle(withAbout(['anime', 'Marvel']))).status).toBe(200);
     const { objective, search_queries } = sentOf(fetchMock);
-    expect(objective).toMatch(/Prefer results about anime, Marvel\.$/);
-    expect(search_queries).toEqual(['red pill', 'red pill meaning origin']);
+    expect(objective).toContain('Prefer results about anime, Marvel.');
+    expect(objective).toContain('Exclude real historical figures');
+    // The raw words stay first, so a targeted name still gets its own search.
+    expect(search_queries).toEqual(['red pill', 'red pill anime fictional characters']);
+  });
+
+  it('sends only the scoped query for a tagged question (list, topic, ranking)', async () => {
+    const { fetchMock, handle } = setup();
+    const body = { q: 'genocidal maniacs', question: true, about: ['anime', 'cartoons'] };
+    expect((await handle(rawRequest(JSON.stringify(body)))).status).toBe(200);
+    // The bare words pulled generic pages that pushed the best list page out (2026-11-21 live test).
+    expect(sentOf(fetchMock).search_queries).toEqual([
+      'genocidal maniacs anime cartoons fictional characters',
+    ]);
   });
 
   it('drops bad tags and keeps at most five, without failing the search', async () => {
@@ -719,18 +727,20 @@ describe('headers and logging', () => {
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) =>
       vi.spyOn(console, m).mockImplementation(() => {}),
     );
-    const token = issueToken(ACCESS, Date.now());
-    const cookie = { Cookie: `${COOKIE_NAME}=${token}` };
+    const token = 'h'.repeat(43);
+    const cookie = { Cookie: `pcd_session=${token}` };
+    const ok = { checkAccess: () => 'ok' as const };
     const paths = [
-      createHandler({ fetch: async () => upstream({ results: [hit()] }) }),
-      createHandler({ fetch: async () => upstream({}, 500) }),
-      createHandler({ fetch: async () => upstream({}, 429) }),
+      createHandler({ ...ok, fetch: async () => upstream({ results: [hit()] }) }),
+      createHandler({ ...ok, fetch: async () => upstream({}, 500) }),
+      createHandler({ ...ok, fetch: async () => upstream({}, 429) }),
       createHandler({
+        ...ok,
         fetch: async () => {
           throw new Error(`failed for ${QUERY}`);
         },
       }),
-      createHandler({ fetch: async () => new Response('not json') }),
+      createHandler({ ...ok, fetch: async () => new Response('not json') }),
     ];
     for (const handle of paths) {
       await handle(request(QUERY, cookie));

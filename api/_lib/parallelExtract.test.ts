@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { extractPages } from './parallelExtract.js';
+import { extractPages, extractionObjective } from './parallelExtract.js';
 import { objective } from '../../shared/text.js';
 
 const A = 'https://a.example/page';
@@ -12,6 +12,25 @@ const run = (fetchMock: typeof fetch, urls = [A, B], timeoutMs?: number) =>
 afterEach(() => vi.unstubAllEnvs());
 
 describe('extractPages', () => {
+  it('extracts list evidence with OR scope and preserves examples lacking literal query words', async () => {
+    const passage =
+      'Genocidal maniacs appear in fiction. Frieza destroyed the Saiyan homeworld in Dragon Ball Z. Ryunka is an antagonist in Birdy the Mighty.';
+    const fetchMock = vi.fn(() => reply({ results: [{ url: A, excerpts: [passage] }] }));
+    const context = { kind: 'list' as const, about: ['anime', 'cartoons'] };
+    const out = await extractPages(
+      [A],
+      'genocidal maniacs',
+      { fetch: fetchMock as unknown as typeof fetch, apiKey: 'k' },
+      context,
+    );
+    const body = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string,
+    );
+    expect(body.objective).toContain('anime OR cartoons');
+    expect(body.objective).toContain('named fictional characters');
+    expect(out.get(A)).toBe(passage);
+    expect(extractionObjective('phrase', { about: ['anime'] })).toContain('anime');
+  });
   it('asks Extract with the facts objective and the key header', async () => {
     const fetchMock = vi.fn(() => reply({ results: [], errors: [] }));
     await run(fetchMock as unknown as typeof fetch);
@@ -153,9 +172,102 @@ describe('extractPages', () => {
     expect([...out.values()]).toEqual([null, null]);
   });
 
+  describe('TV Tropes medium pages', () => {
+    const MAIN = 'https://tvtropes.org/pmwiki/pmwiki.php/Main/OmnicidalManiac';
+    const ANIME = 'https://tvtropes.org/pmwiki/pmwiki.php/OmnicidalManiac/AnimeAndManga';
+    const WESTERN = 'https://tvtropes.org/pmwiki/pmwiki.php/OmnicidalManiac/WesternAnimation';
+    const list = (about: string[]) => ({ kind: 'list' as const, about });
+    const extract = (fetchMock: ReturnType<typeof vi.fn>, urls: string[], about: string[]) =>
+      extractPages(
+        urls,
+        'genocidal maniacs',
+        { fetch: fetchMock as unknown as typeof fetch, apiKey: 'k' },
+        list(about),
+      );
+    const sentUrls = (fetchMock: ReturnType<typeof vi.fn>) =>
+      JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+        .urls as string[];
+
+    it.each([
+      [['anime'], [ANIME]],
+      [['cartoons'], [WESTERN]],
+      [
+        ['anime', 'cartoons'],
+        [ANIME, WESTERN],
+      ],
+    ])(
+      'reads the %j subpage of a Main trope page, keyed by the url the reader picked',
+      async (about, subpages) => {
+        const fetchMock = vi.fn(() =>
+          reply({
+            results: [
+              ...subpages.map((url) => ({
+                url,
+                excerpts: [`Canon from ${url.split('/').pop()}.`],
+              })),
+              { url: MAIN, excerpts: ['Fan Works: Weaver.'] },
+            ],
+          }),
+        );
+        const out = await extract(fetchMock, [MAIN], about);
+        expect(sentUrls(fetchMock)).toEqual([...subpages, MAIN]);
+        expect([...out.keys()]).toEqual([MAIN]);
+        expect(out.get(MAIN)).toBe(
+          subpages.map((url) => `Canon from ${url.split('/').pop()}.`).join(' '),
+        );
+      },
+    );
+
+    it('leaves the Main page unread when the reader also picked its subpage', async () => {
+      const fetchMock = vi.fn(() =>
+        reply({ results: [{ url: ANIME, excerpts: ['Canon from AnimeAndManga.'] }] }),
+      );
+      const out = await extract(fetchMock, [MAIN, ANIME], ['anime']);
+      expect(sentUrls(fetchMock)).toEqual([ANIME]);
+      expect([...out.entries()]).toEqual([
+        [MAIN, null],
+        [ANIME, 'Canon from AnimeAndManga.'],
+      ]);
+    });
+
+    it('falls back to the Main page when the subpage is empty or unreadable', async () => {
+      for (const subpage of [
+        {
+          results: [
+            { url: ANIME, excerpts: [] },
+            { url: MAIN, excerpts: ['Main text.'] },
+          ],
+        },
+        {
+          results: [{ url: MAIN, excerpts: ['Main text.'] }],
+          errors: [{ url: ANIME, error_type: 'fetch_error' }],
+        },
+      ]) {
+        const out = await extract(
+          vi.fn(() => reply(subpage)),
+          [MAIN],
+          ['anime'],
+        );
+        expect(out.get(MAIN)).toBe('Main text.');
+      }
+    });
+
+    it.each([
+      ['untagged', MAIN, []],
+      ['tagged outside animation', MAIN, ['music']],
+      ['not a Main trope page', 'https://tvtropes.org/pmwiki/pmwiki.php/Anime/Naruto', ['anime']],
+      ['not TV Tropes', 'https://a.example/Main/OmnicidalManiac', ['anime']],
+    ])('sends the url unchanged when %s', async (_why, url, about) => {
+      const fetchMock = vi.fn(() => reply({ results: [{ url, excerpts: ['Page.'] }] }));
+      const out = await extract(fetchMock, [url], about);
+      expect(sentUrls(fetchMock)).toEqual([url]);
+      expect(out.get(url)).toBe('Page.');
+    });
+  });
+
   it('gives canned text and no network call under WEB_SEARCH_FAKE', async () => {
     vi.stubEnv('WEB_SEARCH_FAKE', '1');
-    vi.stubEnv('VERCEL_ENV', '');
+    vi.stubEnv('VERCEL_ENV', 'development');
     const fetchMock = vi.fn();
     const out = await run(fetchMock as unknown as typeof fetch, [A]);
     expect(fetchMock).not.toHaveBeenCalled();

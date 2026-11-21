@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ANSWER_SCHEMA, PREFIX, PROMPT_VERSION, requestText } from './cardPrompt.js';
+import {
+  ANSWER_SCHEMA,
+  PREFIX,
+  PROMPT_VERSION,
+  TOPIC_PREFIX,
+  TOPIC_PROMPT_VERSION,
+  requestText,
+} from './cardPrompt.js';
 import * as again from './cardPrompt.js';
 
 const evidence = [
@@ -22,6 +29,15 @@ const evidence = [
 ];
 
 describe('PREFIX', () => {
+  it('has an independent coherent topic prefix with multi-entry examples and strict ranking evidence', () => {
+    expect(TOPIC_PROMPT_VERSION).not.toBe(PROMPT_VERSION);
+    expect(TOPIC_PREFIX).toContain('Anime OR cartoons means the union');
+    expect(TOPIC_PREFIX).toContain('one named supported character per summary entry');
+    expect(TOPIC_PREFIX).toContain('comparative ordering is unsupported');
+    expect(TOPIC_PREFIX).toContain('Example 3 answer:');
+    expect(TOPIC_PREFIX).not.toContain('what it means when someone says it to them');
+    expect(TOPIC_PREFIX).not.toContain('Closer (The Chainsmokers song)');
+  });
   it('is identical on every call', () => {
     expect(again.PREFIX).toBe(PREFIX);
     expect(PROMPT_VERSION).toBe('card-draft-v8');
@@ -51,6 +67,51 @@ describe('PREFIX', () => {
 });
 
 describe('requestText', () => {
+  it('keeps topic intent, retry choices and unverified context separate from evidence', () => {
+    const text = requestText({
+      search: 'villains',
+      evidence,
+      kind: 'ranking',
+      userContext: 'My theory',
+      retry: { preserveSources: [0] },
+    });
+    expect(text).toContain('kind: ranking');
+    expect(text).toContain('unverified context; not evidence');
+    expect(text).toContain('My theory');
+    expect(text).toContain('requested_source_indices[1]: 0');
+    expect(text).toContain('Never invent facts or a comparative rank');
+    expect(PREFIX).not.toContain('requested_source_indices');
+  });
+
+  it('keeps custom style preferences in the dynamic suffix with evidence constraints', () => {
+    const text = requestText({
+      search: 'no cap',
+      evidence,
+      styleGuidance: { tone: 'Warm and funny', structure: 'Short bullets' },
+    });
+    expect(text).toContain('tone: Warm and funny');
+    expect(text).toContain('structure: Short bullets');
+    expect(text).toContain('Never use them as facts');
+    expect(text.indexOf('style_guidance')).toBeGreaterThan(text.indexOf('evidence'));
+    expect(PREFIX).not.toContain('style_guidance');
+  });
+
+  it('adds a strict fictional scope after dynamic evidence for animation tags', () => {
+    const text = requestText({
+      search: 'biggest genocidal maniacs',
+      about: ['Anime', 'cartoon'],
+      evidence,
+    });
+    expect(text).toContain('fictional characters, events and works in anime or cartoons');
+    expect(text).toContain('Exclude real historical figures');
+    expect(text).toContain('set unclear to true');
+    expect(text.indexOf('scope_constraint')).toBeGreaterThan(text.indexOf('evidence'));
+    expect(PREFIX).not.toContain('scope_constraint');
+    expect(requestText({ search: 'no cap', about: ['slang'], evidence })).not.toContain(
+      'scope_constraint',
+    );
+  });
+
   it('puts search, about, evidence, then tone examples, in TOON', () => {
     const tones = [{ label: 'L', gist: 'G', means: 'M', reply: 'R', summary: 'S' }];
     const text = requestText({ search: 'no cap', about: ['slang'], evidence, tones });

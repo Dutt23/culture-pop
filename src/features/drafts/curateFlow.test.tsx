@@ -94,6 +94,11 @@ const pickIn = (check: HTMLElement, title: string) =>
 async function pickAndCheck(user: ReturnType<typeof userEvent.setup>, ...titles: string[]) {
   for (const title of titles) await user.click(await frame(title));
   await user.click(screen.getByRole('button', { name: /^Review \d frames?$/ }));
+  const example =
+    screen.queryByRole('button', { name: TONE }) ??
+    screen.queryByRole('button', { name: 'bless your heart (spoiler)' });
+  if (example) await user.click(example);
+  await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
   return screen.findByRole('region', { name: 'Splice check' });
 }
 
@@ -132,9 +137,83 @@ afterEach(() => {
 });
 
 describe('curate a card', () => {
+  it('retries omitted sources with user context and persists its provenance', async () => {
+    const draftCard = vi.fn<WebSearchClient['draftCard']>(async () => ({
+      ...RESPONSE,
+      notUsed: [{ source: 1, why: 'not included' }],
+    }));
+    const { user, db } = await renderFlow({ webSearch: 'on' }, draftCard);
+    await pickAndCheck(user, 'What does OK boomer mean', 'OK boomer meaning');
+    await user.click(makeButton());
+    await user.click(await screen.findByRole('checkbox', { name: 'Reconsider this source' }));
+    await user.click(screen.getByRole('button', { name: 'Revise sources and curate again' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Your context or text' }),
+      'My interpretation',
+    );
+    await user.click(screen.getByRole('button', { name: 'Review 2 frames' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Card format' }), 'list');
+    await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
+    await user.click(makeButton());
+    await waitFor(() => expect(draftCard).toHaveBeenCalledTimes(2));
+    expect(draftCard.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        kind: 'list',
+        userContext: 'My interpretation',
+        retry: { preserveSources: [1] },
+      }),
+    );
+    expect(await screen.findByText('My interpretation')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Keep' }));
+    await waitFor(async () =>
+      expect((await db.draftCards.toArray())[0]?.userContext).toBe('My interpretation'),
+    );
+  });
+  it('offers kept cards as merge sources before the style step', async () => {
+    const { user, repos } = await renderFlow({ webSearch: 'on' });
+    await repos.drafts.save({
+      id: 'merge-source',
+      search: SEARCH,
+      card: { ...RESPONSE.card, label: 'My existing explanation' },
+      sources: [],
+      promptVersion: 'v2',
+      savedAt: '2026-11-01T00:00:00.000Z',
+    });
+    const source = await frame('My existing explanation');
+    await user.click(source);
+    expect(source).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    expect(screen.getByRole('region', { name: 'Card style' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
+    expect(screen.getByRole('region', { name: 'Splice check' })).toHaveTextContent(
+      'My existing explanation',
+    );
+  });
+  it('reviews and sends custom tone and structure after source selection', async () => {
+    const draftCard = vi.fn<WebSearchClient['draftCard']>(async () => RESPONSE);
+    const { user } = await renderFlow({ webSearch: 'on' }, draftCard);
+    await user.click(await frame('What does OK boomer mean'));
+    await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    await user.type(screen.getByRole('textbox', { name: 'Tone' }), 'Warm and concise');
+    await user.type(screen.getByRole('textbox', { name: 'Structure' }), 'Explanation then context');
+    await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
+    expect(screen.getByRole('region', { name: 'Splice check' })).toHaveTextContent(
+      'Warm and concise',
+    );
+    await user.click(makeButton());
+    await waitFor(() => expect(draftCard).toHaveBeenCalled());
+    expect(draftCard.mock.calls[0]?.[0].styleGuidance).toEqual({
+      tone: 'Warm and concise',
+      structure: 'Explanation then context',
+    });
+  });
   it('Make a card stays disabled until a flagged pick is kept or cut', async () => {
     const first = await renderFlow();
-    let check = await pickAndCheck(first.user, 'What does OK boomer mean', 'Stonks');
+    let check = await pickAndCheck(
+      first.user,
+      'What does OK boomer mean',
+      'Stonks: meaning and origin',
+    );
     expect(check).toHaveTextContent('⚠ Doesn’t seem to be about “ok boomer”');
     expect(check).toHaveTextContent('bbc.co.uk');
     expect(check).toHaveTextContent(BBC.snippet);
@@ -146,7 +225,11 @@ describe('curate a card', () => {
     first.unmount();
 
     const second = await renderFlow();
-    check = await pickAndCheck(second.user, 'What does OK boomer mean', 'Stonks');
+    check = await pickAndCheck(
+      second.user,
+      'What does OK boomer mean',
+      'Stonks: meaning and origin',
+    );
     const cutStonks = pickIn(check, STONKS.title).getByRole('button', { name: 'Cut it out' });
     await second.user.click(cutStonks);
     expect(check).not.toHaveTextContent('Stonks');
@@ -155,7 +238,7 @@ describe('curate a card', () => {
 
   it('cutting every pick keeps Make disabled', async () => {
     const { user } = await renderFlow();
-    const check = await pickAndCheck(user, 'Stonks');
+    const check = await pickAndCheck(user, 'Stonks: meaning and origin');
     await user.click(within(check).getByRole('button', { name: 'Cut it out' }));
     expect(check).not.toHaveTextContent('Stonks');
     expect(makeButton()).toBeDisabled();
@@ -171,7 +254,6 @@ describe('curate a card', () => {
       promptVersion: 'v2',
       savedAt: '2026-11-01T00:00:00.000Z',
     });
-    await user.click(await screen.findByRole('button', { name: TONE }));
     const check = await pickAndCheck(user, 'What does OK boomer mean', 'OK boomer meaning');
     expect(makeButton()).toBeEnabled();
 
@@ -209,10 +291,10 @@ describe('curate a card', () => {
       promptVersion: 'v2',
       savedAt: '2026-11-01T00:00:00.000Z',
     });
-    await user.click(await screen.findByRole('button', { name: TONE }));
     await pickAndCheck(user, 'What does OK boomer mean', 'OK boomer meaning');
     await user.click(makeButton());
 
+    await waitFor(() => expect(draftCard).toHaveBeenCalled());
     expect(draftCard).toHaveBeenCalledWith(
       {
         search: SEARCH,
@@ -256,13 +338,13 @@ describe('curate a card', () => {
     };
     const first = await renderFlow({ webSearch: 'on' }, draftCard);
     await first.repos.drafts.save(kept);
-    const filter = await screen.findByRole('button', { name: 'bless your heart (spoiler)' });
+    await first.repos.drafts.list();
     expect(screen.queryByText(TONE)).toBeNull();
-    await first.user.click(filter);
     const check = await pickAndCheck(first.user, 'What does OK boomer mean');
     expect(check).toHaveTextContent('bless your heart (spoiler)');
     expect(check).not.toHaveTextContent(TONE);
     await first.user.click(makeButton());
+    await waitFor(() => expect(draftCard).toHaveBeenCalled());
     expect(draftCard.mock.calls[0]?.[0].tones).toEqual([
       expect.objectContaining({ label: TONE, gist: RESPONSE.card.gist }),
     ]);
@@ -270,6 +352,8 @@ describe('curate a card', () => {
 
     const second = await renderFlow({ webSearch: 'on', spoilers: 'show' });
     await second.repos.drafts.save(kept);
+    await second.user.click(await frame('What does OK boomer mean'));
+    await second.user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
     expect(await screen.findByRole('button', { name: TONE })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /\(spoiler\)/ })).toBeNull();
   });
@@ -282,7 +366,7 @@ describe('curate a card', () => {
     await pickAndCheck(user, 'What does OK boomer mean', 'OK boomer meaning');
     await user.click(makeButton());
     expect(
-      await screen.findByText('Not used: dictionary.com (about something else)'),
+      await screen.findByText('Not used: OK boomer meaning (about something else)'),
     ).toBeInTheDocument();
   });
 
@@ -536,12 +620,13 @@ describe('curate a card', () => {
     await user.click(makeButton());
     expect(await screen.findByText('Threading your frames…')).toBeInTheDocument();
 
+    await waitFor(() => expect(sent).toBeDefined());
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     act(() => {
       window.dispatchEvent(new Event('offline'));
     });
 
-    expect(sent?.aborted).toBe(true);
+    await waitFor(() => expect(sent?.aborted).toBe(true));
     expect(await screen.findByRole('alert')).toHaveTextContent(/offline/);
     expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
     expect(await frame('What does OK boomer mean')).toHaveAttribute('aria-pressed', 'true');
@@ -549,7 +634,10 @@ describe('curate a card', () => {
 
   it('shows the no_card message and keeps the tray', async () => {
     const { user } = await renderFlow({ webSearch: 'on' }, async () => {
-      throw new WebSearchError('no_card', 'HTTP 422');
+      throw new WebSearchError('no_card', 'HTTP 422', {
+        reason: 'unclear',
+        notUsed: [{ source: 0, why: 'different language' }],
+      });
     });
     await pickAndCheck(user, 'What does OK boomer mean');
     await user.click(makeButton());
@@ -559,6 +647,7 @@ describe('curate a card', () => {
     );
     expect(await frame('What does OK boomer mean')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Review 1 frame' })).toBeInTheDocument();
+    expect(await screen.findByText('Not used · different language')).toBeInTheDocument();
   });
 
   it.each([

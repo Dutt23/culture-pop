@@ -66,7 +66,7 @@ Only the search text is sent, with no cookies or referrer. Search history stays 
 and their citations are cached on the device for offline use. External search links open only when
 you tap them. When nothing explains a search, a "Search the wider web" button can send the search
 text through our own server to Parallel, a paid web-search service that may keep it (Settings →
-Wider web search: Ask first / On / Off). It needs an access code from the owner; the app never
-stores the code, only a sign-in cookie from our server. Those results are links only and
+Wider web search: Ask first / On / Off). It needs you to sign in, and the owner to turn it on for
+your account; the app keeps only a sign-in cookie from our server, never a password or token. Those results are links only and
 unverified. They can be kept on this device, for you only, for 30 days while search history is on;
 they are never sent anywhere, and Clear history deletes them. Sources and their terms: `docs/SOURCE_INVENTORY.md`.

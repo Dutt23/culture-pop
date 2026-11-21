@@ -21,6 +21,21 @@ describe('roleOf', () => {
 });
 
 describe('curateEvidence', () => {
+  it('reconsiders explicitly preserved readable sources without requiring search word overlap', () => {
+    const candidate = {
+      ...item(
+        'example.com',
+        'Eren is a fictional character in Attack on Titan whose actions affect the story.',
+      ),
+      title: 'Eren',
+    };
+    expect(curateEvidence([candidate], 'biggest villains').items).toHaveLength(0);
+    const result = curateEvidence([candidate], 'biggest villains', [0]);
+    expect(result.items).toHaveLength(1);
+    expect(result.dropped).toEqual([]);
+    expect(result.items[0].source).toBe(0);
+  });
+
   it('drops a page in another script for a Latin search', () => {
     const { items, dropped } = curateEvidence(
       [

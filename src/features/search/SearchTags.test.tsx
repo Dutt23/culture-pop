@@ -61,6 +61,17 @@ describe('search tags', () => {
     expect(screen.queryByRole('button', { name: 'Only these' })).not.toBeInTheDocument();
   });
 
+  it('explains an empty Only these view and restores results when it is turned off', async () => {
+    const { user } = renderApp('/search?q=hakuna');
+    await hakunaOrder();
+    const row = within(await tagRow());
+    await user.click(row.getByRole('button', { name: 'Music' }));
+    await user.click(row.getByRole('button', { name: 'Only these' }));
+    expect(await screen.findByText(/No results match these tags/)).toBeInTheDocument();
+    await user.click(row.getByRole('button', { name: 'Only these' }));
+    expect(await screen.findByRole('link', { name: SWAHILI })).toBeInTheDocument();
+  });
+
   it('adds, refuses a repeat, and removes a custom tag', async () => {
     const db = createTestDatabase();
     const { user } = renderApp('/search', db);

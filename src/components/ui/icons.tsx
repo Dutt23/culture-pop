@@ -32,6 +32,15 @@ export function CompassIcon() {
   );
 }
 
+export function ActivityIcon() {
+  return (
+    <Svg>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </Svg>
+  );
+}
+
 export function SearchIcon() {
   return (
     <Svg>

@@ -95,7 +95,11 @@ const MIN_SUBJECT_WORDS = 2;
  */
 export function questionSubject(query: string): string | undefined {
   const words = tokenize(normalizePhrase(query));
-  if (!QUESTION_WORDS.has(words[0] ?? '') && !query.trim().endsWith('?')) return undefined;
+  const ranking =
+    words.length >= 3 &&
+    /^(biggest|worst|best|strongest|deadliest|most|least|top)\b/i.test(query.trim());
+  if (!ranking && !QUESTION_WORDS.has(words[0] ?? '') && !query.trim().endsWith('?'))
+    return undefined;
   const start = words.findIndex((word) => !LEADING_FILLER.has(word));
   const subject = start < 0 ? [] : words.slice(start);
   if (subject.length < MIN_SUBJECT_WORDS || ADDRESSED_TO.has(subject[0] as string))

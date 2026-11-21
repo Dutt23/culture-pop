@@ -1,4 +1,4 @@
-import { checkAccess, type AccessResult } from './_lib/access.js';
+import { checkWebAccess, WEB_ACCESS_REFUSALS, type WebAccess } from './_lib/webAccess.js';
 import { devFlag } from './_lib/devFlags.js';
 import { fakeParallelFetch } from './_lib/fakeParallel.js';
 import { isCrossSite, json, readCapped } from './_lib/http.js';
@@ -66,8 +66,8 @@ export interface HandlerOptions {
   timeoutMs?: number;
   dailyCap?: number;
   now?: () => Date;
-  /** Who may search. Swappable: today the access-code cookie (`_lib/access.ts`). */
-  checkAccess?: (request: Request) => AccessResult;
+  /** Who may use the wider web; defaults to the signed-in person's permission (webAccess.ts). */
+  checkAccess?: (request: Request) => WebAccess | Promise<WebAccess>;
 }
 
 interface SearchBody {
@@ -143,9 +143,19 @@ export function keywords(q: string): string {
  * in the first query and the objective, so no context is lost. The price is per request, so the
  * second query costs nothing.
  */
-export function searchQueries(q: string, kind: SearchKind = 'meaning'): string[] {
-  const angle = ANGLE[kind];
-  return [q, cut(keywords(q), MAX_QUERY - angle.length) + angle];
+export function searchQueries(
+  q: string,
+  kind: SearchKind = 'meaning',
+  about: readonly string[] = [],
+): string[] {
+  const scope = about.filter((tag) => /^(anime|cartoons?)$/i.test(tag));
+  const angle = scope.length ? ' ' + scope.join(' ') + ' fictional characters' : ANGLE[kind];
+  const scoped = cut(keywords(q), MAX_QUERY - angle.length) + angle;
+  // A tagged question (a list, topic or ranking card) keeps the scoped query alone: the bare
+  // words pulled generic pages that pushed the best list page out (web-search-research-2026-11-21).
+  if (scope.length && kind !== 'meaning') return [scoped];
+  // Otherwise the raw words first, so a targeted name gets its own search; price is per request.
+  return [...new Set([q, scoped])];
 }
 
 /** Videos come from YouTube only; plain domains include www. and m. (Parallel's source policy). */
@@ -221,7 +231,7 @@ export function createHandler(
   const timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
   const dailyCap = options.dailyCap ?? DAILY_CAP;
   const now = options.now ?? (() => new Date());
-  const access = options.checkAccess ?? ((request) => checkAccess(request, now().getTime()));
+  const access = options.checkAccess ?? ((request: Request) => checkWebAccess(request));
   // shortcut: per-instance memory, so cold starts and parallel instances each get their own count;
   // Parallel's dashboard spend limit is the real cap. Upgrade to a shared store if use grows.
   let day = '';
@@ -229,9 +239,11 @@ export function createHandler(
 
   return async function handle(request) {
     if (isCrossSite(request)) return json(403, { error: 'cross_site' });
-    const allowed = access(request);
-    if (allowed === 'not_configured') return json(503, { error: 'not_configured' });
-    if (allowed === 'locked') return json(401, { error: 'locked' });
+    const allowed = await access(request);
+    if (allowed !== 'ok') {
+      const refusal = WEB_ACCESS_REFUSALS[allowed];
+      return json(refusal.status, { error: refusal.error });
+    }
 
     const { q: rawQuery, kind, about } = await readBody(request);
     const q = validQuery(rawQuery);
@@ -261,7 +273,7 @@ export function createHandler(
         // No session_id: Parallel can't link one search to the next.
         body: JSON.stringify({
           objective: objective(q, kind, about),
-          search_queries: searchQueries(q, kind),
+          search_queries: searchQueries(q, kind, about),
           mode: 'fast',
           max_chars_total: 6000,
           advanced_settings: advancedSettings(kind),

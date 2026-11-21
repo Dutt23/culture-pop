@@ -25,17 +25,27 @@ export const WEB_RESULTS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
  */
 export interface WebResultRepository {
   /** Keeps the `device` results for this query, replacing any older row; none → the row is removed. */
-  save(query: string, results: readonly DeviceResult[], now: number): Promise<void>;
+  save(
+    query: string,
+    results: readonly DeviceResult[],
+    now: number,
+    context?: string,
+  ): Promise<void>;
   /** The saved results for this query, or undefined when there are none or they have expired. */
-  get(query: string, now: number): Promise<SavedWebResults | undefined>;
+  get(query: string, now: number, context?: string): Promise<SavedWebResults | undefined>;
   clear(): Promise<void>;
 }
+
+const resultKey = (query: string, context?: string) =>
+  context === undefined
+    ? normalizePhrase(query)
+    : JSON.stringify([normalizePhrase(query), context]);
 
 const isExpired = (row: SavedWebResults, now: number) => now - row.savedAt >= WEB_RESULTS_TTL_MS;
 
 export function createWebResultRepository(db: PopCultureDb): WebResultRepository {
   return {
-    save: (query, results, now) =>
+    save: (query, results, now, context) =>
       db.transaction('rw', db.webResults, async () => {
         await db.webResults
           .where('savedAt')
@@ -47,14 +57,14 @@ export function createWebResultRepository(db: PopCultureDb): WebResultRepository
           snippet,
           storage: 'device' as const,
         }));
-        const key = normalizePhrase(query);
+        const key = resultKey(query, context);
         if (!key) return;
         // A newer search with nothing keepable replaces the old row too: no stale results.
         if (kept.length === 0) await db.webResults.delete(key);
         else await db.webResults.put({ key, savedAt: now, results: kept });
       }),
-    get: async (query, now) => {
-      const row = await db.webResults.get(normalizePhrase(query));
+    get: async (query, now, context) => {
+      const row = await db.webResults.get(resultKey(query, context));
       // Stored data is untrusted too: only well-formed device results come back out.
       if (!row || isExpired(row, now)) return undefined;
       const results = Array.isArray(row.results) ? row.results.filter(isDeviceResult) : [];

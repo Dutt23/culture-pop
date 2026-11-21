@@ -1,5 +1,6 @@
 dist
 dev-dist
 playwright-report
+playwright-report-live
 test-results
 package-lock.json

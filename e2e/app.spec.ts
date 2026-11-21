@@ -201,6 +201,23 @@ test('a Browse card keeps keyboard focus when scrolled away, and Tab goes on fro
   await card.focus();
 
   for (let step = 0; step < 4; step += 1) await page.mouse.wheel(0, 2000);
+  // mouse.wheel returns before the page stops scrolling; on a long (narrow) page the rest of that
+  // scroll would carry the next card away again after Tab brings it into view. Wait until still.
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => {
+        let last = -1;
+        let still = 0;
+        const tick = () => {
+          if (window.scrollY === last) still += 1;
+          else [last, still] = [window.scrollY, 0];
+          if (still >= 5) done();
+          else requestAnimationFrame(tick);
+        };
+        tick();
+      }),
+  );
+  await expect(card).not.toBeInViewport();
   await expect(card).toBeFocused();
 
   // Past the card's heart, the very next card: still in the page, and brought into view.

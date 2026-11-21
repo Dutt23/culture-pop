@@ -34,6 +34,25 @@ describe('wider-web results kept on this device (D45)', () => {
     db.close();
   });
 
+  it('isolates scoped results from legacy rows and other contexts', async () => {
+    const { db, repos } = await setup();
+    await repos.webResults.save('biggest villains', [DEVICE], T0);
+    await repos.webResults.save(
+      'biggest villains',
+      [{ ...DEVICE, title: 'Anime villains' }],
+      T0,
+      'anime',
+    );
+    expect((await repos.webResults.get('biggest villains', T0))?.results[0]?.title).toBe(
+      DEVICE.title,
+    );
+    expect((await repos.webResults.get('biggest villains', T0, 'anime'))?.results[0]?.title).toBe(
+      'Anime villains',
+    );
+    expect(await repos.webResults.get('biggest villains', T0, 'cartoons')).toBeUndefined();
+    db.close();
+  });
+
   it('never saves shown-once results: refused by type, skipped at run time', async () => {
     const { db, repos } = await setup();
     // @ts-expect-error `none` results can't be passed to the device store.
@@ -123,7 +142,7 @@ describe('schema v5', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(13);
+    expect(db.verno).toBe(14);
     expect(db.tables.map((t) => t.name)).toContain('webResults');
     expect(await db.webResults.count()).toBe(0);
     expect(await db.searchHistory.count()).toBe(1);

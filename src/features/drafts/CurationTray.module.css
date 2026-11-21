@@ -4,7 +4,8 @@
   --g2: var(--grade-2, var(--g1));
   --tray: #221d4a;
   position: sticky;
-  bottom: 10px;
+  /* Clear of the home indicator on phones. */
+  bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
   z-index: 5;
   color: var(--color-text);
 }
@@ -12,12 +13,13 @@
 .tray {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   width: 100%;
-  height: 62px;
-  padding: 0 12px;
+  /* --tray-height is set by the sheet (drafts.module.css), which keeps space for the tray. */
+  min-height: var(--tray-height, 62px);
+  padding: 0 var(--space-3);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--g1) 28%, var(--tray)),
@@ -37,8 +39,8 @@
 
 .reel {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: var(--tap-min);
+  height: var(--tap-min);
 }
 
 .stop1 {
@@ -92,4 +94,19 @@
   text-align: center;
   opacity: 0;
   pointer-events: none;
+}
+
+.filledHole {
+  fill: var(--color-success);
+}
+
+.hint:not(:empty) {
+  position: static;
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--color-warm);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  opacity: 1;
 }

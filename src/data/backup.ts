@@ -23,15 +23,10 @@ export const BACKUP_VERSION = 1;
 export const MAX_BACKUP_BYTES = 5_000_000;
 
 /**
- * Settings that stay on each device. `webAccess` only says a sign-in cookie exists here, and the
- * cookie doesn't come along (the access code itself is never stored anywhere). The two consents to
- * send search text are asked on each device, after its own disclosure.
+ * Settings that stay on each device: the two consents to send search text are asked on each device,
+ * after its own disclosure. (A sign-in never comes along: it is a cookie on this device only.)
  */
-const DEVICE_ONLY_SETTINGS: ReadonlySet<string> = new Set<SettingKey>([
-  'webAccess',
-  'retrieval',
-  'webSearch',
-]);
+const DEVICE_ONLY_SETTINGS: ReadonlySet<string> = new Set<SettingKey>(['retrieval', 'webSearch']);
 /** The free-form search-tags row beside the enumerated settings (docs/SEARCH_TAGS_PLAN.md). */
 const SEARCH_TAGS_KEY = 'searchTags';
 const MAX_SEARCH_TAGS_LENGTH = 20_000;
@@ -109,7 +104,7 @@ export interface BackupPack {
 /**
  * Everything a backup holds: favourites, packs, saved web links, settings (search tags included)
  * and the online-found cards those point to. Never search history, kept wider-web results, the
- * online cache as a whole, or anything about the access code.
+ * online cache as a whole, or anything about signing in.
  */
 export interface Backup {
   app: typeof BACKUP_APP;

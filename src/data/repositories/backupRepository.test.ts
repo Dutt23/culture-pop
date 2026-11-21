@@ -33,7 +33,6 @@ async function filledDevice() {
   await repos.favourites.toggle(redPill.id);
   await repos.savedLinks.toggle({ url: 'https://example.org/page', title: 'A page' });
   await repos.settings.set('theme', 'dark');
-  await repos.settings.set('webAccess', 'unlocked');
   await repos.settings.set('retrieval', 'on');
   await repos.history.record({ text: 'ferrari fans' }, Date.now());
   await repos.webResults.save(

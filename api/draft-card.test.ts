@@ -1,7 +1,12 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProviderError, type DraftProvider } from './_lib/cardProviders.js';
-import { PROMPT_VERSION, type ModelAnswer } from './_lib/cardPrompt.js';
+import {
+  PROMPT_VERSION,
+  TOPIC_PREFIX,
+  TOPIC_PROMPT_VERSION,
+  type ModelAnswer,
+} from './_lib/cardPrompt.js';
 import { createDraftHandler, type DraftHandlerOptions } from './draft-card.js';
 
 const SEARCH = 'kitne aadmi the';
@@ -30,7 +35,7 @@ const web = { kind: 'web', from: 'example.test', title: 'Lines', url: PAGE_URL, 
 const tone = { label: 'a', gist: 'b', means: 'c', reply: 'd', summary: 'e' };
 
 function fakeProvider(answer: unknown = ANSWER) {
-  const inputs: { user: string }[] = [];
+  const inputs: { user: string; prefix: string; promptVersion?: string }[] = [];
   const provider: DraftProvider = {
     name: 'fake',
     draft: async (input) => {
@@ -78,7 +83,163 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
+describe('draft-card fan-made evidence', () => {
+  const FANON_URL = 'https://charactersfanon.fandom.com/wiki/Weaver';
+  const fanon = { kind: 'web', from: 'x', title: 'Weaver', url: FANON_URL, text: 'fanon snippet' };
+  const bothPages = vi.fn<typeof fetch>(
+    async () =>
+      new Response(
+        JSON.stringify({
+          results: [
+            { url: PAGE_URL, excerpts: [PAGE_TEXT] },
+            { url: FANON_URL, excerpts: ['The Weaver wants to kill everyone on the planet.'] },
+          ],
+        }),
+      ),
+  );
+
+  it('never shows the model a fanon site and reports it as not used', async () => {
+    const answer = {
+      ...ANSWER,
+      summary: [{ t: 'People quote Kitne aadmi the for a headcount.', ids: ['E1'] }],
+    };
+    const { handle, inputs } = setup({ fetch: bothPages }, answer);
+    const { status, body } = await read(
+      await handle(post({ search: SEARCH, kind: 'list', sources: [web, fanon] })),
+    );
+    expect(status).toBe(200);
+    expect(inputs[0].user).not.toContain('Weaver');
+    expect(body.notUsed).toContainEqual({ source: 1, why: 'fan-made site, not the original work' });
+  });
+
+  it('keeps an ordinary page from the same kind of request', async () => {
+    const { handle, inputs } = setup({ fetch: bothPages });
+    await handle(post({ search: SEARCH, kind: 'list', sources: [web, fanon] }));
+    expect(inputs[0].user).toContain('headcount');
+  });
+});
+
 describe('draft-card', () => {
+  it('sends late matching web evidence and its work to the topic model within the source cap', async () => {
+    const page =
+      'Other characters fight in unrelated stories. '.repeat(80) +
+      'Vegeta serves Frieza in Dragon Ball Z. He conquers planets for sale. ' +
+      'Vegeta committed genocide on multiple planets, not just one.';
+    const { handle, inputs } = setup({ fetch: extractFetch(page) });
+    await handle(post({ search: 'genocidal maniacs', kind: 'list', sources: [web] }));
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].user).toContain('Dragon Ball Z');
+    expect(inputs[0].user).toContain(
+      'Vegeta committed genocide on multiple planets, not just one.',
+    );
+    expect(inputs[0].user).not.toContain('Other characters fight');
+  });
+
+  it('anchors long-page selection to the picked result instead of a stronger unrelated query match', async () => {
+    const selected = 'Frieza exterminated the Saiyan race in Dragon Ball Z.';
+    const page =
+      `${selected} Frieza invented an account of the Saiyan homeworld being destroyed by meteors. ` +
+      'Unrelated character fights a rival. '.repeat(80) +
+      'Live-action characters are genocidal maniacs. These genocidal maniacs appear in another franchise.';
+    const { handle, inputs } = setup({ fetch: extractFetch(page) });
+    await handle(
+      post({
+        search: 'genocidal maniacs',
+        kind: 'list',
+        about: ['anime', 'cartoons'],
+        sources: [{ ...web, text: selected }],
+      }),
+    );
+    expect(inputs[0].user).toContain(selected);
+    expect(inputs[0].user).not.toContain('Live-action characters');
+  });
+
+  it('keeps ten readable topic sources within the larger evidence budget', async () => {
+    const { handle, inputs } = setup();
+    const sources = [
+      wiki,
+      ...Array.from({ length: 9 }, (_, index) => ({
+        ...wiki,
+        title: `Source ${index}`,
+        text: `Character${index} `.repeat(90),
+      })),
+    ];
+    const result = await read(await handle(post({ search: SEARCH, kind: 'list', sources })));
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].user).toContain('evidence[10]');
+    expect(result.body.notUsed).not.toContainEqual(
+      expect.objectContaining({ why: 'over the length limit' }),
+    );
+  });
+
+  it('selects the dedicated topic prefix and independent response version', async () => {
+    const { handle, inputs } = setup();
+    const result = await read(
+      await handle(post({ search: SEARCH, kind: 'list', sources: [wiki] })),
+    );
+    expect(result.status).toBe(200);
+    expect(inputs[0].prefix).toBe(TOPIC_PREFIX);
+    expect(inputs[0].promptVersion).toBe(TOPIC_PROMPT_VERSION);
+    expect(result.body.promptVersion).toBe(TOPIC_PROMPT_VERSION);
+    expect(inputs[0].user).toContain('source_index');
+  });
+  it('validates retry indices and carries user provenance and context independently', async () => {
+    const { handle, inputs } = setup();
+    for (const retry of [
+      { preserveSources: [-1] },
+      { preserveSources: [1] },
+      { preserveSources: ['0'] },
+      null,
+    ]) {
+      expect(
+        (await read(await handle(post({ search: SEARCH, sources: [wiki], retry })))).status,
+      ).toBe(400);
+    }
+    const result = await read(
+      await handle(
+        post({
+          search: SEARCH,
+          kind: 'topic',
+          sources: [{ ...wiki, provenance: 'user' }],
+          userContext: 'My own interpretation',
+          retry: { preserveSources: [0] },
+        }),
+      ),
+    );
+    expect(result.status).toBe(200);
+    expect(inputs[0].user).toContain('My own interpretation');
+    expect(inputs[0].user).toContain('unverified context; not evidence');
+    expect(inputs[0].user).toContain('requested_source_indices[1]: 0');
+  });
+
+  it('validates and bounds custom style guidance before sending it to the provider', async () => {
+    const { handle, inputs } = setup();
+    for (const styleGuidance of [null, 'casual', { tone: 'casual' }, { tone: 4, structure: '' }]) {
+      expect(
+        (await read(await handle(post({ search: SEARCH, sources: [wiki], styleGuidance })))).status,
+      ).toBe(400);
+    }
+    expect(inputs).toHaveLength(0);
+    const result = await read(
+      await handle(
+        post({
+          search: SEARCH,
+          sources: [wiki],
+          styleGuidance: {
+            tone: 'x'.repeat(300),
+            structure: 'Brief summary then examples https://private.example.test',
+          },
+        }),
+      ),
+    );
+    expect(result.status).toBe(200);
+    expect(inputs[0].user).toContain('style_guidance:');
+    expect(inputs[0].user).toContain(`${'x'.repeat(279)}…`);
+    expect(inputs[0].user).not.toContain('x'.repeat(281));
+    expect(inputs[0].user).not.toContain('private.example.test');
+    expect(inputs[0].user).toContain('Brief summary then examples');
+  });
+
   it('refuses a cross-site request', async () => {
     const { handle } = setup();
     const r = await read(
@@ -87,19 +248,23 @@ describe('draft-card', () => {
     expect(r).toEqual({ status: 403, body: { error: 'cross_site' } });
   });
 
-  it('asks for the access code when locked', async () => {
-    const { handle, inputs } = setup({ checkAccess: () => 'locked' });
+  it.each([
+    ['signed_out', 401],
+    ['not_allowed', 403],
+    ['unavailable', 503],
+  ] as const)('refuses %s with %i and asks no model', async (access, status) => {
+    const { handle, inputs } = setup({ checkAccess: async () => access });
     const r = await read(await handle(post({ search: SEARCH, sources: [wiki] })));
-    expect(r).toEqual({ status: 401, body: { error: 'locked' } });
+    expect(r).toEqual({ status, body: { error: access } });
     expect(inputs).toHaveLength(0);
   });
 
-  it('refuses 7 sources, 4 web links, 3 tones, an http link and a 201-char search', async () => {
+  it('refuses 11 sources, 11 web links, 3 tones, an http link and a 201-char search', async () => {
     const { handle, inputs } = setup();
     const webN = (n: number) => ({ ...web, url: `https://a${n}.example.test/p` });
     const bad = [
-      { search: SEARCH, sources: Array.from({ length: 7 }, () => wiki) },
-      { search: SEARCH, sources: [1, 2, 3, 4].map(webN) },
+      { search: SEARCH, sources: Array.from({ length: 11 }, () => wiki) },
+      { search: SEARCH, sources: Array.from({ length: 11 }, (_, n) => webN(n)) },
       { search: SEARCH, sources: [wiki], tones: [tone, tone, tone] },
       { search: SEARCH, sources: [{ ...web, url: 'http://a.example.test/p' }] },
       { search: 'a'.repeat(201), sources: [wiki] },
@@ -320,16 +485,16 @@ describe('draft-card', () => {
     });
   });
 
-  it('refuses a body over 48 KB', async () => {
+  it('refuses a body over 80 KB', async () => {
     const { handle } = setup();
-    const big = { search: SEARCH, sources: [wiki], pad: 'x'.repeat(49 * 1024) };
+    const big = { search: SEARCH, sources: [wiki], pad: 'x'.repeat(81 * 1024) };
     expect((await handle(post(big))).status).toBe(400);
   });
 
   it('does not refuse a full body of 4-byte characters within every field cap', async () => {
     const { handle } = setup();
     const c = (n: number) => '𝒜'.repeat(n);
-    const sources = Array.from({ length: 6 }, (_, i) => ({
+    const sources = Array.from({ length: 10 }, (_, i) => ({
       kind: i < 3 ? 'wiki' : 'app',
       from: i < 3 ? 'wikipedia' : 'app card',
       title: c(200),

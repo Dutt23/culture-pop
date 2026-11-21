@@ -85,10 +85,11 @@ pack batches 1–2, paste a message and the share target, packs, "Got it" (D52, 
 chips, backup, phone polish (D55), accessibility (D56), the opening intro, tours, the wide layout,
 search tags, the room on Discover with a virtual Browse list (D57), the room of references (D58),
 cards shaped like their type (D59) and the security review with its fixes (D61). Left before
-release, all the owner's: run the final `npm run deploy:check` on master; read the 28 room
-explanations (`src/components/mascot/room/roomProps.ts`); check the phone (vivo: smoothness of the
-room and cards, install, offline, WhatsApp share); confirm the Vercel firewall rule on
-`/api/unlock` and the Parallel spending limit; review pack batch 3 (`docs/PACK_BATCH_3_DRAFT.md`).
+release, all the owner's: do the deploy checklist in `docs/BACKEND_PLAN.md` §10 before
+`npm run deploy` to the new Vercel account (link that account, env vars, auth off, spend caps);
+run the final `npm run deploy:check`; read the 28 room explanations
+(`src/components/mascot/room/roomProps.ts`); check the phone (vivo: smoothness of the room and
+cards, install, offline, WhatsApp share); review pack batch 3 (`docs/PACK_BATCH_3_DRAFT.md`).
 
 **Dropped or paused:** "Linked to N" is now optional. (Desktop layout and the type tags were first
 paused here; the owner brought both back on 2026-11-17 and they are done.)

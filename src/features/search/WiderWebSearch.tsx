@@ -1,5 +1,5 @@
-import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { useRetrievalService } from '../../app/retrievalService';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
@@ -8,7 +8,6 @@ import { hostOf } from '../../components/ui/safeHref';
 import type { SavedWebResults } from '../../data/repositories/webResultRepository';
 import { formatDate } from '../../domain/dates';
 import type { WebSearchPreference } from '../../domain/settings';
-import { looksLikeQuestion } from '../../services/retrieval/community';
 import {
   isDeviceResult,
   WebSearchError,
@@ -21,8 +20,8 @@ import own from './WiderWebSearch.module.css';
 
 export const FAILURE_TEXT: Record<WebSearchFailure, string> = {
   offline: "You're offline. The wider web search needs a connection.",
-  locked: 'This search needs an access code.',
-  wrong_code: "That code didn't work.",
+  signed_out: 'Sign in to search the wider web.',
+  not_allowed: "The wider web search isn't turned on for your account yet. Ask the owner.",
   bad_query: 'This search is too long for the wider web search. Try fewer words.',
   rate_limited: 'Too many searches just now. Try again in a minute.',
   daily_cap: "Today's wider web searches are used up. Try again tomorrow.",
@@ -57,22 +56,20 @@ type Phase =
   | { kind: 'idle' }
   | { kind: 'consent' }
   | { kind: 'loading' }
-  | { kind: 'locked' }
   | { kind: 'error'; failure: WebSearchFailure }
   | { kind: 'done'; results: readonly WebResult[] };
 
 interface WiderWebSearchProps {
   query: string;
+  contextKey?: string;
   isOnline: boolean;
   preference: WebSearchPreference;
   /** Search history on: only then are `device` results kept, because they are keyed by the query. */
   historyOn: boolean;
   /** Stores "On" after the reader agrees in the consent card. */
   onAllow: () => Promise<void>;
-  /** A search worked on this device before, so with "On" it runs by itself (`webAccess`). */
-  unlocked: boolean;
-  /** Records that a search worked here, or that the server said "locked" (cookie gone). */
-  onAccess: (unlocked: boolean) => void;
+  /** This device signed in before (`readAccountHint`): only then does "On" search by itself. */
+  signedIn: boolean;
   /** A question leans to stories and myths ("Stories & myths"). */
   stories: boolean;
   /** The reader's "on" search tags, sent as a hint ("about anime"); never the search text. */
@@ -92,17 +89,15 @@ interface WiderWebSearchProps {
 }
 
 /**
- * "Search the wider web" for a local miss: one tap, consent first. Once the reader said "On" and a
- * search has worked on this device, it runs by itself instead (D50). `device` results are kept on
+ * "Search the wider web" for a local miss: one tap, consent first. Once the reader said "On" and is
+ * signed in on this device, it runs by itself instead (D50). The server decides who may search (D64). `device` results are kept on
  * this device for 30 days while search history is on (D45), shown again with "Saved <date>" and
  * Refresh; `none` results live only in this component's state. Neither ever reaches the library,
  * history's reference IDs or favourites, and nothing kept here is ever sent anywhere.
  */
 export function WiderWebSearch(props: WiderWebSearchProps) {
-  const { query, isOnline, preference, onAllow, unlocked, onAccess, stories, onSearched } = props;
-  // shortcut: kept results are keyed by the query alone, so a question searched with "Stories &
-  // myths" unticked is shown but not kept; key them by mode too if people untick it often.
-  const historyOn = props.historyOn && (stories || !looksLikeQuestion(query));
+  const { query, isOnline, preference, onAllow, signedIn, stories, onSearched } = props;
+  const historyOn = props.historyOn;
   const { webSearch } = useRetrievalService();
   const { webResults } = useRepositories();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -130,14 +125,14 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
     if (!historyOn) return;
     let live = true;
     webResults
-      .get(query, Date.now())
+      .get(query, Date.now(), props.contextKey)
       .then((row) => live && setSaved(row))
       .catch(() => {})
       .finally(() => live && setSavedChecked(true));
     return () => {
       live = false;
     };
-  }, [webResults, query, historyOn]);
+  }, [webResults, query, historyOn, props.contextKey]);
 
   const run = async (auto = false, wantVideos = videos) => {
     // Any search, tapped or not, means this mount never searches by itself again.
@@ -157,27 +152,27 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
       if (current.signal.aborted) return;
       onSearched();
       setPhase({ kind: 'done', results });
-      if (!unlocked) onAccess(true);
       // Best effort: a failed write only means a new search next time. Videos are never kept: kept
-      // results are keyed by the query alone and would replace the wider-web ones.
+      // they have a different search mode from the saved wider-web results.
       if (historyOn && !wantVideos) {
-        webResults.save(query, results.filter(isDeviceResult), Date.now()).catch(() => {});
+        webResults
+          .save(query, results.filter(isDeviceResult), Date.now(), props.contextKey)
+          .catch(() => {});
       }
     } catch (error) {
       if (current.signal.aborted) return;
       onSearched();
       const failure = failureOf(error);
-      if (failure === 'locked') onAccess(false);
-      // A search that ran by itself never pops up the code form: the button comes back instead.
-      if (failure === 'locked' && auto) setPhase({ kind: 'idle' });
-      else setPhase(failure === 'locked' ? { kind: 'locked' } : { kind: 'error', failure });
+      // A search that ran by itself never shows a sign-in message: the button comes back instead.
+      if (auto && isAccessFailure(failure)) setPhase({ kind: 'idle' });
+      else setPhase({ kind: 'error', failure });
     }
   };
 
   // Runs by itself once per query, after any kept results were checked: kept ones are shown free.
   const autoSearch = useEffectEvent(() => void run(true, false));
   const autoReady =
-    preference === 'on' && unlocked && isOnline && props.mayAutoSearch && savedChecked && !saved;
+    preference === 'on' && signedIn && isOnline && props.mayAutoSearch && savedChecked && !saved;
   useEffect(() => {
     if (autoReady && !started.current) autoSearch();
     // An effect event never goes in the list; this plugin version doesn't know useEffectEvent yet.
@@ -212,12 +207,6 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
           setPhase({ kind: 'idle' });
         }}
       />
-    );
-  }
-
-  if (phase.kind === 'locked') {
-    return (
-      <AccessCodeForm onUnlocked={() => void run()} onCancel={() => setPhase({ kind: 'idle' })} />
     );
   }
 
@@ -287,12 +276,16 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
       )}
       {phase.kind === 'error' && (
         <div className={styles.error} role="alert">
-          <p>{FAILURE_TEXT[phase.failure]}</p>
-          {phase.failure !== 'bad_query' && phase.failure !== 'not_configured' && (
-            <button type="button" className={styles.secondary} onClick={() => void run()}>
-              Try again
-            </button>
-          )}
+          <p>
+            <AccessNotice failure={phase.failure} />
+          </p>
+          {phase.failure !== 'bad_query' &&
+            phase.failure !== 'not_configured' &&
+            !isAccessFailure(phase.failure) && (
+              <button type="button" className={styles.secondary} onClick={() => void run()}>
+                Try again
+              </button>
+            )}
         </div>
       )}
       {phase.kind === 'done' && (
@@ -340,72 +333,40 @@ export function WebConsent({ title, action, onAllow, onCancel }: WebConsentProps
   );
 }
 
-interface AccessCodeFormProps {
-  onUnlocked: () => void;
-  onCancel: () => void;
+export const isAccessFailure = (failure: WebSearchFailure): boolean =>
+  failure === 'signed_out' || failure === 'not_allowed';
+
+/** "Sign in", coming back to this page afterwards. */
+function SignInLink() {
+  const { pathname, search } = useLocation();
+  return (
+    <Link to="/sign-in" state={{ from: pathname + search }}>
+      Sign in
+    </Link>
+  );
 }
 
 /**
- * Asks for the access code the owner shares. The code is sent once and dropped: the field is
- * cleared on submit and nothing is written to storage. The server's HttpOnly cookie is the only
- * credential afterwards.
+ * A failure in plain words (inline, for the caller's own paragraph); after "signed out", a "Sign in"
+ * link. Only that link reads the page address, so the notice works anywhere.
  */
-export function AccessCodeForm({ onUnlocked, onCancel }: AccessCodeFormProps) {
-  const { webSearch } = useRetrievalService();
-  const inputId = useId();
-  const [code, setCode] = useState('');
-  const [checking, setChecking] = useState(false);
-  const [failure, setFailure] = useState<WebSearchFailure | null>(null);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    const given = code.trim();
-    setCode('');
-    if (!given) return;
-    setChecking(true);
-    setFailure(null);
-    try {
-      await webSearch.unlock(given);
-      onUnlocked();
-    } catch (error) {
-      setChecking(false);
-      setFailure(failureOf(error));
-    }
-  };
-
+export function AccessNotice({
+  failure,
+  text = FAILURE_TEXT,
+}: {
+  failure: WebSearchFailure;
+  text?: Record<WebSearchFailure, string>;
+}) {
   return (
-    <section className={styles.consent} aria-labelledby="access-code-title">
-      <h2 id="access-code-title" className={styles.consentTitle}>
-        Enter access code
-      </h2>
-      <p>The wider web search is for people the owner has given a code to.</p>
-      <form className={own.form} onSubmit={submit}>
-        <label htmlFor={inputId}>Access code</label>
-        <input
-          id={inputId}
-          className={own.input}
-          type="password"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-        />
-        {failure && (
-          <p className={styles.note} role="alert">
-            {FAILURE_TEXT[failure]}
-          </p>
-        )}
-        <div className={styles.actions}>
-          <button type="submit" className={styles.primary} disabled={checking}>
-            Unlock
-          </button>
-          <button type="button" className={styles.secondary} onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-      </form>
-    </section>
+    <>
+      {text[failure]}
+      {failure === 'signed_out' && (
+        <>
+          {' '}
+          <SignInLink />
+        </>
+      )}
+    </>
   );
 }
 

@@ -115,7 +115,7 @@
 
 .navList {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   max-width: var(--layout-max);
   height: var(--nav-height);
   margin: 0 auto;
@@ -137,4 +137,21 @@
 
 .active {
   color: var(--color-accent);
+}
+
+.activityNotice {
+  position: relative;
+  z-index: 1;
+  max-width: var(--layout-wide);
+  margin: var(--space-2) auto 0;
+  padding-inline: var(--space-gutter);
+  font-size: var(--text-sm);
+}
+
+.activityNotice:empty {
+  display: none;
+}
+
+.activityNotice a {
+  overflow-wrap: anywhere;
 }

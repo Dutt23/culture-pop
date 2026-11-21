@@ -174,3 +174,10 @@ describe('question-style queries', () => {
     ).toBe(false);
   });
 });
+
+it('recognizes ranking fragments without punctuation', () => {
+  expect(looksLikeQuestion('biggest genocidal maniacs')).toBe(true);
+  expect(looksLikeQuestion('strongest anime characters')).toBe(true);
+  expect(looksLikeQuestion('hakuna matata')).toBe(false);
+  expect(looksLikeQuestion('Top Gun')).toBe(false);
+});

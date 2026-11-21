@@ -1,3 +1,4 @@
+import { animationScope, searchContextKey } from '../../../shared/text';
 import { AnimatePresence, m } from 'motion/react';
 import { useId, useState, type ReactNode } from 'react';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
@@ -35,6 +36,7 @@ import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { isExactTitle } from '../../services/retrieval/rerank';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import type { WebResult } from '../../services/retrieval/webSearch';
+import { CardNoteButton } from '../drafts/CardNoteButton';
 import { CurateFlow } from '../drafts/CurateFlow';
 import { useFavourites } from '../favourites/useFavourites';
 import { useSettings } from '../settings/SettingsContext';
@@ -50,6 +52,7 @@ import { useRecentSearches, useRecordSearch } from './useSearchHistory';
 import { useSearchQuery } from './useSearchQuery';
 import { useSearchTags, useTaste } from './useSearchTags';
 import { WiderWebSearch } from './WiderWebSearch';
+import { readAccountHint } from '../../services/auth/authClient';
 
 const EXAMPLE_QUERIES = ['hakuna matata', 'let it go', 'this is fine', 'bazinga', 'all izz well'];
 const RECENT_CHIPS = 8;
@@ -103,17 +106,27 @@ export function SearchPage() {
     onToggle: () => void favourites.toggle(referenceId),
   });
 
-  // Spec §6: go online only on a local miss (no eligible top match) and with consent. Latched per
-  // query: saving explains the results, which would otherwise end the lookup and move its cards.
+  // Spec §6: go online on a local miss, with consent. Also when a saved online answer already
+  // stands in and online search is on: those saved cards are an older lookup, and the rest of the
+  // cards (a film, a later page) stay missing until Refresh. Latched per query so saving the new
+  // results does not end the lookup and move the cards.
   const missesLocally = hasQuery && !search.loading && search.needsRetrieval;
   const [onlineQuery, setOnlineQuery] = useState<string | null>(null);
-  if (missesLocally && onlineQuery !== query) setOnlineQuery(query);
-  const wantsOnline = missesLocally || onlineQuery === query;
   // A pasted or shared message is someone's private text: even with online search on, it goes to
   // the reference sites only after a tap on "Search online" (the wider web already asks the same).
   const [releasedMessage, setReleasedMessage] = useState<string | null>(null);
   const messageHeld =
     settings.retrieval === 'on' && looksLikeMessage(query) && releasedMessage !== query;
+  const savedNeedsLookup =
+    hasQuery &&
+    !search.loading &&
+    settingsLoaded &&
+    settings.retrieval === 'on' &&
+    !messageHeld &&
+    !search.needsRetrieval &&
+    search.savedOnline.length > 0;
+  if ((missesLocally || savedNeedsLookup) && onlineQuery !== query) setOnlineQuery(query);
+  const wantsOnline = missesLocally || onlineQuery === query;
   const online = useRetrieval(query, wantsOnline && settings.retrieval === 'on' && !messageHeld);
 
   // Filters reset whenever the query changes (state adjusted during render, React's documented pattern).
@@ -135,9 +148,21 @@ export function SearchPage() {
     settingsLoaded && settings.history === 'on',
   );
   // With every tag off, "Only these" has nothing to keep and its chip is gone, so it lets go.
+  const about = aboutHint(tags.state);
+  const scope = animationScope(
+    tags.state.types.map((tag) => (tag === 'cartoon' ? 'cartoons' : tag)),
+  );
+  const contextKey = searchContextKey(settings.stories === 'on', [
+    ...tags.state.types,
+    ...tags.state.custom.filter((tag) => tag.on).map((tag) => tag.text),
+  ]);
   const onlyThese = onlyTagged && hasActiveTags(tags.state);
   const shows = (item: Parameters<typeof matchesFilter>[0], tagged: boolean) =>
-    matchesFilter(item, filter) && (!onlyThese || tagged);
+    matchesFilter(item, filter) &&
+    (!looksLikeQuestion(query) ||
+      scope.length === 0 ||
+      scope.some((tag) => item.category === (tag === 'cartoons' ? 'cartoon' : tag))) &&
+    (!onlyThese || tagged);
 
   const { state: onlineState } = online;
   const localIds = new Set(search.matches.map((m) => m.reference.id));
@@ -174,7 +199,7 @@ export function SearchPage() {
   const isAnswer = (c: RetrievedCandidate) =>
     isExactTitle(query, c) || (topic !== undefined && isExactTitle(topic, c));
   // Later online answers wait behind "N new results" instead of moving cards already on screen.
-  const fresh = useHeldResults(onlineCandidates, query, isAnswer);
+  const fresh = useHeldResults(onlineCandidates, query, isAnswer, onlineState.status === 'done');
   // Held results don't count: the chips mustn't appear above cards before the reader taps.
   const resultCount = search.matches.length + fresh.shown.length + savedOnline.length;
   const onlineTagged = (c: RetrievedCandidate) => matchesTags(c, tags.state, c.sources[0]?.excerpt);
@@ -202,13 +227,13 @@ export function SearchPage() {
   // web is offered even when the library settled the lookup (D45).
   const questionFoundNothing =
     onlineState.status === 'done' &&
-    isQuestion &&
-    splitFolded(query, onlineCandidates, stories).shown.length === 0;
-  // Wider-web searches that finished here, by lean and query: the block moves behind "Show other
+    ((isQuestion && splitFolded(query, onlineCandidates, stories).shown.length === 0) ||
+      (isQuestion && scope.length > 0 && onlineShown.length === 0 && savedShown.length === 0));
+  // Wider-web searches that finished here, by mode, tags and query: the block moves behind "Show other
   // places to look" when online results arrive, and that remount must not pay for the same search
   // again.
   const [webSearched, setWebSearched] = useState<ReadonlySet<string>>(() => new Set());
-  const webKey = `${stories}:${query}`;
+  const webKey = JSON.stringify([query, contextKey]);
   const lookupSettled = onlineState.status !== 'loading' && onlineState.status !== 'partial';
   // The wider-web results on screen for this search and lean, and the search a card is made for.
   const [webFound, setWebFound] = useState<{ key: string; results: readonly WebResult[] }>();
@@ -221,22 +246,19 @@ export function SearchPage() {
     settingsLoaded &&
     settings.webSearch !== 'off' &&
     (onlineShown.length > 0 || webShown.length > 0);
-  // Keyed by query and lean: its results live only in its state, so either change starts it afresh.
+  // Query, mode and tags identify the result set; changing context starts it afresh.
   const widerWeb = (search.needsRetrieval || questionFoundNothing) && settingsLoaded && (
     <WiderWebSearch
       key={webKey}
       query={query}
+      contextKey={contextKey}
       isOnline={isOnline}
       preference={settings.webSearch}
       historyOn={settings.history === 'on'}
       onAllow={() => setSetting('webSearch', 'on')}
-      unlocked={settings.webAccess === 'unlocked'}
-      // Best effort: a failed write only means the button shows instead of a search by itself.
-      onAccess={(unlocked) =>
-        void setSetting('webAccess', unlocked ? 'unlocked' : 'unknown').catch(() => {})
-      }
+      signedIn={readAccountHint() !== null}
       stories={stories}
-      about={hasActiveTags(tags.state) ? aboutHint(tags.state) : undefined}
+      about={about.length ? about : undefined}
       // A pasted message is someone's private text: the wider web gets it only on a tap.
       mayAutoSearch={lookupSettled && !webSearched.has(webKey) && !looksLikeMessage(query)}
       onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
@@ -273,7 +295,7 @@ export function SearchPage() {
 
   return (
     <Page title="Search" eyebrow="Decode a reference" wide>
-      <div data-tour="search-bar">
+      <div className={styles.searchBar} data-tour="search-bar">
         <SearchPeek query={query} outcome={peekOutcome} enabled={!reduced && !tour.open}>
           <SearchBar
             value={query}
@@ -380,9 +402,7 @@ export function SearchPage() {
               animate="visible"
               onAnimationComplete={() => setCurateShown(query)}
             >
-              <button
-                type="button"
-                className={styles.curateButton}
+              <CardNoteButton
                 aria-describedby={curateHintId}
                 onClick={(event) => {
                   // Safari doesn't focus a tapped button; the flow returns focus here on close.
@@ -390,14 +410,8 @@ export function SearchPage() {
                   setCurating(query);
                 }}
               >
-                <svg className={styles.curateIcon} viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="6.5" r="2.5" />
-                  <circle cx="16.8" cy="14.8" r="2.5" />
-                  <circle cx="7.2" cy="14.8" r="2.5" />
-                </svg>
                 Make a card from these
-              </button>
+              </CardNoteButton>
               <p id={curateHintId} className={styles.curateHint}>
                 Pick the results you trust and get one card.
               </p>
@@ -409,7 +423,7 @@ export function SearchPage() {
               <CurateFlow
                 key={query}
                 search={query}
-                about={hasActiveTags(tags.state) ? aboutHint(tags.state) : undefined}
+                about={about.length ? about : undefined}
                 candidates={onlineShown}
                 webResults={webShown}
                 onClose={() => setCurating(null)}
@@ -417,6 +431,16 @@ export function SearchPage() {
             )}
           </AnimatePresence>
 
+          {onlyThese &&
+            resultCount > 0 &&
+            localShown.length === 0 &&
+            onlineShown.length === 0 &&
+            savedShown.length === 0 &&
+            webShown.length === 0 && (
+              <p className={styles.count}>
+                No results match these tags. Turn off Only these or change your tags.
+              </p>
+            )}
           {localShown.length > 0 && (
             <ul className={styles.results}>
               {localShown.map((match, index) => {

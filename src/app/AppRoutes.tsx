@@ -19,11 +19,17 @@ const FavouritesPage = lazy(() =>
 const PacksPage = lazy(() =>
   import('../features/packs/PacksPage').then((m) => ({ default: m.PacksPage })),
 );
+const ActivityPage = lazy(() =>
+  import('../features/activity/ActivityPage').then((m) => ({ default: m.ActivityPage })),
+);
 const PackPage = lazy(() =>
   import('../features/packs/PackPage').then((m) => ({ default: m.PackPage })),
 );
 const SettingsPage = lazy(() =>
   import('../features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
+const SignInPage = lazy(() =>
+  import('../features/account/SignInPage').then((m) => ({ default: m.SignInPage })),
 );
 
 // While a page's code downloads, the mascot juggles popcorn (only if it takes more than a moment).
@@ -44,11 +50,13 @@ export function AppRoutes() {
         <Route path="/" element={<Navigate to="/discover" replace />} />
         <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/search" element={later(<SearchPage />)} />
+        <Route path="/activity" element={later(<ActivityPage />)} />
         <Route path="/references/:id" element={later(<ReferencePage />)} />
         <Route path="/favourites" element={later(<FavouritesPage />)} />
         <Route path="/packs" element={later(<PacksPage />)} />
         <Route path="/packs/:packId" element={later(<PackPage />)} />
         <Route path="/settings" element={later(<SettingsPage />)} />
+        <Route path="/sign-in" element={later(<SignInPage />)} />
         {DevComponentsPage && (
           <Route
             path="/dev/components"
