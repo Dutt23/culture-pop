@@ -1,5 +1,7 @@
 import { CrossedDaggers } from './CrossedDaggers';
 import { EnergySword } from './EnergySword';
+import { FRAME, INK, MIST, STEEL } from './palette';
+import room from './room.module.css';
 import { RoomProp } from './RoomProp';
 import { SwordInStone } from './SwordInStone';
 import { ThornWhip } from './ThornWhip';
@@ -18,10 +20,9 @@ export function BackProps({ className }: { className: string }) {
       preserveAspectRatio="xMinYMax meet"
     >
       {/* Each is a reference the mascot names when tapped, like the rest of the room. */}
-      {/* On the floor at Metallica's left edge, half behind it (the floor is at y 152). Further left
-          runs off the screen on laptops, where the posters start at the page margin. */}
+      {/* On the floor in the first poster spot (the floor is at y 152), fully tappable. */}
       <RoomProp id="swordInStone">
-        <g transform="translate(2 152) scale(1.3)">
+        <g transform="translate(20 152) scale(1.3)">
           <SwordInStone />
         </g>
       </RoomProp>
@@ -35,6 +36,16 @@ export function BackProps({ className }: { className: string }) {
           <ThornWhip />
         </g>
       </RoomProp>
+      {/* Moved up from the poster row, hung above Daft Punk. */}
+      <g transform="translate(258 30)">
+        <RoomProp id="metallica">
+          <rect width="40" height="52" rx="2" fill={INK} stroke={FRAME} />
+          <path d="M22 8 l-8 16 h6 l-4 14 l11 -18 h-6 l5 -12 Z" fill={MIST} />
+          <text x="20" y="47" textAnchor="middle" className={room.band} fontSize="5.6" fill={STEEL}>
+            METALLICA
+          </text>
+        </RoomProp>
+      </g>
       {/* Leans out from behind Queen. */}
       <RoomProp id="energySword">
         <g transform="translate(200 128) rotate(13) scale(1.25)">

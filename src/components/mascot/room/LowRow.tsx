@@ -1,26 +1,11 @@
-import { FRAME, INK, LAMP, LIGHT, MIST, NIGHT, STEEL } from './palette';
+import { INK, LAMP, LIGHT, MIST, NIGHT, STEEL } from './palette';
 import { RoomProp } from './RoomProp';
 import styles from './room.module.css';
 
 function BandPosters() {
   return (
     <>
-      <g>
-        <RoomProp id="metallica">
-          <rect width="40" height="52" rx="2" fill={INK} stroke={FRAME} />
-          <path d="M22 8 l-8 16 h6 l-4 14 l11 -18 h-6 l5 -12 Z" fill={MIST} />
-          <text
-            x="20"
-            y="47"
-            textAnchor="middle"
-            className={styles.band}
-            fontSize="5.6"
-            fill={STEEL}
-          >
-            METALLICA
-          </text>
-        </RoomProp>
-      </g>
+      {/* Metallica hangs on the wall above Daft Punk (BackProps); the sword in the stone has its spot. */}
       <g transform="translate(86 0)">
         <RoomProp id="linkinPark">
           <rect width="40" height="52" rx="2" fill="#4a4858" />
