@@ -8,6 +8,7 @@ import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { resetTours, TOUR_PARAM } from '../../components/tour/useTour';
 import { SETTING_LABELS, type SettingKey, type Settings } from '../../domain/settings';
+import { useWiderWebAllowed } from '../../app/useWiderWebAllowed';
 import { AccountSection } from '../account/AccountSection';
 import { BackupSection } from './BackupSection';
 import { useSettings } from './useSettings';
@@ -26,7 +27,8 @@ const THEME_OPTIONS = optionsOf('theme');
 const MOTION_OPTIONS = optionsOf('motion');
 const SPOILER_OPTIONS = optionsOf('spoilers');
 const RETRIEVAL_OPTIONS = optionsOf('retrieval');
-const WEB_SEARCH_OPTIONS = optionsOf('webSearch');
+// "Ask first" is the stored default (never chose) and reads as On (D65): only On and Off are offered.
+const WEB_SEARCH_OPTIONS = optionsOf('webSearch').filter((option) => option.value !== 'ask');
 const HISTORY_OPTIONS = optionsOf('history');
 const TASTE_OPTIONS = optionsOf('taste');
 
@@ -57,6 +59,7 @@ function Note({ lead, topic, children }: NoteProps) {
 
 export function SettingsPage() {
   const { settings, setSetting, resetLocalData } = useSettings();
+  const widerWebAllowed = useWiderWebAllowed();
   const { history } = useRepositories();
   const navigate = useNavigate();
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
@@ -146,28 +149,37 @@ export function SettingsPage() {
           </Note>
         </div>
         <div className={styles.withNote}>
-          <SegmentedControl
-            legend="Wider web search"
-            name="webSearch"
-            options={WEB_SEARCH_OPTIONS}
-            value={settings.webSearch}
-            onChange={(value) => save(() => setSetting('webSearch', value))}
-          />
+          {widerWebAllowed ? (
+            <SegmentedControl
+              legend="Wider web search"
+              name="webSearch"
+              options={WEB_SEARCH_OPTIONS}
+              value={settings.webSearch === 'off' ? 'off' : 'on'}
+              onChange={(value) => save(() => setSetting('webSearch', value))}
+            />
+          ) : (
+            <p>
+              <strong>Wider web search</strong>: Not turned on for your account.
+            </p>
+          )}
           <Note
             topic="wider web search"
-            lead="When nothing explains a search, you can tap “Search the wider web”; Off hides the button."
+            lead={
+              widerWebAllowed
+                ? 'When nothing explains a search, the app also searches the wider web by itself; Off stops it.'
+                : 'The owner turns it on for an account. Until then nothing is sent to the wider web.'
+            }
           >
-            With On, once you're signed in on this device, it runs by itself on those searches. Your
-            search text then goes through our server to a web-search provider (Parallel), which may
-            keep it and use it to improve its service. Nothing else is sent. The links it finds are
-            not checked. Results from the wider web can be kept on this device, for you only, for 30
-            days while search history is on; they are never sent anywhere, and Clear history deletes
-            them. A link you save with the heart keeps only its title and address, on this device,
-            until you remove it or reset. If you make a card from results, the search, the results
-            you picked and any style cards go through our server to OpenAI (or Cloudflare if OpenAI
-            is busy), and Parallel reads the pages you picked; they don't use it to train their
-            models, and the card is kept only on this device. It needs you to sign in, and the owner
-            to turn it on for your account.
+            When it runs, your search text goes through our server to a web-search provider
+            (Parallel), which may keep it and use it to improve its service. Nothing else is sent.
+            The links it finds are not checked. Results from the wider web can be kept on this
+            device, for you only, for 30 days while search history is on; they are never sent
+            anywhere, and Clear history deletes them. A link you save with the heart keeps only its
+            title and address, on this device, until you remove it or reset. If you make a card from
+            results, the search, the results you picked and any style cards go through our server to
+            OpenAI (or Cloudflare if OpenAI is busy), and Parallel reads the pages you picked; they
+            don't use it to train their models, and the card is kept only on this device. It needs
+            you to sign in, and the owner to turn it on for your account.
           </Note>
         </div>
         <div className={styles.withNote}>
@@ -219,12 +231,13 @@ export function SettingsPage() {
 
       <Section title="Your data">
         <Note topic="your data" lead="Everything stays in this browser.">
-          Search text leaves the device only through online search (if you turn it on), a wider web
-          search you tap, or an external search link you tap. Search history and results found
-          online are kept here until you clear them; wider web results are kept for 30 days, only
-          while search history is on. Web links you save stay until you remove them or reset. Voice
-          search (the talking TV button in the search box) is turned into text by your browser’s
-          speech service (Google for Chrome, Apple for Safari), never by our server.
+          Search text leaves the device only through online search (if you turn it on), the wider
+          web search (if it&rsquo;s on for your account and you haven&rsquo;t turned it off), or an
+          external search link you tap. Search history and results found online are kept here until
+          you clear them; wider web results are kept for 30 days, only while search history is on.
+          Web links you save stay until you remove them or reset. Voice search (the talking TV
+          button in the search box) is turned into text by your browser’s speech service (Google for
+          Chrome, Apple for Safari), never by our server.
         </Note>
         <Note
           topic="resetting"

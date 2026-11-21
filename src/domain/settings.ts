@@ -6,8 +6,9 @@ export type SpoilerPreference = 'hide' | 'show';
 /** Consent to send search text to Wikimedia. `ask` shows the disclosure first. */
 export type RetrievalPreference = 'ask' | 'on' | 'off';
 /**
- * Consent to send search text to the wider-web search (D45). `on` also runs it by itself on a miss,
- * once this device is signed in (D64).
+ * The wider-web search (D45), for accounts it is turned on for (D65). `ask` is the stored default
+ * (never chose) and acts like `on`: it runs by itself on a miss, with a one-time notice, after which
+ * the choice is stored as `on`. `off` is always honoured.
  */
 export type WebSearchPreference = 'ask' | 'on' | 'off';
 /** Question searches lean to films, TV, anime, books, games, myths and legends (owner, D50). */

@@ -1,6 +1,6 @@
 import { searchContextKey } from '../../../shared/text';
 import { screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PopCultureDb } from '../../data/db';
 import { createRepositories } from '../../data/repositories';
 import { WEB_RESULTS_TTL_MS } from '../../data/repositories/webResultRepository';
@@ -12,8 +12,19 @@ import {
   type EphemeralResult,
   type WebSearchClient,
 } from '../../services/retrieval/webSearch';
+import { fakeAuthClient } from '../../test/fakeAuth';
 import { unusedRetrievalService } from '../../test/fakeRetrieval';
-import { createTestDatabase, renderApp } from '../../test/renderApp';
+import type { RetrievalService } from '../../app/retrievalServiceContext';
+import type { AuthClient } from '../../services/auth/authClient';
+import { createTestDatabase, renderApp as renderAppAs, widerWebOn } from '../../test/renderApp';
+
+/** Signed in with the wider web on for the account, unless a test says otherwise (D65). */
+const renderApp = (
+  route: string,
+  db?: PopCultureDb,
+  retrieval?: RetrievalService,
+  client: AuthClient = widerWebOn,
+) => renderAppAs(route, db, retrieval, client);
 
 const QUESTION = 'why are ferrari fans depressed';
 const ROUTE = `/search?q=${encodeURIComponent(QUESTION)}`;
@@ -53,21 +64,12 @@ async function storedText(db: PopCultureDb, skip: readonly string[] = []): Promi
 }
 
 describe('wider-web search (D45)', () => {
-  it('asks first, shows unverified links, and keeps them only in the device store', async () => {
+  it('runs by itself the first time, says once where it went, and keeps links only on the device', async () => {
     const db = await databaseWith({});
     const before = await storedText(db, ['webResults']);
     const retrieval = serviceWith(async () => [RESULT]);
-    const { user } = renderApp(ROUTE, db, retrieval);
+    renderApp(ROUTE, db, retrieval);
 
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
-    const consent = screen.getByRole('region', { name: 'Search the wider web?' });
-    expect(consent).toHaveTextContent(/Parallel/);
-    expect(consent).toHaveTextContent(/The card is kept only on this device/);
-    expect(consent).toHaveTextContent(/may use them to improve its service/);
-    expect(consent).toHaveTextContent(/kept on this device, for you only/);
-    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
-
-    await user.click(within(consent).getByRole('button', { name: 'Search the wider web' }));
     const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
     const link = within(block).getByRole('link', { name: /Why are Ferrari fans always sad/ });
     expect(link).toHaveAttribute('href', RESULT.url);
@@ -76,6 +78,14 @@ describe('wider-web search (D45)', () => {
     expect(block).toHaveTextContent('reddit.com');
     expect(block).toHaveTextContent(RESULT.snippet);
     expect(block).toHaveTextContent('Kept on this device for 30 days, for you only.');
+    expect(
+      screen.getByText(/also go through our server to our web-search provider/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Turn this off in Settings' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
+    expect(screen.queryByRole('region', { name: 'Search the wider web?' })).not.toBeInTheDocument();
     // Text and links only: no media element is ever made from a result.
     expect(block.querySelector('img, video, iframe, picture, source')).toBeNull();
     expect(retrieval.webSearch.search).toHaveBeenCalledWith(
@@ -100,8 +110,7 @@ describe('wider-web search (D45)', () => {
   it('keeps nothing while search history is off', async () => {
     const db = await databaseWith({ webSearch: 'on', history: 'off' });
     const retrieval = serviceWith(async () => [RESULT]);
-    const { user } = renderApp(ROUTE, db, retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    renderApp(ROUTE, db, retrieval);
     const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
     expect(block).toHaveTextContent('Not saved on this device.');
     expect(await db.webResults.count()).toBe(0);
@@ -114,7 +123,6 @@ describe('wider-web search (D45)', () => {
       db,
       serviceWith(async () => [RESULT]),
     );
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
     expect(block).toHaveTextContent('Tap the heart to save a link until you remove it.');
     const heart = () => within(block).getByRole('button', { name: `Save link ${RESULT.title}` });
@@ -135,12 +143,11 @@ describe('wider-web search (D45)', () => {
   it('saves a link even while search history is off, and shows a saved link as saved', async () => {
     const db = await databaseWith({ webSearch: 'on', history: 'off' });
     await createRepositories(db).savedLinks.toggle(RESULT);
-    const { user } = renderApp(
+    renderApp(
       ROUTE,
       db,
       serviceWith(async () => [RESULT]),
     );
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
     expect(block).toHaveTextContent('Not saved on this device.');
     await waitFor(() =>
@@ -157,8 +164,7 @@ describe('wider-web search (D45)', () => {
     const expired = Date.now() - WEB_RESULTS_TTL_MS - 1;
     await createRepositories(db).webResults.save('old search', [RESULT], expired);
     const retrieval = serviceWith(async () => [SHOWN_ONCE]);
-    const { user } = renderApp(ROUTE, db, retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+    renderApp(ROUTE, db, retrieval);
     const block = await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
     expect(block).toHaveTextContent('Not saved on this device.');
     await waitFor(async () => expect(await db.webResults.get('old search')).toBeUndefined());
@@ -209,37 +215,27 @@ describe('wider-web search (D45)', () => {
       db,
       serviceWith(async () => []),
     );
-    expect(await screen.findByRole('button', { name: 'Search the wider web' })).toBeInTheDocument();
+    expect(
+      await screen.findByText('The wider web had nothing for this either.'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Saved \d/)).not.toBeInTheDocument();
   });
 
-  it('"Not now" closes the card and sends nothing', async () => {
-    const retrieval = serviceWith(async () => [RESULT]);
-    const { user } = renderApp(ROUTE, await databaseWith({}), retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
-    await user.click(screen.getByRole('button', { name: 'Not now' }));
-    expect(screen.queryByRole('region', { name: 'Search the wider web?' })).not.toBeInTheDocument();
-    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
-  });
-
-  it('with "On" stored, one tap searches without asking', async () => {
+  it('with "On" stored, runs by itself with no notice', async () => {
     const retrieval = serviceWith(async () => []);
-    const { user } = renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
-    expect(screen.queryByRole('region', { name: 'Search the wider web?' })).not.toBeInTheDocument();
+    renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
     const nothing = await screen.findByText('The wider web had nothing for this either.');
     expect(nothing).toBeInTheDocument();
+    expect(screen.queryByText(/also go through our server/)).not.toBeInTheDocument();
     expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
   });
 
-  it('"Off" hides the button', async () => {
-    renderApp(
-      ROUTE,
-      await databaseWith({ webSearch: 'off' }),
-      serviceWith(async () => []),
-    );
+  it('"Off" sends nothing and hides the button', async () => {
+    const retrieval = serviceWith(async () => []);
+    renderApp(ROUTE, await databaseWith({ webSearch: 'off' }), retrieval);
     await screen.findByRole('region', { name: 'Look it up elsewhere' });
     expect(screen.queryByRole('button', { name: 'Search the wider web' })).not.toBeInTheDocument();
+    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
   });
 
   it('is not offered when the library already answers the search', async () => {
@@ -256,7 +252,6 @@ describe('wider-web search (D45)', () => {
     const retrieval = serviceWith(async () => [RESULT]);
     retrieval.webSearch.search.mockRejectedValueOnce(new WebSearchError('daily_cap', 'HTTP 429'));
     const { user } = renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/used up/);
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(
@@ -273,15 +268,14 @@ describe('"Search videos"', () => {
     storage: 'device',
   };
 
-  it('asks first, searches videos only, and keeps nothing', async () => {
-    const db = await databaseWith({});
-    const retrieval = serviceWith(async () => [VIDEO]);
+  it('searches videos only, and keeps nothing', async () => {
+    const db = await databaseWith({ webSearch: 'on', history: 'off' });
+    const retrieval = serviceWith(async () => []);
     const { user } = renderApp(ROUTE, db, retrieval);
+    await screen.findByText('The wider web had nothing for this either.');
 
-    await user.click(await screen.findByRole('button', { name: 'Search videos' }));
-    const consent = screen.getByRole('region', { name: 'Search the wider web?' });
-    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
-    await user.click(within(consent).getByRole('button', { name: 'Search videos' }));
+    retrieval.webSearch.search.mockResolvedValueOnce([VIDEO]);
+    await user.click(screen.getByRole('button', { name: 'Search videos' }));
 
     const block = await screen.findByRole('region', { name: 'Videos found… (unverified)' });
     expect(within(block).getByRole('link', { name: /Ferrari fans react/ })).toHaveAttribute(
@@ -307,7 +301,6 @@ describe('"Search videos"', () => {
     const db = await databaseWith({ webSearch: 'on' });
     const retrieval = serviceWith(async () => [RESULT]);
     const { user } = renderApp(ROUTE, db, retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
     const repos = createRepositories(db);
     await waitFor(async () =>
@@ -330,24 +323,47 @@ describe('"Search videos"', () => {
       await databaseWith({ webSearch: 'on' }),
       serviceWith(async () => []),
     );
-    await user.click(await screen.findByRole('button', { name: 'Search videos' }));
+    await screen.findByText('The wider web had nothing for this either.');
+    await user.click(screen.getByRole('button', { name: 'Search videos' }));
     expect(await screen.findByText('No videos found for this.')).toBeInTheDocument();
   });
 });
 
-/** This device signed in before (the email hint `readAccountHint` reads). */
-const signIn = () => localStorage.setItem('pcd-account', 'reader@example.test');
+/** Signed in, and the wider web is not turned on for the account (or the server couldn't say). */
+const notAllowed = (widerWeb: boolean | null) =>
+  fakeAuthClient({ signedIn: true, email: 'reader@example.test', widerWeb });
 
-afterEach(() => {
-  localStorage.removeItem('pcd-account');
-});
+describe('who may search (D64, D65)', () => {
+  it.each([
+    ['not turned on', false],
+    ['unknown', null],
+  ])('%s for the account: no button, no notice, nothing sent', async (_name, widerWeb) => {
+    const retrieval = serviceWith(async () => [RESULT]);
+    renderApp(ROUTE, await databaseWith({}), retrieval, notAllowed(widerWeb));
+    await screen.findByRole('region', { name: 'Look it up elsewhere' });
+    expect(screen.queryByRole('button', { name: 'Search the wider web' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Search videos' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/web-search provider/)).not.toBeInTheDocument();
+    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
+  });
 
-describe('who may search (D64)', () => {
-  it('signed out: says so plainly with a link to sign in, and no "Try again"', async () => {
+  it('a search by itself the server refuses: the button comes back with no message', async () => {
+    const retrieval = serviceWith(async () => {
+      throw new WebSearchError('signed_out', 'HTTP 401');
+    });
+    renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
+    // The button also shows before the search starts, so wait for the search itself first.
+    await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('button', { name: 'Search the wider web' })).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('signed out, on a tap: says so plainly with a link to sign in, and no "Try again"', async () => {
     const retrieval = serviceWith(async () => {
       throw new WebSearchError('signed_out', 'HTTP 401');
     });
     const { user } = renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
+    await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1));
     await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Sign in to search the wider web.');
@@ -358,58 +374,48 @@ describe('who may search (D64)', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 
-  it('signed in but not turned on: says to ask the owner, with no link and no retry', async () => {
+  it('turned off on the server since, on a tap: says to ask the owner, no link, no retry', async () => {
     const retrieval = serviceWith(async () => {
       throw new WebSearchError('not_allowed', 'HTTP 403');
     });
     const { user } = renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
+    await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1));
     await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent("isn't turned on for your account yet. Ask the owner.");
     expect(within(alert).queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
-
-  it('never asks for or keeps any code', async () => {
-    renderApp(
-      ROUTE,
-      await databaseWith({}),
-      serviceWith(async () => [RESULT]),
-    );
-    await screen.findByRole('button', { name: 'Search the wider web' });
-    expect(screen.queryByLabelText(/access code/i)).not.toBeInTheDocument();
-  });
 });
 
-describe('searching by itself once signed in (D50)', () => {
-  it('runs without a tap when "On" and this device is signed in', async () => {
-    signIn();
-    const retrieval = serviceWith(async () => [RESULT]);
-    renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
-    expect(
-      await screen.findByRole('region', { name: 'Community suggests… (unverified)' }),
-    ).toBeInTheDocument();
-    expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
-  });
-
-  it('waits for a tap on a device that never signed in', async () => {
-    const retrieval = serviceWith(async () => [RESULT]);
-    const { user } = renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
+describe('searching by itself (D50, D65)', () => {
+  it('shows the notice only the first time', async () => {
+    const db = await databaseWith({});
+    const first = renderApp(
+      ROUTE,
+      db,
+      serviceWith(async () => [RESULT]),
+    );
     await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
-    expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1);
-  });
+    expect(screen.getByText(/also go through our server/)).toBeInTheDocument();
+    await waitFor(async () =>
+      expect(await createRepositories(db).settings.getAll()).toContainEqual({
+        key: 'webSearch',
+        value: 'on',
+      }),
+    );
+    first.unmount();
 
-  it('still asks first under "Ask first", even when signed in', async () => {
-    signIn();
-    const retrieval = serviceWith(async () => [RESULT]);
-    renderApp(ROUTE, await databaseWith({ webSearch: 'ask' }), retrieval);
-    expect(await screen.findByRole('button', { name: 'Search the wider web' })).toBeInTheDocument();
-    expect(retrieval.webSearch.search).not.toHaveBeenCalled();
+    renderApp(
+      '/search?q=why%20do%20cats%20sit%20in%20boxes',
+      db,
+      serviceWith(async () => []),
+    );
+    await screen.findByText('The wider web had nothing for this either.');
+    expect(screen.queryByText(/also go through our server/)).not.toBeInTheDocument();
   });
 
   it('shows kept results instead of paying for the same search again', async () => {
-    signIn();
     const db = await databaseWith({ webSearch: 'on' });
     await createRepositories(db).webResults.save(
       QUESTION,
@@ -423,18 +429,6 @@ describe('searching by itself once signed in (D50)', () => {
     expect(block).toHaveTextContent(/Saved /);
     expect(retrieval.webSearch.search).not.toHaveBeenCalled();
   });
-
-  it('when a search by itself is refused, the button comes back with no message', async () => {
-    signIn();
-    const retrieval = serviceWith(async () => {
-      throw new WebSearchError('signed_out', 'HTTP 401');
-    });
-    renderApp(ROUTE, await databaseWith({ webSearch: 'on' }), retrieval);
-    // The button also shows before the search starts, so wait for the search itself first.
-    await waitFor(() => expect(retrieval.webSearch.search).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole('button', { name: 'Search the wider web' })).toBeEnabled();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  });
 });
 
 describe('"Stories & myths" (D50)', () => {
@@ -444,12 +438,11 @@ describe('"Stories & myths" (D50)', () => {
       await databaseWith({}),
       serviceWith(async () => []),
     );
-    await screen.findByRole('button', { name: 'Search the wider web' });
+    await screen.findByText('The wider web had nothing for this either.');
     expect(screen.queryByRole('checkbox', { name: /Stories & myths/ })).not.toBeInTheDocument();
   });
 
   it('is ticked by default, and unticking searches the question as plain text', async () => {
-    signIn();
     const db = await databaseWith({ webSearch: 'on' });
     const retrieval = serviceWith(async () => [RESULT]);
     const { user } = renderApp(ROUTE, db, retrieval);
@@ -485,7 +478,9 @@ describe('wider-web search settings', () => {
     await db.open();
     const { user } = renderApp('/settings', db);
     const group = await screen.findByRole('group', { name: 'Wider web search' });
-    expect(within(group).getByRole('radio', { name: 'Ask first' })).toBeChecked();
+    // Never chose: reads as On, and there is no "Ask first" any more.
+    expect(within(group).getByRole('radio', { name: 'On' })).toBeChecked();
+    expect(within(group).queryByRole('radio', { name: 'Ask first' })).not.toBeInTheDocument();
     const note = screen.getByText(/goes through our server to a web-search provider/);
     expect(note).toHaveTextContent(/kept on this device, for you only/);
 
@@ -496,5 +491,13 @@ describe('wider-web search settings', () => {
         value: 'off',
       }),
     );
+  });
+
+  it('says it is not turned on for an account without it, with no switch', async () => {
+    renderApp('/settings', undefined, undefined, notAllowed(false));
+    expect(
+      await screen.findByText(/Not turned on for your account/, { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Wider web search' })).not.toBeInTheDocument();
   });
 });

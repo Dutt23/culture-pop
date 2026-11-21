@@ -8,7 +8,7 @@ import {
   type WebSearchClient,
 } from '../../services/retrieval/webSearch';
 import { unusedRetrievalService } from '../../test/fakeRetrieval';
-import { createTestDatabase, renderApp } from '../../test/renderApp';
+import { createTestDatabase, renderApp, widerWebOn } from '../../test/renderApp';
 
 const QUESTION = 'why are ferrari fans depressed';
 const ROUTE = `/search?q=${encodeURIComponent(QUESTION)}`;
@@ -20,21 +20,21 @@ const RESULT: WebResult = {
 };
 
 /**
- * `signedIn`: this device signed in before, so with "On" the wider web searches by itself (D50,
- * D65), as it does for a new search lean or new tags.
+ * Signed in with the wider web turned on (renderApp's default), so it searches by itself on the
+ * miss (D50, D65), as it does for a new search lean or new tags.
  */
-async function setUp(webSearch: Settings['webSearch'], signedIn = false) {
-  if (signedIn) localStorage.setItem('pcd-account', 'reader@example.test');
+async function setUp(
+  webSearch: Settings['webSearch'],
+  search: WebSearchClient['search'] = async () => [RESULT],
+) {
   const db = createTestDatabase();
   await db.open();
   const repos = createRepositories(db);
   await repos.settings.set('retrieval', 'off');
   await repos.settings.set('webSearch', webSearch);
   const retrieval = unusedRetrievalService();
-  retrieval.webSearch.search.mockImplementation(
-    vi.fn<WebSearchClient['search']>(async () => [RESULT]),
-  );
-  return { ...renderApp(ROUTE, db, retrieval), repos };
+  retrieval.webSearch.search.mockImplementation(vi.fn<WebSearchClient['search']>(search));
+  return { ...renderApp(ROUTE, db, retrieval, widerWebOn), repos };
 }
 
 // Closing the card dialog steps history back; jsdom does that late, into the next test. Not here.
@@ -43,24 +43,23 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  localStorage.removeItem('pcd-account');
   vi.mocked(window.history.back).mockRestore();
 });
 
 describe('search page: make a card', () => {
   it('offers "Make a card from these" under wider-web results and opens the film', async () => {
     const { user } = await setUp('on');
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     await screen.findByRole('region', { name: 'Community suggests… (unverified)' });
 
-    await user.click(screen.getByRole('button', { name: 'Make a card from these' }));
+    // The entry comes a moment after the results it is for.
+    await user.click(await screen.findByRole('button', { name: 'Make a card from these' }));
     // A frame's name starts with the site on its film edge (the heart's starts with "Save link").
     const frame = await screen.findByRole('button', { name: /^reddit\.com\s*Why are Ferrari/ });
     expect(frame).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('reruns the wider web with changed tags and removes old-context results', async () => {
-    const { user, retrieval } = await setUp('on', true);
+    const { user, retrieval } = await setUp('on');
     await screen.findByRole('link', { name: /Why are Ferrari fans always sad/ });
     vi.mocked(retrieval.webSearch.search).mockResolvedValueOnce([]);
     const row = await screen.findByRole('group', { name: /Search tags/ });
@@ -74,11 +73,12 @@ describe('search page: make a card', () => {
 
   it('puts the entry above the results and opens the flow in a dialog', async () => {
     const { user } = await setUp('on');
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     const result = await screen.findByRole('link', { name: /Why are Ferrari fans always sad/ });
 
     // One entry, before the first result: on screen as the results arrive, not under them.
-    const [entry, ...others] = screen.getAllByRole('button', { name: 'Make a card from these' });
+    const [entry, ...others] = await screen.findAllByRole('button', {
+      name: 'Make a card from these',
+    });
     expect(others).toHaveLength(0);
     expect(entry!.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
@@ -95,14 +95,14 @@ describe('search page: make a card', () => {
   });
 
   it('has no entry before any results', async () => {
-    await setUp('on');
-    await screen.findByRole('button', { name: 'Search the wider web' });
+    // The search never answers, so no results arrive.
+    await setUp('on', () => new Promise(() => {}));
+    await screen.findByText('Searching the wider web…');
     expect(screen.queryByRole('button', { name: 'Make a card from these' })).toBeNull();
   });
 
   it('hides the entry again when a later wider-web run fails', async () => {
     const { user, retrieval } = await setUp('on');
-    await user.click(await screen.findByRole('button', { name: 'Search the wider web' }));
     await screen.findByRole('button', { name: 'Make a card from these' });
 
     vi.mocked(retrieval.webSearch.search).mockRejectedValueOnce(
@@ -115,7 +115,7 @@ describe('search page: make a card', () => {
   });
 
   it('keeps an open flow and its picks when the results on the page go away', async () => {
-    const { user, retrieval, repos } = await setUp('on', true);
+    const { user, retrieval, repos } = await setUp('on');
     await user.click(await screen.findByRole('button', { name: 'Make a card from these' }));
     const flow = await screen.findByRole('dialog');
     await user.click(

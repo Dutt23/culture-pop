@@ -24,7 +24,6 @@ const failureOf = (error: unknown): WebSearchFailure =>
 
 type Phase =
   | { kind: 'idle' }
-  | { kind: 'consent' }
   | { kind: 'loading' }
   | { kind: 'error'; failure: WebSearchFailure }
   | { kind: 'done'; results: readonly WebResult[] };
@@ -36,10 +35,8 @@ interface WiderWebSearchProps {
   preference: WebSearchPreference;
   /** Search history on: only then are `device` results kept, because they are keyed by the query. */
   historyOn: boolean;
-  /** Stores "On" after the reader agrees in the consent card. */
+  /** Stores "On" once the reader has seen the one-time notice, so it isn't shown again. */
   onAllow: () => Promise<void>;
-  /** This device signed in before (`readAccountHint`): only then does "On" search by itself. */
-  signedIn: boolean;
   /** A question leans to stories and myths ("Stories & myths"). */
   stories: boolean;
   /** The reader's "on" search tags, sent as a hint ("about anime"); never the search text. */
@@ -60,20 +57,29 @@ interface WiderWebSearchProps {
 }
 
 /**
- * "Search the wider web" for a local miss: one tap, consent first. Once the reader said "On" and is
- * signed in on this device, it runs by itself instead (D50). The server decides who may search (D64). `device` results are kept on
+ * The wider web for a local miss. Shown only to someone it is turned on for (the page checks, D65);
+ * it runs by itself unless the reader chose Off, and the first time it does a short notice says
+ * where the search goes. The server still decides every search (D64). `device` results are kept on
  * this device for 30 days while search history is on (D45), shown again with "Saved <date>" and
  * Refresh; `none` results live only in this component's state. Neither ever reaches the library,
  * history's reference IDs or favourites, and nothing kept here is ever sent anywhere.
  */
 export function WiderWebSearch(props: WiderWebSearchProps) {
-  const { query, isOnline, preference, onAllow, signedIn, stories, onSearched } = props;
+  const { query, isOnline, preference, onAllow, stories, onSearched } = props;
   const historyOn = props.historyOn;
   const { webSearch } = useRetrievalService();
   const { webResults } = useRepositories();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [saved, setSaved] = useState<SavedWebResults | undefined>(undefined);
-  const [saveFailed, setSaveFailed] = useState(false);
+  // Never chose ("ask"): the first search shows where it goes, once; then the choice is "On".
+  const [firstTime] = useState(preference === 'ask');
+  const noticeStored = useRef(false);
+  // Stored only once the notice is on screen with an answer, so a refused search shows it next time.
+  const seenNotice = () => {
+    if (!firstTime || noticeStored.current) return;
+    noticeStored.current = true;
+    onAllow().catch(() => {});
+  };
   // With history off nothing is kept, so there is nothing to wait for before searching by itself.
   const [savedChecked, setSavedChecked] = useState(!historyOn);
   // Which search was asked for last: the wider web, or YouTube videos only ("Search videos").
@@ -123,6 +129,7 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
       if (current.signal.aborted) return;
       onSearched();
       setPhase({ kind: 'done', results });
+      seenNotice();
       // Best effort: a failed write only means a new search next time. Videos are never kept: kept
       // they have a different search mode from the saved wider-web results.
       if (historyOn && !wantVideos) {
@@ -135,15 +142,16 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
       onSearched();
       const failure = failureOf(error);
       // A search that ran by itself never shows a sign-in message: the button comes back instead.
-      if (auto && isAccessFailure(failure)) setPhase({ kind: 'idle' });
-      else setPhase({ kind: 'error', failure });
+      if (auto && isAccessFailure(failure)) return setPhase({ kind: 'idle' });
+      setPhase({ kind: 'error', failure });
+      seenNotice();
     }
   };
 
   // Runs by itself once per query, after any kept results were checked: kept ones are shown free.
   const autoSearch = useEffectEvent(() => void run(true, false));
   const autoReady =
-    preference === 'on' && signedIn && isOnline && props.mayAutoSearch && savedChecked && !saved;
+    preference !== 'off' && isOnline && props.mayAutoSearch && savedChecked && !saved;
   useEffect(() => {
     if (autoReady && !started.current) autoSearch();
     // An effect event never goes in the list; this plugin version doesn't know useEffectEvent yet.
@@ -160,36 +168,7 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
 
   if (preference === 'off') return null;
 
-  const allow = () => {
-    setSaveFailed(false);
-    // The tap is consent for this search even if storing the choice fails.
-    onAllow().catch(() => setSaveFailed(true));
-    void run();
-  };
-
-  if (phase.kind === 'consent') {
-    return (
-      <WebConsent
-        title="Search the wider web?"
-        action={videos ? 'Search videos' : 'Search the wider web'}
-        onAllow={allow}
-        onCancel={() => {
-          setVideos(false);
-          setPhase({ kind: 'idle' });
-        }}
-      />
-    );
-  }
-
-  // Refresh and the first search both go through consent when it's still "Ask first".
-  const start = (wantVideos = false) => {
-    if (preference !== 'ask') {
-      void run(false, wantVideos);
-      return;
-    }
-    setVideos(wantVideos);
-    setPhase({ kind: 'consent' });
-  };
+  const start = (wantVideos = false) => void run(false, wantVideos);
   const busy = !isOnline || phase.kind === 'loading';
   const showSaved = saved !== undefined && phase.kind !== 'done';
   const showingVideos = phase.kind === 'done' && videos;
@@ -201,6 +180,13 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
 
   return (
     <div className={own.wrapper}>
+      {firstTime && phase.kind !== 'idle' && (
+        <p className={styles.note}>
+          Searches you make here also go through our server to our web-search provider (Parallel),
+          to find links when nothing in the app explains them.{' '}
+          <Link to="/settings">Turn this off in Settings</Link>.
+        </p>
+      )}
       {showSaved && (
         <CommunitySuggests
           results={saved.results}
@@ -234,11 +220,6 @@ export function WiderWebSearch(props: WiderWebSearchProps) {
             )}
           </p>
         </>
-      )}
-      {saveFailed && (
-        <p className={styles.note} role="status">
-          Couldn&rsquo;t save your choice, so you&rsquo;ll be asked again next time.
-        </p>
       )}
       {phase.kind === 'loading' && (
         <p className={styles.note} role="status">
@@ -283,7 +264,7 @@ interface WebConsentProps {
   onCancel: () => void;
 }
 
-/** The consent card: the disclosure, then the action or "Not now". */
+/** The consent card before a first card draft: the disclosure, then the action or "Not now". */
 export function WebConsent({ title, action, onAllow, onCancel }: WebConsentProps) {
   const titleId = useId();
   return (

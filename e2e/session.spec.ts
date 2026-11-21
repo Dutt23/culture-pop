@@ -59,11 +59,7 @@ test('a sign-in that ends mid-use sends the reader to sign in, then back', async
   });
 
   await page.goto('/search?q=zorbo%20quibble');
-  await page.getByRole('button', { name: 'Search the wider web' }).click();
-  await page
-    .getByRole('region', { name: 'Search the wider web?' })
-    .getByRole('button', { name: 'Search the wider web' })
-    .click();
+  // Signed in with the wider web on: it runs by itself on the miss (D65).
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fsearch%3Fq%3Dzorbo/);
   await expect(heading(page, 'Sign in')).toBeVisible();
 });

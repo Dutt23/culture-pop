@@ -43,15 +43,15 @@ npm run check:dist # after a build: proves no tests, fixtures or source maps shi
 
 ## Architecture (short)
 
-| Layer | Folder | Responsibility |
-|---|---|---|
-| Routing / shell / providers | `src/app/` | Routes, layout, storage gate, DI context |
-| Design tokens & themes | `src/design/` | Only reset, fonts, a11y base and tokens are global |
-| Motion presets | `src/motion/` | Motion for React: `reveal` (enter/stagger/exit), `expand`, reduced variants via `MotionPreferenceProvider` |
-| Presentational components | `src/components/` | No data access, no network |
-| Feature hooks + pages | `src/features/*` | Coordinate repositories and domain functions |
-| Domain | `src/domain/` | Types, normalization, ranking, cache eligibility, pure helpers |
-| Persistence | `src/data/` | Dexie schema (`db.ts`), seed, repositories (only layer touching IndexedDB) |
+| Layer                       | Folder            | Responsibility                                                                                             |
+| --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| Routing / shell / providers | `src/app/`        | Routes, layout, storage gate, DI context                                                                   |
+| Design tokens & themes      | `src/design/`     | Only reset, fonts, a11y base and tokens are global                                                         |
+| Motion presets              | `src/motion/`     | Motion for React: `reveal` (enter/stagger/exit), `expand`, reduced variants via `MotionPreferenceProvider` |
+| Presentational components   | `src/components/` | No data access, no network                                                                                 |
+| Feature hooks + pages       | `src/features/*`  | Coordinate repositories and domain functions                                                               |
+| Domain                      | `src/domain/`     | Types, normalization, ranking, cache eligibility, pure helpers                                             |
+| Persistence                 | `src/data/`       | Dexie schema (`db.ts`), seed, repositories (only layer touching IndexedDB)                                 |
 
 Persisted stores: `references`, `interpretations`, `aliases`, `sources`, `favourites`, `settings`,
 `searchHistory`. Search history is on by default, stays on the device, and can be switched off or
@@ -75,10 +75,10 @@ Wikidata, Wiktionary and Wikiquote (TVmaze is asked only about TV series they fi
 search text), but only after you agree (Settings → Online search: Ask first / On / Off).
 Only the search text is sent, with no cookies or referrer. Search history stays on the device. Results
 and their citations are cached on the device for offline use. External search links open only when
-you tap them. When nothing explains a search, a "Search the wider web" button can send the search
-text through our own server to Parallel, a paid web-search service that may keep it (Settings →
-Wider web search: Ask first / On / Off). It needs you to sign in, and the owner to turn it on for
-your account; the app keeps only a sign-in cookie from our server, never a password or token. Those results are links only and
+you tap them. For an account the owner turned the wider web on for, when nothing explains a search
+the app also sends the search text through our own server to Parallel, a paid web-search service
+that may keep it; the first time, a short notice says so (Settings → Wider web search: On / Off).
+For other accounts nothing about it shows and nothing is sent. The app keeps only a sign-in cookie from our server, never a password or token. Those results are links only and
 unverified. They can be kept on this device, for you only, for 30 days while search history is on;
 they are never sent anywhere, and Clear history deletes them. Sources and their terms: `docs/SOURCE_INVENTORY.md`.
 Voice search (the talking TV button in the search box, shown only where the browser supports the Web

@@ -32,10 +32,14 @@ function accessFrom(session: AccountSession | undefined): Access {
   return readAccountHint() ? 'allowed' : 'signed-out';
 }
 
-function useAccess(client: AuthClient): Access {
+function useAccess(client: AuthClient): { access: Access; session?: AccountSession } {
   const { pathname } = useLocation();
   const isOnline = useOnlineStatus();
   const [access, setAccess] = useState<Access>('checking');
+  // The server's last clear answer: kept while the next check runs and when one can't say
+  // (offline, a dropped request), so the wider web doesn't vanish on a blip; read by useWiderWebAllowed.
+  // Undefined until the server first answers, and again after a sign-out.
+  const [session, setSession] = useState<AccountSession | undefined>(undefined);
   const [nudge, setNudge] = useState(0);
   // Only the newest check may answer; a sign-out signal also outdates any check in flight.
   const latest = useRef(0);
@@ -47,13 +51,16 @@ function useAccess(client: AuthClient): Access {
       .session()
       .catch(() => undefined)
       .then((session) => {
-        if (check === latest.current) setAccess(accessFrom(session));
+        if (check !== latest.current) return;
+        if (session) setSession(session);
+        setAccess(accessFrom(session));
       });
   }, [client, isOnline, pathname, nudge]);
 
   useEffect(() => {
     const signOut = () => {
       latest.current += 1;
+      setSession(undefined);
       setAccess('signed-out');
     };
     let hint = readAccountHint();
@@ -80,25 +87,25 @@ function useAccess(client: AuthClient): Access {
     };
   }, []);
 
-  return access;
+  return { access, session };
 }
 
 /** Wraps every page except sign-in. */
 export function RequireSignIn({ client = defaultClient }: { client?: AuthClient }) {
   const location = useLocation();
-  const access = useAccess(client);
+  const { access, session } = useAccess(client);
   if (access === 'checking') return <PageLoader />;
   if (access === 'signed-out') {
     const next = `${location.pathname}${location.search}${location.hash}`;
     return <Navigate to={`/sign-in?next=${encodeURIComponent(next)}`} replace />;
   }
-  return <Outlet />;
+  return <Outlet context={session} />;
 }
 
 /** Wraps the sign-in page: someone already signed in goes straight on to where they were going. */
 export function SignInGate({ client = defaultClient }: { client?: AuthClient }) {
   const location = useLocation();
-  const access = useAccess(client);
+  const { access } = useAccess(client);
   if (access === 'checking') return <PageLoader />;
   if (access === 'allowed') return <Navigate to={returnPathOf(location)} replace />;
   return <Outlet />;

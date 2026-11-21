@@ -17,7 +17,8 @@ import {
   fixtureRetrievalService,
   type FixtureQuery,
 } from '../test/fakeRetrieval';
-import { createTestDatabase, renderApp } from '../test/renderApp';
+import type { AuthClient } from '../services/auth/authClient';
+import { createTestDatabase, renderApp, widerWebOn } from '../test/renderApp';
 import { PEEK_KEY } from '../components/mascot/peekBudget';
 import { StorageGate } from './StorageGate';
 
@@ -584,7 +585,8 @@ describe('settings', () => {
     expect(finePrint.closest('details')?.querySelector('summary')).toHaveTextContent(
       'More about wider web search',
     );
-    expect(screen.getByText(/Off hides the button\./)).toBeVisible();
+    // Not on for this account (renderApp's default), so Settings says so instead of a switch.
+    expect(screen.getByText(/Until then nothing is sent to the wider web\./)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Reset everything' })).toBeInTheDocument();
   });
 
@@ -1212,9 +1214,10 @@ describe('search UX (D37)', () => {
       candidates: RetrievedCandidate[],
       searched?: string,
       question = 'why are ferrari fans depressed',
+      client?: AuthClient,
     ) {
       const { service, finish } = controllableRetrievalService();
-      renderApp(`/search?q=${encodeURIComponent(question)}`, await withConsent(), service);
+      renderApp(`/search?q=${encodeURIComponent(question)}`, await withConsent(), service, client);
       await waitFor(() => expect(service.retrieve$).toHaveBeenCalled());
       await act(async () => finish({ candidates, outcomes, ...(searched ? { searched } : {}) }));
       return screen.findByRole('region', { name: 'Found online' });
@@ -1262,6 +1265,7 @@ describe('search UX (D37)', () => {
         [topic('wd:Q1', 'Genocides in history (WWI\u2013WWII)')],
         undefined,
         'who committed the worst genocides',
+        widerWebOn,
       );
       const folded = within(found).getByText('Other pages found (1)').closest('details');
       expect(folded).not.toHaveAttribute('open');

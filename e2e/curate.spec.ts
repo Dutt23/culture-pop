@@ -69,11 +69,7 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
   await expect(favourite).toHaveAttribute('aria-pressed', 'true');
 
   await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
-  await page.getByRole('button', { name: 'Search the wider web' }).click();
-  await page
-    .getByRole('region', { name: 'Search the wider web?' })
-    .getByRole('button', { name: 'Search the wider web' })
-    .click();
+  // Signed in with the wider web on: it runs by itself on the miss (D65).
   // The entry sits above the results; the flow opens over the page as a dialog.
   const entry = page.getByRole('button', { name: 'Make a card from these' });
   await entry.click();
@@ -124,11 +120,7 @@ test('partial list can be revised with omitted sources and clearly labelled user
     });
   });
   await page.goto('/search?q=zorbo%20quibble');
-  await page.getByRole('button', { name: 'Search the wider web' }).click();
-  await page
-    .getByRole('region', { name: 'Search the wider web?' })
-    .getByRole('button', { name: 'Search the wider web' })
-    .click();
+  // Signed in with the wider web on: it runs by itself on the miss (D65).
   await page.getByRole('button', { name: 'Make a card from these' }).click();
   const flow = page.getByRole('dialog', { name: 'Make a card from “zorbo quibble”' });
   for (const result of WEB_RESULTS)
@@ -190,11 +182,7 @@ test('curation continues in Activity while the reader browses and persists its s
     });
   });
   await page.goto('/search?q=zorbo%20quibble');
-  await page.getByRole('button', { name: 'Search the wider web' }).click();
-  await page
-    .getByRole('region', { name: 'Search the wider web?' })
-    .getByRole('button', { name: 'Search the wider web' })
-    .click();
+  // Signed in with the wider web on: it runs by itself on the miss (D65).
   await page.getByRole('button', { name: 'Make a card from these' }).click();
   const flow = page.getByRole('dialog', { name: 'Make a card from “zorbo quibble”' });
   await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
@@ -234,11 +222,7 @@ test('reload marks an unfinished browser-owned job interrupted without resubmitt
   });
   try {
     await page.goto('/search?q=zorbo%20quibble');
-    await page.getByRole('button', { name: 'Search the wider web' }).click();
-    await page
-      .getByRole('region', { name: 'Search the wider web?' })
-      .getByRole('button', { name: 'Search the wider web' })
-      .click();
+    // Signed in with the wider web on: it runs by itself on the miss (D65).
     await page.getByRole('button', { name: 'Make a card from these' }).click();
     const flow = page.getByRole('dialog', { name: 'Make a card from “zorbo quibble”' });
     await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
@@ -264,11 +248,7 @@ test('Back closes the card dialog and keeps the search page; Back again leaves i
   await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
   await page.goto('/discover');
   await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
-  await page.getByRole('button', { name: 'Search the wider web' }).click();
-  await page
-    .getByRole('region', { name: 'Search the wider web?' })
-    .getByRole('button', { name: 'Search the wider web' })
-    .click();
+  // Signed in with the wider web on: it runs by itself on the miss (D65).
   await page.getByRole('button', { name: 'Make a card from these' }).click();
   const flow = page.getByRole('dialog', { name: `Make a card from “${SEARCH}”` });
   await expect(flow).toBeVisible();

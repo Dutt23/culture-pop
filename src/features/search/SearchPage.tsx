@@ -61,7 +61,7 @@ import { useRecentSearches, useRecordSearch } from './useSearchHistory';
 import { useSearchQuery } from './useSearchQuery';
 import { useSearchTags, useTaste } from './useSearchTags';
 import { WiderWebSearch } from './WiderWebSearch';
-import { readAccountHint } from '../../services/auth/authClient';
+import { useWiderWebAllowed } from '../../app/useWiderWebAllowed';
 
 const EXAMPLE_QUERIES = ['hakuna matata', 'let it go', 'this is fine', 'bazinga', 'all izz well'];
 const RECENT_CHIPS = 8;
@@ -127,6 +127,8 @@ const SearchResults = memo(function SearchResults({ query }: { query: string }) 
   const hasQuery = normalizePhrase(query).length > 0;
   const search = useSearch(query);
   const isOnline = useOnlineStatus();
+  // Nothing about the wider web shows for an account it isn't turned on for (D65).
+  const widerWebAllowed = useWiderWebAllowed();
   const { settings, settingsLoaded, setSetting, onlineSearchSkipped, skipOnlineSearch } =
     useSettings();
   const [consentError, setConsentError] = useState(false);
@@ -297,27 +299,29 @@ const SearchResults = memo(function SearchResults({ query }: { query: string }) 
   const curateHintId = useId();
   const canCurate =
     settingsLoaded &&
+    widerWebAllowed &&
     settings.webSearch !== 'off' &&
     (onlineShown.length > 0 || webShown.length > 0);
   // Query, mode and tags identify the result set; changing context starts it afresh.
-  const widerWeb = (search.needsRetrieval || questionFoundNothing) && settingsLoaded && (
-    <WiderWebSearch
-      key={webKey}
-      query={query}
-      contextKey={contextKey}
-      isOnline={isOnline}
-      preference={settings.webSearch}
-      historyOn={settings.history === 'on'}
-      onAllow={() => setSetting('webSearch', 'on')}
-      signedIn={readAccountHint() !== null}
-      stories={stories}
-      about={about.length ? about : undefined}
-      // A pasted message is someone's private text: the wider web gets it only on a tap.
-      mayAutoSearch={lookupSettled && !webSearched.has(webKey) && !looksLikeMessage(query)}
-      onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
-      onResults={(results) => setWebFound({ key: webKey, results })}
-    />
-  );
+  const widerWeb = (search.needsRetrieval || questionFoundNothing) &&
+    settingsLoaded &&
+    widerWebAllowed && (
+      <WiderWebSearch
+        key={webKey}
+        query={query}
+        contextKey={contextKey}
+        isOnline={isOnline}
+        preference={settings.webSearch}
+        historyOn={settings.history === 'on'}
+        onAllow={() => setSetting('webSearch', 'on')}
+        stories={stories}
+        about={about.length ? about : undefined}
+        // A pasted message is someone's private text: the wider web gets it only on a tap.
+        mayAutoSearch={lookupSettled && !webSearched.has(webKey) && !looksLikeMessage(query)}
+        onSearched={() => setWebSearched((done) => new Set(done).add(webKey))}
+        onResults={(results) => setWebFound({ key: webKey, results })}
+      />
+    );
   // "Where people talk about it" is on the page: its sites aren't listed a second time below.
   const communityShown =
     wantsOnline &&
