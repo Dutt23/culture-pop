@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Link, NavLink } from 'react-router';
+import { Link, NavLink, useLocation } from 'react-router';
 import { classNames } from '../components/ui/classNames';
 import {
   CompassIcon,
@@ -24,6 +24,8 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const isOnline = useOnlineStatus();
+  // Signing in is the only thing a signed-out visitor can do (D66), so that page has no tabs.
+  const onSignIn = useLocation().pathname === '/sign-in';
   const { activeCount, jobs } = useCurationJobs();
   const [openedAt] = useState(() => Date.now());
   const finished = jobs.find(
@@ -57,30 +59,36 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       {!isOnline && (
         <p className={styles.offline} role="status">
-          You're offline. Everything saved on this device still works.
+          {onSignIn
+            ? "You're offline. Connect to the internet to sign in."
+            : "You're offline. Everything saved on this device still works."}
         </p>
       )}
       <main id="main" tabIndex={-1} className={styles.main}>
         {children}
       </main>
-      <nav aria-label="Primary" className={styles.nav}>
-        <ul className={styles.navList}>
-          {NAV_ITEMS.map(({ to, label, Icon }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                className={({ isActive }) => classNames(styles.navLink, isActive && styles.active)}
-              >
-                <Icon />
-                <span>
-                  {label}
-                  {to === '/activity' && activeCount > 0 ? ` (${activeCount})` : ''}
-                </span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {!onSignIn && (
+        <nav aria-label="Primary" className={styles.nav}>
+          <ul className={styles.navList}>
+            {NAV_ITEMS.map(({ to, label, Icon }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  className={({ isActive }) =>
+                    classNames(styles.navLink, isActive && styles.active)
+                  }
+                >
+                  <Icon />
+                  <span>
+                    {label}
+                    {to === '/activity' && activeCount > 0 ? ` (${activeCount})` : ''}
+                  </span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </div>
   );
 }

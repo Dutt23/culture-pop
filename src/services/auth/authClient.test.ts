@@ -63,6 +63,7 @@ describe('createAuthClient', () => {
       signedIn: true,
       email: 'r@e.test',
       quota: null,
+      widerWeb: null,
     });
   });
 

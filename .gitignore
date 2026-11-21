@@ -39,3 +39,8 @@ Thumbs.db
 # Embedding experiment: downloaded models and cached vectors (D42), never committed
 .cache/
 .vercel/
+
+# Internal notes and local tool config (kept on disk, not in the repo)
+docs/superpowers/
+docs/eval/
+.claude/

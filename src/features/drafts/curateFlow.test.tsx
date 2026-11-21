@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DraftResponse } from '../../../shared/cardTypes.js';
 import { AppProviders } from '../../app/AppProviders';
 import { createRepositories } from '../../data/repositories';
@@ -11,6 +11,8 @@ import {
   type WebSearchClient,
 } from '../../services/retrieval/webSearch';
 import { MotionPreferenceProvider } from '../../motion/MotionPreferenceProvider';
+import type { AccountSession, AuthClient } from '../../services/auth/authClient';
+import { MemoryRouter } from 'react-router';
 import { unusedRetrievalService } from '../../test/fakeRetrieval';
 import { createTestDatabase } from '../../test/renderApp';
 import { CurateFlow } from './CurateFlow';
@@ -61,6 +63,7 @@ const TONE = 'Polite brush-off';
 async function renderFlow(
   settings: Partial<Settings> = { webSearch: 'on' },
   draftCard?: WebSearchClient['draftCard'],
+  authClient?: AuthClient,
 ) {
   const db = createTestDatabase();
   await db.open();
@@ -79,8 +82,13 @@ async function renderFlow(
         candidates={[]}
         webResults={[BBC, DICT, STONKS]}
         onClose={onClose}
+        authClient={
+          authClient ?? accountSays({ signedIn: true, email: 'r@e.test', widerWeb: true })
+        }
       />
     </AppProviders>,
+    // The "Sign in" link needs a router; the flow itself doesn't.
+    { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> },
   );
   return { db, repos, retrieval, user, onClose, ...view };
 }
@@ -130,6 +138,11 @@ async function keepACard(settings: Partial<Settings>) {
   await flow.user.click(await screen.findByRole('button', { name: 'Keep' }));
   return flow;
 }
+
+// Closing the dialog steps history back; jsdom does that late, into the next test. Not here.
+beforeEach(() => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {});
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -689,5 +702,85 @@ describe('curate a card', () => {
     await user.click(await screen.findByRole('button', { name: 'Review 0 frames' }));
     await waitFor(() => expect(screen.getByText('Cut a frame first.')).toBeInTheDocument());
     expect(screen.queryByRole('region', { name: 'Splice check' })).toBeNull();
+  });
+});
+
+/** Answers "who is signed in" with `session`; every other call is unused. */
+function accountSays(session: AccountSession): AuthClient {
+  const unused = () => Promise.reject(new Error('not used'));
+  return {
+    sendCode: unused,
+    signInWithCode: unused,
+    signInWithPassword: unused,
+    setPassword: unused,
+    signOut: unused,
+    session: vi.fn(async () => session),
+  };
+}
+
+describe('who may make a card (D65)', () => {
+  it('signed out: says so with a "Sign in" link before any picking or consent', async () => {
+    await renderFlow({ webSearch: 'ask' }, undefined, accountSays({ signedIn: false }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Sign in to make a card.');
+    expect(within(alert).getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
+    expect(screen.queryByRole('button', { name: /What does OK boomer mean/ })).toBeNull();
+    expect(screen.queryByText(/goes through our server/)).toBeNull();
+  });
+
+  it('signed in without wider web search: says to ask the owner, nothing to pick', async () => {
+    const account = accountSays({ signedIn: true, email: 'r@e.test', widerWeb: false });
+    await renderFlow({ webSearch: 'ask' }, undefined, account);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Making cards isn't turned on for your account yet.",
+    );
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /What does OK boomer mean/ })).toBeNull();
+  });
+
+  it('says it is checking, with nothing to pick, until the answer comes', async () => {
+    let answer: (session: AccountSession) => void = () => {};
+    const account = accountSays({ signedIn: false });
+    vi.mocked(account.session).mockImplementation(() => new Promise((done) => (answer = done)));
+    await renderFlow({ webSearch: 'ask' }, undefined, account);
+    expect(await screen.findByText('Checking your account…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /What does OK boomer mean/ })).toBeNull();
+    await act(async () => answer({ signedIn: false }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign in to make a card.');
+  });
+
+  it('allowed: the tray opens as usual', async () => {
+    const account = accountSays({ signedIn: true, email: 'r@e.test', widerWeb: true });
+    await renderFlow({ webSearch: 'on' }, undefined, account);
+    expect(await frame('What does OK boomer mean')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('Back closes the card dialog (user testing, 2026-11-21)', () => {
+  // Start from a clean entry (earlier tests' marks stay behind, history.back being stubbed), and
+  // wait for the flow itself: it mounts only once the saved settings have loaded.
+  beforeEach(() => window.history.replaceState(null, ''));
+
+  it('adds a history entry, and leaving it closes the dialog instead of the page', async () => {
+    const { onClose } = await renderFlow();
+    await frame('What does OK boomer mean');
+    expect((window.history.state as Record<string, unknown>)?.pcdCardDialog).toBe(true);
+    act(() => {
+      window.history.replaceState(null, '');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closing another way takes its history entry back off', async () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    const { unmount } = await renderFlow();
+    await frame('What does OK boomer mean');
+    unmount();
+    expect(back).toHaveBeenCalledTimes(1);
   });
 });

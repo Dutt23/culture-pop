@@ -3,6 +3,7 @@ import { m, type HTMLMotionProps } from 'motion/react';
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -33,6 +34,8 @@ import {
   type WebResult,
   type WebSearchFailure,
 } from '../../services/retrieval/webSearch';
+import type { AuthClient } from '../../services/auth/authClient';
+import { useWiderWebAccess } from '../account/useWiderWebAccess';
 import { AccessNotice, WebConsent } from '../search/WiderWebSearch';
 import { useSettings } from '../settings/SettingsContext';
 import { CurationTray } from './CurationTray';
@@ -155,13 +158,32 @@ interface CurateFlowProps {
   candidates: RetrievedCandidate[];
   webResults: readonly WebResult[];
   onClose: () => void;
+  /** Asks who is signed in (tests pass a fake). */
+  authClient?: AuthClient;
 }
+
+/** Marks the browser-history entry the open card dialog adds, so Back closes it. */
+const HISTORY_MARK = 'pcdCardDialog';
 
 /**
  * Pick frames and filters, check them, then have the server curate one card from them. Opens as a
  * modal dialog; Escape and a tap on the backdrop close it like Close does.
  */
-export function CurateFlow({ search, about, candidates, webResults, onClose }: CurateFlowProps) {
+export function CurateFlow({
+  search,
+  about,
+  candidates,
+  webResults,
+  onClose,
+  authClient,
+}: CurateFlowProps) {
+  // Signed out or not turned on: say so now, before any picking or the consent text (D65).
+  const access = useWiderWebAccess(authClient);
+  const blocked = access === 'signed_out' || access === 'not_allowed';
+  const closeRef = useRef(onClose);
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+  });
   const activity = useCurationJobs();
   const cancelActivity = activity.cancel;
   const activeJob = useRef<string | null>(null);
@@ -236,6 +258,31 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
       back?.focus();
     };
   }, [opener]);
+
+  // Back (a phone's back gesture or the browser's button) closes the dialog instead of leaving the
+  // page and its picks: opening adds a history entry for this page; leaving that entry closes.
+  useEffect(() => {
+    window.history.pushState({ ...(window.history.state ?? {}), [HISTORY_MARK]: true }, '');
+    let poppedByBack = false;
+    const onPop = () => {
+      // A pop that lands on another of our entries (StrictMode's second mount) is not a close.
+      if ((window.history.state as Record<string, unknown> | null)?.[HISTORY_MARK]) return;
+      poppedByBack = true;
+      closeRef.current();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      // Closed some other way (Close, Escape, backdrop): take our entry back off the history.
+      const state = window.history.state as Record<string, unknown> | null;
+      if (!poppedByBack && state?.[HISTORY_MARK]) window.history.back();
+    };
+  }, []);
+
+  // When the notice replaces the stage, focus stays in the dialog instead of falling to the page.
+  useEffect(() => {
+    if (blocked) dialogRef.current?.focus();
+  }, [blocked]);
 
   // Going offline mid-draft cancels it; the picks stay in the tray.
   useEffect(() => {
@@ -325,6 +372,8 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
   };
 
   const make = () => {
+    if (access === 'signed_out' || access === 'not_allowed') return setFailure(access);
+    if (access === 'checking') return;
     if (settings.webSearch === 'ask') setPhase({ kind: 'consent' });
     else void draft();
   };
@@ -662,7 +711,17 @@ export function CurateFlow({ search, about, candidates, webResults, onClose }: C
             <AccessNotice failure={failure} text={DRAFT_FAILURE_TEXT} />
           </p>
         )}
-        {stage()}
+        {access === 'checking' ? (
+          <p className={styles.note} role="status">
+            Checking your account…
+          </p>
+        ) : blocked ? (
+          <p className={styles.error} role="alert">
+            <AccessNotice failure={access} text={DRAFT_FAILURE_TEXT} />
+          </p>
+        ) : (
+          stage()
+        )}
       </div>
     </m.dialog>
   );

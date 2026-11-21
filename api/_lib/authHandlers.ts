@@ -262,17 +262,19 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
           : {};
         return reply(200, { signedIn: false }, stale);
       }
-      let quota: { available: number; reserved: number } | null = null;
-      try {
-        const [row] = await ready.supabase.rpc<{ available: number; reserved: number }[]>(
-          'quota_of',
-          { p_user: result.userId },
-        );
-        quota = row ?? null;
-      } catch {
-        quota = null; // the account screen can live without the balance for a moment
-      }
-      return reply(200, { signedIn: true, email: result.email, quota });
+      // Either can be missing for a moment (null): the page treats that as "don't know", and the
+      // server still checks the permission on every paid call.
+      const [quota, widerWeb] = await Promise.all([
+        ready.supabase
+          .rpc<{ available: number; reserved: number }[]>('quota_of', { p_user: result.userId })
+          .then(([row]) => row ?? null)
+          .catch(() => null),
+        ready.supabase
+          .rpc<boolean>('can_search_wider_web', { p_user: result.userId })
+          .then((allowed) => allowed === true)
+          .catch(() => null),
+      ]);
+      return reply(200, { signedIn: true, email: result.email, quota, widerWeb });
     },
 
     async logout(request) {

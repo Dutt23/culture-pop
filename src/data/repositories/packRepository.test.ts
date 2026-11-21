@@ -4,6 +4,7 @@ import { createTestDatabase } from '../../test/renderApp';
 import { createDatabase } from '../db';
 import { buildSeed } from '../seed';
 import { createRepositories } from './index';
+import { PACK_NAME_MAX, PackNameError } from './packRepository';
 
 async function setup() {
   const db = createTestDatabase();
@@ -165,6 +166,29 @@ describe('packs', () => {
     expect(pack).toMatchObject({ name: 'Before X-Men', normalizedName: 'before x men' });
     await expect(repos.packs.create({ name: '   ', ceiling: 'open' })).rejects.toThrow();
     await expect(repos.packs.rename(pack.id, '')).rejects.toThrow();
+    db.close();
+  });
+
+  it('refuses a name another pack already has, and a name past the length cap', async () => {
+    const { db, repos } = await setup();
+    const movie = await repos.packs.create({ name: 'Movie night', ceiling: 'open' });
+    const other = await repos.packs.create({ name: 'Other', ceiling: 'open' });
+    await expect(repos.packs.create({ name: ' movie  NIGHT ', ceiling: 'open' })).rejects.toThrow(
+      PackNameError,
+    );
+    await expect(repos.packs.rename(other.id, 'Movie night')).rejects.toThrow(PackNameError);
+    // Renaming a pack to its own name (or a new case of it) is fine.
+    await repos.packs.rename(movie.id, 'Movie Night');
+    await expect(
+      repos.packs.create({ name: 'x'.repeat(PACK_NAME_MAX + 1), ceiling: 'open' }),
+    ).rejects.toThrow(PackNameError);
+    expect((await repos.packs.list()).filter((p) => /movie/i.test(p.name))).toHaveLength(1);
+    // Emoji-only names normalize to nothing; different ones are still different packs.
+    await repos.packs.create({ name: '🎬', ceiling: 'open' });
+    await repos.packs.create({ name: '🍿', ceiling: 'open' });
+    await expect(repos.packs.create({ name: '🎬', ceiling: 'open' })).rejects.toThrow(
+      PackNameError,
+    );
     db.close();
   });
 

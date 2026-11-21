@@ -141,6 +141,8 @@ describe('Your cards', () => {
 
     expect(await screen.findByRole('button', { name: /Polite brush-off/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /BBC page/ })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Add saved cards as sources' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Add library cards as sources' }),
+    ).toBeInTheDocument();
   });
 });

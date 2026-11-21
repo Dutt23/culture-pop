@@ -53,6 +53,11 @@ export interface RankedMatch {
   kind: MatchKind;
   /** Display text of the title or alias that matched. */
   matchedPhrase: string;
+  /**
+   * A search word only starts a longer word here ("no cap" in "No capes!"). Still listed, but like
+   * a typo it suggests rather than settles the search (see `needsRetrieval`).
+   */
+  partialWord?: true;
 }
 
 function tokensMatch(queryTokens: readonly string[], phrases: readonly string[]): boolean {
@@ -60,11 +65,49 @@ function tokensMatch(queryTokens: readonly string[], phrases: readonly string[])
   return queryTokens.every((q) => candidateTokens.some((t) => t.startsWith(q)));
 }
 
+type Classified = Pick<RankedMatch, 'kind' | 'matchedPhrase' | 'partialWord'>;
+
+/** Every search word appears whole in the phrases (both already normalized). */
+function wholeWords(query: string, phrases: readonly string[]): boolean {
+  const words = new Set(phrases.flatMap(tokenize));
+  return tokenize(query).every((q) => words.has(q));
+}
+
+/** Prefix and partial matches are flagged when a search word is only part of a longer word. */
 function classify(
   query: string,
   reference: Reference,
   aliases: readonly Alias[],
-): { kind: MatchKind; matchedPhrase: string } | null {
+): Classified | null {
+  const match = classifyKind(query, reference, aliases);
+  if (!match || !['title_prefix', 'alias_prefix', 'partial'].includes(match.kind)) return match;
+  return wholeWords(query, matchedPhrases(query, match, reference, aliases))
+    ? match
+    : { ...match, partialWord: true };
+}
+
+/** The normalized phrase(s) a prefix or partial match came from, so other aliases can't vouch for it. */
+function matchedPhrases(
+  query: string,
+  match: Classified,
+  reference: Reference,
+  aliases: readonly Alias[],
+): string[] {
+  const title = reference.normalizedTitle;
+  if (match.kind === 'title_prefix') return [title];
+  const alias = aliases.find((a) => a.phrase === match.matchedPhrase);
+  if (alias && match.matchedPhrase !== reference.title) return [alias.normalizedPhrase];
+  // A partial on the title alone, or else words spread across the title and its aliases.
+  return title.includes(query) || tokensMatch(tokenize(query), [title])
+    ? [title]
+    : [title, ...aliases.map((a) => a.normalizedPhrase)];
+}
+
+function classifyKind(
+  query: string,
+  reference: Reference,
+  aliases: readonly Alias[],
+): Classified | null {
   if (reference.normalizedTitle === query)
     return { kind: 'exact_title', matchedPhrase: reference.title };
   const exactAlias = aliases.find((a) => a.normalizedPhrase === query);

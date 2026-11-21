@@ -15,7 +15,7 @@ import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { searchName } from '../../domain/externalSearch';
-import { CATEGORY_LABEL, ERA_LABEL, fromWorks } from '../../domain/labels';
+import { CATEGORY_LABEL, ERA_LABEL, fromOrigin, fromWorks } from '../../domain/labels';
 import { linesForCeiling } from '../../domain/packs';
 import { isFromOnline } from '../../domain/types';
 import { PUBLISHER } from '../../domain/sources';
@@ -124,7 +124,7 @@ function ReferenceView({ id }: { id: string }) {
       eyebrow={eyebrow}
       intro={
         reference.origin ? (
-          <p>From {reference.origin}</p>
+          <p>{fromOrigin(reference.origin)}</p>
         ) : (
           works.length > 0 && (
             <p>

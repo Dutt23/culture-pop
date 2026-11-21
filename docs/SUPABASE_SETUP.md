@@ -88,7 +88,7 @@ None of them may start with `VITE_`: anything named `VITE_…` is copied into th
 
 **Preview deployments:** every Vercel preview gets its own address (`https://<project>-<hash>.vercel.app`), so the Production `APP_ORIGIN` doesn't match it and sign-in on a preview answers "Signing in isn't working right now" (the server refuses it as another site). That is on purpose. To try sign-in on a preview, set `APP_ORIGIN` for the Preview environment to that preview's exact address (or a fixed preview domain you add in Vercel), and add the same address to Supabase's Redirect URLs.
 
-**On this device:** after you sign in, the app remembers your email in this browser's storage (not a password or token), so Settings knows to ask the server whether you're still signed in. Signing out removes it.
+**On this device:** after you sign in, the app remembers your email in this browser's storage (not a password or token), so the app knows to ask the server whether you're still signed in, and still opens offline with what's saved on this device. Signing out removes it and goes back to the sign-in page. The app can't be used without signing in (D66).
 
 Existing Vercel variables stay as they are: `PARALLEL_API_KEY`, `OPENAI_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
 
@@ -140,7 +140,7 @@ delete from app_private.wider_web_access
 where user_id = (select id from auth.users where email = 'person@example.com');
 ```
 
-It takes effect on their next search. Signed-out people see "Sign in to search the wider web"; signed-in people without it see that it isn't turned on for them yet.
+It takes effect on their next search. Everyone signs in before using the app (D66); signed-in people without it see that wider web search isn't turned on for them yet. If a sign-in runs out while the app is open, the search says "Sign in to search the wider web".
 
 ## Live sign-in test (on your computer only)
 

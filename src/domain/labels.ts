@@ -167,3 +167,12 @@ export function fromWorks(reference: Reference): PresentIn[] {
     MAX_FROM_WORKS,
   );
 }
+
+/**
+ * "From …" line for a card's origin. A leading article before a common noun is lower-cased
+ * ("The fantasy series Game of Thrones" → "From the fantasy series…"); a proper name keeps it
+ * ("The Chainsmokers").
+ */
+export function fromOrigin(origin: string): string {
+  return `From ${origin.replace(/^(The|A|An)(?= [^\p{Lu}])/u, (article) => article.toLowerCase())}`;
+}

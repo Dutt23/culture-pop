@@ -81,6 +81,8 @@ export function MascotDen({ still, children }: { still: boolean; children: React
         ref={denRef}
         className={classNames(styles.den, still && styles.still, offScreen && styles.paused)}
         data-scene="night"
+        // The room runs up behind the app header, so the site name stays light over it.
+        data-behind-header
         {...{ [ROOM_ATTRIBUTE]: '' }}
       >
         <div className={styles.backdrop} aria-hidden="true">

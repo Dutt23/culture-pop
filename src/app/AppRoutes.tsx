@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router';
 import { PageLoader } from '../components/mascot/PageLoader';
 import { DiscoverPage } from '../features/discovery/DiscoverPage';
 import { NotFoundPage } from '../features/not-found/NotFoundPage';
+import type { AuthClient } from '../services/auth/authClient';
 import { AppShell } from './AppShell';
+import { RequireSignIn, SignInGate } from './RequireSignIn';
 
 // Discover is the landing page and stays in the first download; the others load when first opened.
 // The service worker precaches every chunk, so they still open offline.
@@ -43,41 +45,48 @@ const LlmBenchPage = import.meta.env.DEV
   ? lazy(() => import('../features/dev/LlmBenchPage'))
   : null;
 
-export function AppRoutes() {
+/** `authClient` lets tests answer the sign-in check without a server. */
+export function AppRoutes({ authClient }: { authClient?: AuthClient } = {}) {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Navigate to="/discover" replace />} />
-        <Route path="/discover" element={<DiscoverPage />} />
-        <Route path="/search" element={later(<SearchPage />)} />
-        <Route path="/activity" element={later(<ActivityPage />)} />
-        <Route path="/references/:id" element={later(<ReferencePage />)} />
-        <Route path="/favourites" element={later(<FavouritesPage />)} />
-        <Route path="/packs" element={later(<PacksPage />)} />
-        <Route path="/packs/:packId" element={later(<PackPage />)} />
-        <Route path="/settings" element={later(<SettingsPage />)} />
-        <Route path="/sign-in" element={later(<SignInPage />)} />
-        {DevComponentsPage && (
-          <Route
-            path="/dev/components"
-            element={
-              <Suspense fallback={null}>
-                <DevComponentsPage />
-              </Suspense>
-            }
-          />
-        )}
-        {LlmBenchPage && (
-          <Route
-            path="/dev/llm-bench"
-            element={
-              <Suspense fallback={null}>
-                <LlmBenchPage />
-              </Suspense>
-            }
-          />
-        )}
-        <Route path="*" element={<NotFoundPage />} />
+        {/* Someone already signed in goes straight on from here (D66). */}
+        <Route element={<SignInGate client={authClient} />}>
+          <Route path="/sign-in" element={later(<SignInPage />)} />
+        </Route>
+        {/* Everything else needs a signed-in account (D66). */}
+        <Route element={<RequireSignIn client={authClient} />}>
+          <Route path="/" element={<Navigate to="/discover" replace />} />
+          <Route path="/discover" element={<DiscoverPage />} />
+          <Route path="/search" element={later(<SearchPage />)} />
+          <Route path="/activity" element={later(<ActivityPage />)} />
+          <Route path="/references/:id" element={later(<ReferencePage />)} />
+          <Route path="/favourites" element={later(<FavouritesPage />)} />
+          <Route path="/packs" element={later(<PacksPage />)} />
+          <Route path="/packs/:packId" element={later(<PackPage />)} />
+          <Route path="/settings" element={later(<SettingsPage />)} />
+          {DevComponentsPage && (
+            <Route
+              path="/dev/components"
+              element={
+                <Suspense fallback={null}>
+                  <DevComponentsPage />
+                </Suspense>
+              }
+            />
+          )}
+          {LlmBenchPage && (
+            <Route
+              path="/dev/llm-bench"
+              element={
+                <Suspense fallback={null}>
+                  <LlmBenchPage />
+                </Suspense>
+              }
+            />
+          )}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Routes>
     </AppShell>
   );

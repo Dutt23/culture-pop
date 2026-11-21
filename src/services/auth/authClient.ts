@@ -14,6 +14,8 @@ export interface AccountSession {
   signedIn: boolean;
   email?: string;
   quota?: { available: number; reserved: number } | null;
+  /** Wider web search is turned on for this account; null when the server couldn't say. */
+  widerWeb?: boolean | null;
 }
 
 export interface AuthClient {
@@ -53,7 +55,7 @@ const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isI
 /** The server's answer is checked, not trusted: anything odd reads as "couldn't tell". */
 function readSession(body: unknown): AccountSession | undefined {
   if (typeof body !== 'object' || body === null) return undefined;
-  const b = body as { signedIn?: unknown; email?: unknown; quota?: unknown };
+  const b = body as { signedIn?: unknown; email?: unknown; quota?: unknown; widerWeb?: unknown };
   if (b.signedIn === false) return { signedIn: false };
   if (b.signedIn !== true || typeof b.email !== 'string') return undefined;
   const q = b.quota as { available?: unknown; reserved?: unknown } | null | undefined;
@@ -61,7 +63,8 @@ function readSession(body: unknown): AccountSession | undefined {
     q && isCount(q.available) && isCount(q.reserved)
       ? { available: q.available, reserved: q.reserved }
       : null;
-  return { signedIn: true, email: b.email, quota };
+  const widerWeb = typeof b.widerWeb === 'boolean' ? b.widerWeb : null;
+  return { signedIn: true, email: b.email, quota, widerWeb };
 }
 
 export function createAuthClient(fetchImpl: typeof fetch = (...a) => fetch(...a)): AuthClient {

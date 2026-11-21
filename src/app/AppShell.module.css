@@ -53,8 +53,9 @@
   padding: var(--space-4) var(--space-gutter) 0;
 }
 
-/* On a page whose night scene runs up behind the header, the name stays light. */
-.shell:has([data-scene='night']) .header {
+/* On a page whose night scene runs up behind the header (Discover's room, `data-behind-header`),
+   the name stays light. Night scenes in their own box (sign-in card, Activity, card dialog) don't. */
+.shell:has([data-scene='night'][data-behind-header]) .header {
   --color-text: #f3efff;
   --color-accent: #b29bff;
 }

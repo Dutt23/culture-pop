@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { skipTours } from './returningReader';
+import { asSignedOutVisitor, returningReader } from './returningReader';
 
-test.beforeEach(({ page }) => skipTours(page));
+test.beforeEach(({ page }) => returningReader(page));
 
 function primaryNav(page: Page) {
   return page.getByRole('navigation', { name: 'Primary' });
@@ -16,6 +16,32 @@ async function scrollUntilPresent(page: Page, target: Locator) {
   }).toPass({ intervals: [0], timeout: 15_000 });
   await target.first().scrollIntoViewIfNeeded();
 }
+
+test('a signed-out visitor signs in first, then lands where they were going', async ({ page }) => {
+  // Later routes win over the signed-in ones from beforeEach; this init script runs after its hint.
+  let signedIn = false;
+  await page.addInitScript(() => localStorage.removeItem('pcd-account'));
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({
+      json: signedIn ? { signedIn: true, email: 'reader@example.test' } : { signedIn: false },
+    }),
+  );
+  await page.route('**/api/auth/password', (route) => {
+    signedIn = true;
+    return route.fulfill({ json: { email: 'reader@example.test' } });
+  });
+
+  await page.goto('/favourites');
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Ffavourites$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+  await expect(primaryNav(page)).toHaveCount(0);
+
+  await page.getByLabel('Email', { exact: true }).fill('reader@example.test');
+  await page.locator('#sign-in-password').fill('correct horse battery');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/\/favourites$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Favourites' })).toBeVisible();
+});
 
 test('discover is the landing page and the layout never scrolls sideways', async ({ page }) => {
   await page.goto('/');
@@ -245,4 +271,31 @@ test('Browse keeps only the cards near the screen in the page', async ({ page })
 
   await expect(firstCard).toHaveCount(0);
   await expect(cards.last()).toBeVisible();
+});
+
+test('the site name stays readable on the sign-in page in the light theme', async ({ page }) => {
+  await asSignedOutVisitor(page);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/sign-in');
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+  const name = page.getByRole('banner').getByRole('link', { name: 'Pop Culture Decoder' });
+  // Contrast of the name's own text colour (and its accent part) against the page behind it.
+  const ratios = await name.evaluate((link) => {
+    const rgb = (value: string) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const luminance = ([r = 0, g = 0, b = 0]: number[]) => {
+      const lin = (c: number) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    };
+    const contrast = (a: string, b: string) => {
+      const [hi, lo] = [luminance(rgb(a)), luminance(rgb(b))].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const background = getComputedStyle(document.body).backgroundColor;
+    const parts = [link, ...Array.from(link.querySelectorAll('span'))];
+    return parts.map((part) => contrast(getComputedStyle(part).color, background));
+  });
+  for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
 });

@@ -34,31 +34,44 @@ export function CardLibraryPicker({ cards, mode, selected, onSelect }: CardLibra
     return words.every((word) => text.includes(word));
   });
 
+  // Sources come from the whole library; style examples only from favourites and kept drafts.
+  const noun = source ? 'library card' : 'saved card';
+  const status =
+    available.length === 0
+      ? source
+        ? 'No library cards to add yet.'
+        : 'Save a favourite or keep a draft to choose it here.'
+      : matches.length === 0
+        ? `No ${noun}s match. Try another title or clear your search.`
+        : `${matches.length} ${noun}${matches.length === 1 ? '' : 's'}`;
+
   return (
-    <section className={styles.picker} aria-labelledby={headingId}>
-      <h3 id={headingId} className={styles.heading}>
-        {source ? 'Add saved cards as sources' : 'Choose saved cards as style examples'}
-      </h3>
-      <p id={hintId} className={styles.hint}>
-        {source
-          ? 'Selected cards contribute facts to your new card.'
-          : 'Selected cards guide tone and structure. Their facts stay in their own cards.'}
-      </p>
-      <label htmlFor={inputId}>Search saved cards</label>
+    // The style step has its own heading and note (CurateFlow), so this one only names the region.
+    <section
+      className={styles.picker}
+      {...(source ? { 'aria-labelledby': headingId } : { 'aria-label': 'Style examples' })}
+    >
+      {source && (
+        <>
+          <h3 id={headingId} className={styles.heading}>
+            Add library cards as sources
+          </h3>
+          <p id={hintId} className={styles.hint}>
+            Selected cards contribute facts to your new card.
+          </p>
+        </>
+      )}
+      <label htmlFor={inputId}>{source ? 'Search your library' : 'Search saved cards'}</label>
       <input
         id={inputId}
         type="search"
         className={styles.search}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        aria-describedby={hintId}
+        aria-describedby={source ? hintId : undefined}
       />
       <p className={styles.hint} role="status">
-        {available.length === 0
-          ? 'Save a favourite or keep a draft to choose it here.'
-          : matches.length === 0
-            ? 'No saved cards match. Try another title or clear your search.'
-            : `${matches.length} saved ${matches.length === 1 ? 'card' : 'cards'}`}
+        {status}
       </p>
       {matches.length > 0 && (
         <ul className={styles.cards}>

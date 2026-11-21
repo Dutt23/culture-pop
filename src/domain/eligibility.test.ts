@@ -89,6 +89,20 @@ describe('needsRetrieval', () => {
     expect(needsRetrieval(matches, byReference, VALID, true)).toBe(false);
   });
 
+  it('is still needed when the search ends partway through a word ("no cap" vs "No capes!")', () => {
+    const capes = [makeReference('capes', 'No capes!')];
+    const matches = rankReferences('no cap', capes, []);
+    expect(matches.map((m) => m.kind)).toEqual(['title_prefix']);
+    const byReference = groupBy([makeInterpretation('c1', 'capes')], (i) => i.referenceId);
+    expect(needsRetrieval(matches, byReference, VALID)).toBe(true);
+    // The whole word still settles it.
+    expect(needsRetrieval(rankReferences('no capes', capes, []), byReference, VALID)).toBe(false);
+    // Another alias that happens to contain the word "cap" doesn't vouch for the title match.
+    const withAlias = rankReferences('no cap', capes, [makeAlias('capes', 'never a cap')]);
+    expect(withAlias[0]).toMatchObject({ kind: 'title_prefix', partialWord: true });
+    expect(needsRetrieval(withAlias, byReference, VALID)).toBe(true);
+  });
+
   it('is needed when nothing matches', () => {
     expect(decide([], 'nothing here')).toBe(true);
   });

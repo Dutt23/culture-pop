@@ -1,6 +1,6 @@
 # Duplication review: culture-pop
 
-Read-only review. Nothing edited, nothing built or run. Every finding below was confirmed by reading every copy. Paths are relative to `/Users/sdutt/Documents/practice/culture-pop/`.
+Read-only review. Nothing edited, nothing built or run. Every finding below was confirmed by reading every copy. Paths are relative to the repository root.
 
 Out of scope (read for context only, no findings reported inside): `src/services/retrieval/rerank*`, `src/domain/ranking*`, `src/test/search-eval/**`, `src/services/llm/**`, `src/workers/**`.
 

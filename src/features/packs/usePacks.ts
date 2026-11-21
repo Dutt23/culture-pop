@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { PackNameError } from '../../data/repositories/packRepository';
 import type { SegmentedOption } from '../../components/ui/SegmentedControl';
 import { groupBy } from '../../domain/collections';
 import { CEILING_LABEL } from '../../domain/labels';
@@ -145,8 +146,8 @@ export function useAttempt(): {
     try {
       await action();
       return true;
-    } catch {
-      setError(SAVE_ERROR);
+    } catch (cause) {
+      setError(cause instanceof PackNameError ? cause.message : SAVE_ERROR);
       return false;
     }
   }, []);

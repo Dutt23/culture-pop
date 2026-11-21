@@ -129,3 +129,29 @@ The owner wants per-person control and no codes to share or type; one shared cod
 ### Consequences
 
 Delete `ACCESS_CODE` and `ACCESS_COOKIE_SECRET` from Vercel after deploying. The D61 firewall rule on `/api/unlock` can go too. Old backups and old devices may still hold a `webAccess` setting; it is ignored.
+
+## D66 — The app needs a signed-in account
+
+### Status
+
+Built 2026-11-21 (owner: "app not usable without sign-in?"); not deployed. Extends D64 and D65.
+
+### Decision
+
+**The client guard is a convenience, not security.** The server is the real gate: every `/api` call checks the session cookie (and wider web search and card drafts the per-person permission, D65) whatever the app shows. Nobody should rely on the client guard to protect anything; the app's own pages hold public demo content plus what the reader saved on their own device.
+
+Every page except `/sign-in` is wrapped in `RequireSignIn` (`src/app/RequireSignIn.tsx`). It asks `/api/auth/session` on entry, on every page change, and whenever the device goes on or offline; the page loader shows until the first answer, so a protected page never renders before it. A signed-out visitor goes to `/sign-in?next=<where they were going>` and returns there after signing in (only paths inside the app, never the sign-in page itself; `src/features/account/returnPath.ts`). Someone already signed in who opens `/sign-in` goes straight on to `next`, or Discover, without seeing the form (`SignInGate`). The sign-in page has no tab bar.
+
+Signed out at once, without waiting for a check: an `/api` call answered 401 (the sign-in ended mid-use: expired, revoked, or signed out on another device; `src/services/auth/sessionEnded.ts`), or another tab signed out (its sign-out removes the `pcd-account` hint, which this tab sees as a `storage` event). Signing out in Settings goes to `/sign-in`, and Back from there re-checks, so it can't show the pages from before.
+
+Unsaved work on a 401: the search is kept (it is in the `next` address), but picks in an open "Make a card" sheet are lost. Keeping them would mean saving the sheet's state, which isn't worth it for a rare case.
+
+Offline: a device that signed in before (the `pcd-account` hint) keeps using what's saved on it and checks again when back online; a device that never signed in shows the sign-in page with an offline note. The same rule applies when the server can't answer.
+
+### Why
+
+The owner wants the app used only by people with an account. The server already refuses wider web search and card drafts without one (D65); the guard makes the rest of the app match. Offline readers keep their own saved cards, since those live on their device anyway.
+
+### Consequences
+
+One `/api/auth/session` call per page change. `npm run dev` (no `/api`) stops at sign-in on a device that never signed in; sign in with `npm run dev:full`. The mocked e2e suite starts signed in by answering the session check with `page.route` (`e2e/returningReader.ts`); unit tests render the app with a fake auth client (`src/test/fakeAuth.ts`).

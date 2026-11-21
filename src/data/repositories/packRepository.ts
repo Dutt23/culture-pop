@@ -42,10 +42,21 @@ export interface PackRepository {
   packsOf(referenceId: string): Promise<Pack[]>;
 }
 
-/** A pack name is the reader's own text: trimmed, and never empty. */
+/** Longest pack name, so a name stays one or two lines on a card. */
+export const PACK_NAME_MAX = 60;
+
+/** A name the reader can fix; its message is shown to them as written. */
+export class PackNameError extends Error {
+  override name = 'PackNameError';
+}
+
+/** A pack name is the reader's own text: trimmed, never empty, at most `PACK_NAME_MAX` long. */
 function cleanName(name: string): string {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('A pack needs a name.');
+  if (!trimmed) throw new PackNameError('A pack needs a name.');
+  if (trimmed.length > PACK_NAME_MAX) {
+    throw new PackNameError(`Keep the name to ${PACK_NAME_MAX} characters or fewer.`);
+  }
   return trimmed;
 }
 
@@ -58,6 +69,21 @@ function settle(rows: readonly PackMember[]): PackMember[] {
 export function createPackRepository(db: PopCultureDb): PackRepository {
   const sortedMembers = (packId: string) =>
     db.packMembers.where('packId').equals(packId).sortBy('position');
+
+  /**
+   * Two packs can't share a name (compared like search: case and spacing ignored). Names with no
+   * letters or digits ("🎬") normalize to nothing, so those compare as typed, ignoring case.
+   * Call inside a transaction over packs, so a double tap can't slip a duplicate in.
+   */
+  async function assertNameFree(clean: string, exceptId?: string) {
+    const normalizedName = normalizePhrase(clean);
+    const same = (p: Pack) =>
+      normalizedName
+        ? p.normalizedName === normalizedName
+        : p.name.toLowerCase() === clean.toLowerCase();
+    const taken = await db.packs.filter((p) => p.id !== exceptId && same(p)).first();
+    if (taken) throw new PackNameError(`You already have a pack called “${taken.name}”.`);
+  }
 
   async function touch(packId: string, now: string) {
     if ((await db.packs.update(packId, { updatedAt: now })) === 0) {
@@ -92,15 +118,21 @@ export function createPackRepository(db: PopCultureDb): PackRepository {
         createdAt: now,
         updatedAt: now,
       };
-      await db.packs.add(pack);
+      await db.transaction('rw', db.packs, async () => {
+        await assertNameFree(clean);
+        await db.packs.add(pack);
+      });
       return pack;
     },
     async rename(packId, name) {
       const clean = cleanName(name);
-      await db.packs.update(packId, {
-        name: clean,
-        normalizedName: normalizePhrase(clean),
-        updatedAt: new Date().toISOString(),
+      await db.transaction('rw', db.packs, async () => {
+        await assertNameFree(clean, packId);
+        await db.packs.update(packId, {
+          name: clean,
+          normalizedName: normalizePhrase(clean),
+          updatedAt: new Date().toISOString(),
+        });
       });
     },
     setCeiling: async (packId, ceiling) => {

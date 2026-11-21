@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AuthClient } from '../../services/auth/authClient';
 import { AccountSection } from './AccountSection';
@@ -21,8 +21,11 @@ function fakeClient(): AuthClient {
 
 const show = (client: AuthClient) =>
   render(
-    <MemoryRouter>
-      <AccountSection client={client} />
+    <MemoryRouter initialEntries={['/settings']}>
+      <Routes>
+        <Route path="/settings" element={<AccountSection client={client} />} />
+        <Route path="/sign-in" element={<p>Sign-in page</p>} />
+      </Routes>
     </MemoryRouter>,
   );
 
@@ -38,7 +41,7 @@ describe('AccountSection', () => {
     expect(client.session).not.toHaveBeenCalled();
   });
 
-  it('shows who is signed in and signs out', async () => {
+  it('shows who is signed in, and signing out goes to sign-in', async () => {
     localStorage.setItem('pcd-account', 'reader@example.test');
     const client = fakeClient();
     show(client);
@@ -46,6 +49,6 @@ describe('AccountSection', () => {
     expect(screen.getByText(/7 cards left/)).toBeInTheDocument();
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'Sign out' })));
     expect(client.signOut).toHaveBeenCalled();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.getByText('Sign-in page')).toBeInTheDocument();
   });
 });

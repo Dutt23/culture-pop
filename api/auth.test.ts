@@ -114,6 +114,8 @@ function fakeSupabase() {
         }
         case 'quota_of':
           return [{ available: 7, reserved: 1 }];
+        case 'can_search_wider_web':
+          return a.p_user === USER;
         default:
           throw new Error(`unexpected rpc ${fn}`);
       }
@@ -333,6 +335,20 @@ describe('GET /api/auth/session', () => {
     expect(response.headers.get('Set-Cookie')).toBeNull();
   });
 
+  it('says "don\'t know" (null) for wider web search when that lookup fails', async () => {
+    const s = setup();
+    const handle = await signIn(s);
+    const rpc = s.supabase.rpc.getMockImplementation();
+    s.supabase.rpc.mockImplementation(async (fn, a) => {
+      if (fn === 'can_search_wider_web') throw new SupabaseError('unavailable', 0);
+      return rpc?.(fn, a);
+    });
+    expect(await (await s.session(get(handle))).json()).toMatchObject({
+      signedIn: true,
+      widerWeb: null,
+    });
+  });
+
   it('reports the signed-in email and balance, never tokens', async () => {
     const s = setup();
     const response = await s.session(get(await signIn(s)));
@@ -341,6 +357,7 @@ describe('GET /api/auth/session', () => {
       signedIn: true,
       email: 'reader@example.test',
       quota: { available: 7, reserved: 1 },
+      widerWeb: true,
     });
     expect(text).not.toMatch(/access-|refresh-/);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');

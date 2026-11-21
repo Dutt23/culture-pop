@@ -9,6 +9,7 @@ import {
   type DraftResponse,
   type NotUsed,
 } from '../../../shared/cardTypes.js';
+import { reportSessionEnded } from '../auth/sessionEnded';
 import { isRecord, stringField } from './validate';
 
 /**
@@ -338,6 +339,8 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
         }
       }
       if (!response.ok) {
+        // The sign-in ended mid-use: the sign-in guard takes the reader to sign in (D66).
+        if (response.status === 401) reportSessionEnded();
         const code = isRecord(body) ? stringField(body, 'error') : undefined;
         const details =
           code === 'no_card' && isRecord(body)

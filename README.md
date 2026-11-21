@@ -57,6 +57,17 @@ Persisted stores: `references`, `interpretations`, `aliases`, `sources`, `favour
 `searchHistory`. Search history is on by default, stays on the device, and can be switched off or
 cleared in Settings (D37). No browsing history is stored.
 
+## Sign-in
+
+The app needs an account: every page except `/sign-in` sends a signed-out visitor to sign in, then
+back to where they were going, and someone already signed in skips the sign-in page (D66). Signing
+out, a sign-in that ends mid-use, or signing out in another tab all go back to the sign-in page.
+This is a convenience; the server checks the account on every `/api` call. Offline, a device that signed in before keeps working with
+what's saved on it and checks again when it's back online; a device that never signed in shows the
+sign-in page.
+`npm run dev` has no `/api`, so it stops at the sign-in page on a device that never signed in; use
+`npm run dev:full` (local Vercel functions, see `docs/BACKEND_PLAN.md`) to sign in locally.
+
 ## Privacy
 
 When a search isn't answered by what's saved on the device, the app can look it up on Wikipedia,

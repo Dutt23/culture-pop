@@ -19,13 +19,14 @@ function fakeClient(overrides: Partial<AuthClient> = {}): AuthClient {
   };
 }
 
-function setup(client = fakeClient(), motion: 'system' | 'reduce' = 'system') {
+function setup(client = fakeClient(), motion: 'system' | 'reduce' = 'system', entry = '/sign-in') {
   render(
     <MotionPreferenceProvider preference={motion}>
-      <MemoryRouter initialEntries={['/sign-in']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/sign-in" element={<SignInPage client={client} />} />
-          <Route path="/settings" element={<p>Settings page</p>} />
+          <Route path="/discover" element={<p>Discover page</p>} />
+          <Route path="/packs/:id" element={<p>Pack page</p>} />
         </Routes>
       </MemoryRouter>
     </MotionPreferenceProvider>,
@@ -142,7 +143,7 @@ describe('the mascot', () => {
 });
 
 describe('signing in', () => {
-  it('signs in with a password and goes to Settings', async () => {
+  it('signs in with a password and goes to Discover', async () => {
     const s = setup();
     type(s.email(), ' reader@example.test ');
     type(s.password(), 'correct horse battery');
@@ -151,8 +152,33 @@ describe('signing in', () => {
       'reader@example.test',
       'correct horse battery',
     );
-    expect(screen.getByText('Settings page')).toBeInTheDocument();
+    expect(screen.getByText('Discover page')).toBeInTheDocument();
   });
+
+  it('goes back to the page the sign-in guard sent the reader from', async () => {
+    const s = setup(undefined, 'system', '/sign-in?next=%2Fpacks%2Fabc%3Fq%3Dx');
+    type(s.email(), 'reader@example.test');
+    type(s.password(), 'correct horse battery');
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'Sign in' })));
+    expect(screen.getByText('Pack page')).toBeInTheDocument();
+  });
+
+  it.each([
+    '//evil.example',
+    '/\t/evil.example',
+    '/\\evil.example',
+    'https://evil.example',
+    '/sign-in?next=%2Fpacks',
+  ])(
+    'ignores a return address that leaves the app or loops (%s) and goes to Discover',
+    async (next) => {
+      const s = setup(undefined, 'system', `/sign-in?next=${encodeURIComponent(next)}`);
+      type(s.email(), 'reader@example.test');
+      type(s.password(), 'correct horse battery');
+      await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'Sign in' })));
+      expect(screen.getByText('Discover page')).toBeInTheDocument();
+    },
+  );
 
   it('says plainly when the password is wrong, and stays put', async () => {
     const s = setup(
@@ -164,7 +190,7 @@ describe('signing in', () => {
     type(s.password(), 'nope');
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'Sign in' })));
     expect(screen.getByRole('alert')).toHaveTextContent("That email and password don't match.");
-    expect(screen.queryByText('Settings page')).not.toBeInTheDocument();
+    expect(screen.queryByText('Discover page')).not.toBeInTheDocument();
   });
 
   it('marks the box an error is about, and moves to the code box once it opens', async () => {
@@ -201,7 +227,7 @@ describe('signing in', () => {
     type(screen.getByLabelText('Code from the email'), '12 34-56');
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'Sign in' })));
     expect(s.client.signInWithCode).toHaveBeenCalledWith('reader@example.test', '123456');
-    expect(screen.getByText('Settings page')).toBeInTheDocument();
+    expect(screen.getByText('Discover page')).toBeInTheDocument();
   });
 
   it('"Forgot password?" sets a new password with an emailed code', async () => {

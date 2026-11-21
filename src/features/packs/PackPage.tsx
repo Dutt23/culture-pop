@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { PACK_NAME_MAX } from '../../data/repositories/packRepository';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SkeletonCards } from '../../components/ui/SkeletonCards';
 import { Page } from '../../components/ui/Page';
@@ -249,6 +250,7 @@ function PackSettings({ pack }: { pack: Pack }) {
           className={styles.textInput}
           value={name}
           onChange={(event) => setName(event.target.value)}
+          maxLength={PACK_NAME_MAX}
           autoComplete="off"
           required
         />

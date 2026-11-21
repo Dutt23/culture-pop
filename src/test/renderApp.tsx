@@ -5,9 +5,11 @@ import { AppProviders } from '../app/AppProviders';
 import { AppRoutes } from '../app/AppRoutes';
 import type { RetrievalService } from '../app/RetrievalContext';
 import { createDatabase, type PopCultureDb } from '../data/db';
+import { fakeAuthClient } from './fakeAuth';
 import { unusedRetrievalService } from './fakeRetrieval';
 
 let counter = 0;
+const signedIn = fakeAuthClient();
 
 /** Every test gets its own IndexedDB database, so tests never share state. */
 export function createTestDatabase(): PopCultureDb {
@@ -26,7 +28,8 @@ export function renderApp(
   const view = render(
     <AppProviders db={db} retrieval={retrieval}>
       <MemoryRouter initialEntries={[route]}>
-        <AppRoutes />
+        {/* Signed in by default; RequireSignIn.test.tsx covers the signed-out paths. */}
+        <AppRoutes authClient={signedIn} />
       </MemoryRouter>
     </AppProviders>,
   );

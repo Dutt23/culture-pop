@@ -10,6 +10,7 @@ import {
   type AuthResult,
 } from '../../services/auth/authClient';
 import { CODE_LENGTH, CODE_PATTERN, MIN_PASSWORD } from '../../../shared/auth.js';
+import { returnPathOf } from './returnPath';
 import { SignInScene, type Pose } from './SignInScene';
 import styles from './SignInPage.module.css';
 
@@ -50,13 +51,6 @@ const MESSAGES: Record<AuthFailure, string> = {
 };
 
 const defaultClient = createAuthClient();
-
-/** Only a path inside this app: never `//host`, `/\host` or a full URL. */
-function safeReturnPath(from: unknown): string {
-  return typeof from === 'string' && /^\/(?![/\\])/.test(from) && !from.includes('\\')
-    ? from
-    : '/settings';
-}
 
 /** Opens and closes its content by animating its height, so the card never jumps. */
 function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
@@ -227,9 +221,7 @@ export function SignInPage({ client = defaultClient }: { client?: AuthClient }) 
           : client.signInWithCode(address, code),
     );
     if (!result.ok) return setMessage({ kind: 'error', text: MESSAGES[result.error] });
-    navigate(safeReturnPath((location.state as { from?: unknown } | null)?.from), {
-      replace: true,
-    });
+    navigate(returnPathOf(location), { replace: true });
   }
 
   const submitLabel = mode === 'password' || codeSent ? 'Sign in' : 'Send code';

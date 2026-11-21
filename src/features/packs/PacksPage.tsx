@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { PACK_NAME_MAX } from '../../data/repositories/packRepository';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
@@ -87,6 +88,7 @@ function NewPackForm() {
           className={styles.textInput}
           value={name}
           onChange={(event) => setName(event.target.value)}
+          maxLength={PACK_NAME_MAX}
           placeholder="Before the movie"
           autoComplete="off"
           required

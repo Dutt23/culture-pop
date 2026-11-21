@@ -1,11 +1,19 @@
 import { expect, test, type Route } from '@playwright/test';
-import { skipTours } from './returningReader';
+import { returningReader } from './returningReader';
 
 // The preview server has no /api, so both functions are answered here in the shapes the real ones
 // use. CARD_DRAFT_FAKE and WEB_SEARCH_FAKE only work on a local `vercel dev` server, which is why
 // this spec mocks with page.route.
 test.use({ serviceWorkers: 'block' });
-test.beforeEach(({ page }) => skipTours(page));
+test.beforeEach(async ({ page }) => {
+  await returningReader(page);
+  // Signed in, with wider web search turned on (D65): the card flow checks this before picking.
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({
+      json: { signedIn: true, email: 'reader@example.test', quota: null, widerWeb: true },
+    }),
+  );
+});
 
 const SEARCH = 'zorbo quibble';
 const WEB_RESULTS = [
@@ -248,4 +256,28 @@ test('reload marks an unfinished browser-owned job interrupted without resubmitt
   } finally {
     release();
   }
+});
+
+test('Back closes the card dialog and keeps the search page; Back again leaves it', async ({
+  page,
+}) => {
+  await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
+  await page.goto('/discover');
+  await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
+  await page.getByRole('button', { name: 'Search the wider web' }).click();
+  await page
+    .getByRole('region', { name: 'Search the wider web?' })
+    .getByRole('button', { name: 'Search the wider web' })
+    .click();
+  await page.getByRole('button', { name: 'Make a card from these' }).click();
+  const flow = page.getByRole('dialog', { name: `Make a card from “${SEARCH}”` });
+  await expect(flow).toBeVisible();
+
+  await page.goBack();
+  await expect(flow).toBeHidden();
+  await expect(page).toHaveURL(/\/search\?q=/);
+  await expect(page.getByRole('button', { name: 'Make a card from these' })).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/discover$/);
 });

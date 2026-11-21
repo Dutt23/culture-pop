@@ -41,7 +41,8 @@
   display: block;
   width: 100%;
   margin: 6px 0;
-  padding: 8px 10px;
+  /* Room at the bottom for the "✓ Selected" tag, so it never sits on the snippet. */
+  padding: 8px 10px 26px;
   overflow: hidden;
   border: 1px solid var(--frame-edge);
   border-radius: 4px;

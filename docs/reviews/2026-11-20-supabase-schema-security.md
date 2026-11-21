@@ -79,3 +79,10 @@ Fifth separate review, static only. **No way around the permission found, and no
 | MED (test) | The "refused search by itself brings the button back" test could pass or fail on timing. | Fixed: waits for the search first. |
 | LOW | Local fake mode (`WEB_SEARCH_FAKE`, `CARD_DRAFT_FAKE`) now needs Supabase set up and a permitted account. | Documented in `.env.example` and BACKEND_PLAN; intended (fails closed). |
 | LOW (open) | Each paid call may refresh the session first (up to ~12 s waiting on another refresher). | Accepted. |
+
+## User-testing fixes D2, D3, Back (2026-11-21)
+
+- **D2** site name near-invisible on `/sign-in` (light): the header turned light for *any* night scene on the page. Now only a scene marked `data-behind-header` (Discover's room) does; boxed scenes (sign-in card, Activity, card dialog) don't. E2E contrast check (≥ 4.5) added.
+- **D3** card dialog asked for consent before saying "Sign in": the dialog now asks the server first (`/api/auth/session` gains `widerWeb`), shows "Checking your account…", then either the tray or "Sign in to make a card" / "not turned on" with nothing to pick. The server still checks every paid call.
+- **Back** closed the page and lost picks: the open dialog adds a history entry; Back closes the dialog, and other ways of closing remove the entry. Unit and e2e tests.
+- Review (static, sixth pass): no blockers. Accepted LOW: following "Sign in" from the dialog leaves one extra same-page entry in history; reopening the dialog during its exit animation leaves one spare entry. Both harmless.

@@ -31,7 +31,7 @@ const cards: LibraryPickerCard[] = [
   },
 ];
 
-describe('saved card picker', () => {
+describe('library and saved card picker', () => {
   it('searches visible title and description and toggles a source by keyboard', async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
@@ -43,7 +43,7 @@ describe('saved card picker', () => {
         onSelect={onSelect}
       />,
     );
-    const search = screen.getByRole('searchbox', { name: 'Search saved cards' });
+    const search = screen.getByRole('searchbox', { name: 'Search your library' });
     await user.type(search, 'lion carefree');
     const card = screen.getByRole('button', { name: /Hakuna Matata/ });
     expect(card).toHaveAttribute('aria-pressed', 'true');
@@ -52,7 +52,7 @@ describe('saved card picker', () => {
     expect(onSelect).toHaveBeenCalledWith(cards[0]);
     await user.clear(search);
     await user.type(search, 'missing');
-    expect(screen.getByRole('status')).toHaveTextContent('No saved cards match');
+    expect(screen.getByRole('status')).toHaveTextContent('No library cards match');
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByText('Saved search (spoiler)')).toBeNull();
   });
@@ -71,14 +71,25 @@ describe('saved card picker', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByText(/guide tone and structure/)).toBeInTheDocument();
+    // The style step already has its own heading and note: no second heading here.
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Style examples' })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Search saved cards' })).toBeInTheDocument();
     await user.type(screen.getByRole('searchbox'), 'secret ending');
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.getByRole('status')).toHaveTextContent('No saved cards match');
   });
 
-  it('explains how to populate an empty library', () => {
-    render(<CardLibraryPicker cards={[]} mode="source" selected={[]} onSelect={vi.fn()} />);
+  it('explains how to get style examples when nothing is saved', () => {
+    render(<CardLibraryPicker cards={[]} mode="style" selected={[]} onSelect={vi.fn()} />);
     expect(screen.getByRole('status')).toHaveTextContent('Save a favourite or keep a draft');
+  });
+
+  it('counts library cards as library cards, not saved ones', () => {
+    render(<CardLibraryPicker cards={cards} mode="source" selected={[]} onSelect={vi.fn()} />);
+    expect(
+      screen.getByRole('region', { name: 'Add library cards as sources' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/^\d+ library cards?$/);
   });
 });

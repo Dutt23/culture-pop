@@ -1,6 +1,6 @@
 # Backend plan: wider-web search through Parallel
 
-> **Update 2026-11-21: the access code is gone.** Wider web search (and card drafts) now need a signed-in account that the owner turned it on for (`app_private.wider_web_access`, D64; steps in `docs/SUPABASE_SETUP.md`, "Turn on wider web search for a person"). `/api/unlock`, `/api/lock`, `api/_lib/access.ts`, `ACCESS_CODE` and `ACCESS_COOKIE_SECRET` were removed. Signed out: 401 `signed_out`; signed in but not turned on: 403 `not_allowed`. Sections below that describe the code and its cookie are history.
+> **Update 2026-11-21: the access code is gone.** Wider web search (and card drafts) now need a signed-in account that the owner turned it on for (`app_private.wider_web_access`, D64; steps in `docs/SUPABASE_SETUP.md`, "Turn on wider web search for a person"). `/api/unlock`, `/api/lock`, `api/_lib/access.ts`, `ACCESS_CODE` and `ACCESS_COOKIE_SECRET` were removed. Signed out: 401 `signed_out`; signed in but not turned on: 403 `not_allowed`. Sections below that describe the code and its cookie are history. Since D66 the whole app needs a signed-in account: signed-out visitors go to `/sign-in` first, and signing out returns there.
 
 Status (2026-11-16): **built, not run.** Server, client and tests are written (D45). No build, test
 or deploy has been run. The owner's steps are in section 10.
@@ -486,8 +486,8 @@ rtk npx --yes vercel@65.9.0 rollback
 ```
 
 Then on the phone: search "why are ferrari fans depressed", tap **Search the wider web**, agree,
-sign in if asked, and check the "Community suggests… (unverified)" list. Sign out in Settings and
-search again: a "Sign in" message should replace the results.
+and check the "Community suggests… (unverified)" list (the app asks you to sign in when it opens).
+Sign out in Settings: the app should go straight to the sign-in page.
 
 ---
 
@@ -547,8 +547,8 @@ with no `VERCEL_ENV`); off everywhere else, including a host that sets neither (
 7. **Offline:** with the page open, DevTools → Network → **Offline**, then search the same question
    again from the search box (no reload: the dev server has no service worker). The saved block
    shows, and Refresh is disabled. Switch back to **No throttling** afterwards.
-8. **Who may search:** sign out (Settings → Your account), then tap Refresh: a "Sign in" message
-   replaces the results. Signed in without the permission, it says wider web search isn't on yet.
+8. **Who may search:** sign out (Settings → Your account): the app goes to the sign-in page, and
+   every other page sends you back there. Signed in without the permission, it says wider web search isn't on yet.
 9. **Real Parallel, optional:** put the key in `PARALLEL_API_KEY`, set `WEB_SEARCH_FAKE=` (empty)
    and restart. This spends Parallel credit.
 

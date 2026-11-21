@@ -74,7 +74,9 @@ test('signs in with a password, keeps tokens off the page, and signs out', async
   expect(await response.text()).not.toMatch(TOKEN_LIKE);
   expect(response.headers()['cache-control']).toBe('private, no-store');
 
-  await expect(page).toHaveURL(/\/settings$/);
+  // No page asked for, so it goes to Discover (D66); Settings then shows who is signed in.
+  await expect(page).toHaveURL(/\/discover$/);
+  await page.goto('/settings');
   await expect(page.locator('p', { hasText: 'Signed in as' })).toContainText(EMAIL.toLowerCase());
 
   // The cookie: HttpOnly, Secure, SameSite=Strict, only sent to /api.
@@ -104,7 +106,7 @@ test('signs in with a password, keeps tokens off the page, and signs out', async
   expect(forged.status()).toBe(403);
 
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+  await expect(page).toHaveURL(/\/sign-in$/);
   expect(await sessionCookie(page)).toBeUndefined();
   const after = await page.request.get('/api/auth/session');
   expect(await after.json()).toEqual({ signedIn: false });

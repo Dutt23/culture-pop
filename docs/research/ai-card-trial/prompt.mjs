@@ -2,7 +2,7 @@
 // the answer schema. Mirrors docs/superpowers/specs/2026-11-18-ai-card-drafts-design.md.
 // Worked examples are our own text and never use the five answer-key topics
 // (bazinga, winter is coming, ok boomer, stonks, kitne aadmi the).
-import { encode } from '/Users/sdutt/Documents/practice/culture-pop/node_modules/@toon-format/toon/dist/index.mjs';
+import { encode } from '@toon-format/toon';
 
 export const PROMPT_VERSION = 'card-draft-v8';
 

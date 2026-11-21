@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepositories } from '../../data/repositories';
 import type { Settings } from '../../domain/settings';
 import {
@@ -37,8 +37,14 @@ async function setUp(webSearch: Settings['webSearch'], signedIn = false) {
   return { ...renderApp(ROUTE, db, retrieval), repos };
 }
 
+// Closing the card dialog steps history back; jsdom does that late, into the next test. Not here.
+beforeEach(() => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {});
+});
+
 afterEach(() => {
   localStorage.removeItem('pcd-account');
+  vi.mocked(window.history.back).mockRestore();
 });
 
 describe('search page: make a card', () => {

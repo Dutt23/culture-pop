@@ -90,7 +90,7 @@ function NotWhatIMeant({ query, isOnline, widerWeb, skipCommunity }: NotWhatIMea
 }
 
 export function SearchPage() {
-  const [query, setQuery] = useSearchQuery();
+  const [query, setQuery, settleQuery] = useSearchQuery();
   const hasQuery = normalizePhrase(query).length > 0;
   const search = useSearch(query);
   const isOnline = useOnlineStatus();
@@ -301,7 +301,10 @@ export function SearchPage() {
             value={query}
             autoFocus={!hasQuery}
             onChange={setQuery}
-            onSubmit={recordSearch}
+            onSubmit={(value) => {
+              settleQuery();
+              recordSearch(value);
+            }}
           />
         </SearchPeek>
       </div>

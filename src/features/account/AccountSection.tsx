@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Section } from '../../components/ui/Section';
 import {
   createAuthClient,
@@ -15,6 +15,7 @@ const defaultClient = createAuthClient();
 
 export function AccountSection({ client = defaultClient }: { client?: AuthClient }) {
   // A device that never signed in shows "Sign in" without asking the server anything.
+  const navigate = useNavigate();
   const [hint] = useState(readAccountHint);
   // undefined: still asking; null: the server couldn't say (offline or accounts not set up).
   const [session, setSession] = useState<AccountSession | null | undefined>(
@@ -36,6 +37,8 @@ export function AccountSection({ client = defaultClient }: { client?: AuthClient
     if (result.ok) {
       setError('');
       setSession({ signedIn: false });
+      // The app needs an account (D66), so signing out goes straight to sign-in.
+      navigate('/sign-in', { replace: true });
     } else {
       setError("Couldn't sign out. Try again.");
     }

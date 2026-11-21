@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { onSessionEnded } from '../auth/sessionEnded';
 import { connectSrc } from './hosts';
 import {
   createWebSearch,
@@ -137,6 +138,19 @@ describe('search', () => {
   ])('maps HTTP %i %j to %s', async (status, body, failure) => {
     const { client } = setup(answer(body, status));
     expect(await failureOf(client.search('ferrari fans'))).toBe(failure);
+  });
+
+  it('tells the sign-in guard about a 401 (sign-in ended), and only then', async () => {
+    const ended = vi.fn();
+    const stop = onSessionEnded(ended);
+    try {
+      await failureOf(setup(answer({ error: 'not_allowed' }, 403)).client.search('ferrari fans'));
+      expect(ended).not.toHaveBeenCalled();
+      await failureOf(setup(answer({ error: 'signed_out' }, 401)).client.search('ferrari fans'));
+      expect(ended).toHaveBeenCalledTimes(1);
+    } finally {
+      stop();
+    }
   });
 
   it('reports a network failure as failed', async () => {
