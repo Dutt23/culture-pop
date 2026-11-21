@@ -104,3 +104,21 @@ describe('saved web links (owner choice A)', () => {
     db.close();
   });
 });
+
+describe('saved web links, paged reads (D69)', () => {
+  it('lists only `limit` newest, counts them all, and says which urls are saved', async () => {
+    const { db, repos } = await setup();
+    await db.savedLinks.bulkPut([
+      { url: 'https://a.test/', title: 'A', savedAt: '2026-11-14T09:00:00.000Z' },
+      { url: 'https://c.test/', title: 'C', savedAt: '2026-11-16T09:00:00.000Z' },
+      { url: 'https://b.test/', title: 'B', savedAt: '2026-11-15T09:00:00.000Z' },
+    ]);
+    expect((await repos.savedLinks.list(2)).map((link) => link.title)).toEqual(['C', 'B']);
+    expect(await repos.savedLinks.count()).toBe(3);
+    expect(await repos.savedLinks.savedUrls(['https://a.test/', 'https://nope.test/'])).toEqual(
+      new Set(['https://a.test/']),
+    );
+    expect(await repos.savedLinks.savedUrls([])).toEqual(new Set());
+    db.close();
+  });
+});

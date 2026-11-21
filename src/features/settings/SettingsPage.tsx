@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
+import { BusyButton, useBusy } from '../../components/ui/BusyButton';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { resetTours, TOUR_PARAM } from '../../components/tour/useTour';
@@ -67,10 +68,17 @@ export function SettingsPage() {
     }
   };
 
+  const [resetting, runReset] = useBusy();
+  const [clearing, runClear] = useBusy();
+
   const reset = async () => {
     const question =
       'Remove all favourites, packs, saved web links and search history, reset settings, and delete online results and the cards you kept on this device? Your library cards stay. This cannot be undone.';
     if (!window.confirm(question)) return;
+    await runReset(resetNow);
+  };
+
+  const resetNow = async () => {
     try {
       await resetLocalData();
       setMessage({
@@ -85,6 +93,10 @@ export function SettingsPage() {
   const clearHistory = async () => {
     if (!window.confirm('Delete your search history from this device? This cannot be undone.'))
       return;
+    await runClear(clearNow);
+  };
+
+  const clearNow = async () => {
     try {
       await history.clear();
       setMessage({ tone: 'ok', text: 'Search history was cleared.' });
@@ -173,9 +185,14 @@ export function SettingsPage() {
             saving new searches; Clear history deletes the ones already saved, with any wider web
             results kept for them. Favourites and saved web links stay.
           </Note>
-          <button type="button" className={styles.reset} onClick={clearHistory}>
+          <BusyButton
+            busy={clearing}
+            busyLabel="Clearing…"
+            className={styles.reset}
+            onClick={() => void clearHistory()}
+          >
             Clear history
-          </button>
+          </BusyButton>
         </div>
         <div className={styles.withNote}>
           <SegmentedControl
@@ -205,6 +222,8 @@ export function SettingsPage() {
           search you tap, or an external search link you tap. Search history and results found
           online are kept here until you clear them; wider web results are kept for 30 days, only
           while search history is on. Web links you save stay until you remove them or reset.
+          Voice search (the talking TV button in the search box) is turned into text by your
+          browser’s speech service (Google for Chrome, Apple for Safari), never by our server.
         </Note>
         <Note
           topic="resetting"
@@ -214,9 +233,14 @@ export function SettingsPage() {
           and the cards you kept, all saved on this device. Clear history does not delete kept
           cards. It asks first, and can't be undone.
         </Note>
-        <button type="button" className={styles.reset} onClick={reset}>
+        <BusyButton
+          busy={resetting}
+          busyLabel="Resetting…"
+          className={styles.reset}
+          onClick={() => void reset()}
+        >
           Reset everything
-        </button>
+        </BusyButton>
         {message && (
           <p
             className={message.tone === 'error' ? styles.error : styles.ok}

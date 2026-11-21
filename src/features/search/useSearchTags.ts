@@ -78,20 +78,24 @@ export interface Taste {
  * The category the reader's favourites (and, with history on, results opened from a search) lean
  * to. Read on this device only; nothing new is recorded.
  */
+/** The lean follows the newest favourites; this many are plenty to tell a taste (D69). */
+const TASTE_FAVOURITES = 500;
+
 export function useTaste(enabled: boolean, historyOn: boolean): Taste | undefined {
   const { references, history, favourites } = useRepositories();
   return useLiveQuery(async () => {
     if (!enabled) return undefined;
-    const [all, searches, saved] = await Promise.all([
-      references.getAll(),
+    const [searches, saved] = await Promise.all([
       historyOn ? history.recent(ALL_SEARCHES, Date.now()) : Promise.resolve([]),
-      favourites.list(),
+      favourites.list(TASTE_FAVOURITES),
     ]);
     const ids = new Set([
       ...saved.map((row) => row.referenceId),
       ...searches.flatMap((search) => search.referenceIds),
     ]);
-    const lean = tasteLean(all.filter((r) => ids.has(r.id)).map((r) => r.category));
+    // Only these cards, by ID: never the whole library (D69).
+    const liked = await references.getByIds([...ids]);
+    const lean = tasteLean(liked.map((r) => r.category));
     return lean && { lean, usesHistory: searches.some((search) => search.referenceIds.length > 0) };
   }, [references, history, favourites, enabled, historyOn]);
 }

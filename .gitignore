@@ -44,3 +44,9 @@ Thumbs.db
 docs/superpowers/
 docs/eval/
 .claude/
+docs/reviews/*security*
+
+# Scale benchmark results (scripts/perf/scale-bench.mjs)
+scripts/perf/out/
+# Project docs (kept on disk and in the vault, not in the public repo)
+docs/

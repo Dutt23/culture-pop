@@ -7,6 +7,7 @@ import {
   type DraftResponse,
 } from '../../../shared/cardTypes.js';
 import { Antennae, Body, Smile } from '../../components/mascot/Mascot';
+import { BusyButton } from '../../components/ui/BusyButton';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
 import { UNGRADED } from './curationLook';
@@ -87,6 +88,8 @@ export function DraftReveal(props: DraftRevealProps) {
       : [card.label, card.gist, card.means, card.reply]
   ).some((v) => !v.trim());
   const [busy, setBusy] = useState(false);
+  // The Keep tap's own save, shown on the button as "Keeping…".
+  const [keeping, setKeeping] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
   const [cheering, setCheering] = useState(false);
@@ -150,6 +153,7 @@ export function DraftReveal(props: DraftRevealProps) {
 
   const keep = async () => {
     setBusy(true);
+    setKeeping(true);
     setSaveFailed(false);
     try {
       await onKeep?.(card);
@@ -157,9 +161,12 @@ export function DraftReveal(props: DraftRevealProps) {
       if (!alive.current) return;
       setSaveFailed(true);
       setBusy(false);
+      setKeeping(false);
       return;
     }
-    if (alive.current) flyOut();
+    if (!alive.current) return;
+    setKeeping(false);
+    flyOut();
   };
 
   let chip = 0;
@@ -378,14 +385,15 @@ export function DraftReveal(props: DraftRevealProps) {
               Edit
             </button>
           )}
-          <button
-            type="button"
+          <BusyButton
+            busy={keeping}
+            busyLabel="Keeping…"
             className={styles.keep}
-            disabled={busy || blank}
+            disabled={blank || (busy && !keeping)}
             onClick={() => void keep()}
           >
             Keep
-          </button>
+          </BusyButton>
         </div>
       )}
     </div>

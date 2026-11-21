@@ -141,9 +141,8 @@ export async function endSession(
         : (await supabase.refresh(tokens.refresh_token)).access_token;
     await supabase.logout(access);
   } catch {
-    // shortcut: already forgotten here, but the Supabase session row stays until Supabase cleans
-    // it up (refresh tokens don't expire by default). Upgrade: store the session_id claim and
-    // delete auth.sessions in bff.end_session.
+    // Already forgotten here, and bff.end_session deleted the Supabase session named by the
+    // bundle's session_id. Only an older bundle without one leaves that row to Supabase.
   }
 }
 

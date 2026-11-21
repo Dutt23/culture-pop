@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
@@ -52,6 +53,7 @@ export function PackMemberItem({
   const [over, setOver] = useState(false);
   const upRef = useRef<HTMLButtonElement>(null);
   const downRef = useRef<HTMLButtonElement>(null);
+  const moveRef = useRef<HTMLButtonElement>(null);
   // The card moves in the list; keep keyboard focus on the button that moved it.
   const refocus = useRef<HTMLButtonElement | null>(null);
 
@@ -138,6 +140,7 @@ export function PackMemberItem({
             <span aria-hidden="true">↓ </span>Move down the list
           </button>
           <button
+            ref={moveRef}
             type="button"
             className={styles.button}
             aria-expanded={sheetOpen}
@@ -147,17 +150,21 @@ export function PackMemberItem({
           </button>
         </div>
       )}
-      {sheetOpen && (
-        <PackSheet
-          referenceId={reference.id}
-          title={reference.title}
-          fromPackId={packId}
-          onLeft={(movedTo) =>
-            onLeft({ referenceId: reference.id, title: reference.title, index, movedTo })
-          }
-          onClose={() => setSheetOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {sheetOpen && (
+          <PackSheet
+            key="sheet"
+            referenceId={reference.id}
+            title={reference.title}
+            fromPackId={packId}
+            opener={moveRef}
+            onLeft={(movedTo) =>
+              onLeft({ referenceId: reference.id, title: reference.title, index, movedTo })
+            }
+            onClose={() => setSheetOpen(false)}
+          />
+        )}
+      </AnimatePresence>
       {error && (
         <p className={styles.error} role="alert">
           {error}

@@ -1,0 +1,206 @@
+/* The side tray. Default look (`tv`): the mascot's TV, purple casing with antennae on top and
+   knobs underneath, standing at the right edge. The `carried` look is further down. A whole
+   screen on phones; `size` sets the width above 40rem. */
+.set {
+  /* The mascot's TV casing (public/icon.svg), the same in both themes. */
+  --tv-casing: #6a3df0;
+  --tv-casing-light: #b29bff;
+  --tv-knob: #ffb27a;
+  /* `size` (data-size): narrow 20rem, default 22.5rem, wide 30rem, wider on a desktop. */
+  --tray-width: 22.5rem;
+
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  inline-size: min(var(--tray-width), calc(100vw - 2 * var(--space-3)));
+  max-inline-size: none;
+  /* vh first: older WebView Chrome has no dvh. */
+  block-size: calc(100vh - 2 * var(--space-3));
+  block-size: calc(100dvh - 2 * var(--space-3));
+  max-block-size: none;
+  margin: var(--space-3) var(--space-3) var(--space-3) auto;
+  padding: 2.75rem var(--space-3) 0;
+  overflow: visible;
+  border: none;
+  border-radius: 28px;
+  background: var(--tv-casing);
+  color: var(--color-text);
+  box-shadow:
+    inset 0 -6px 0 rgb(0 0 0 / 18%),
+    var(--shadow-raised);
+}
+
+.set[data-size='narrow'] {
+  --tray-width: 20rem;
+}
+
+.set[data-size='wide'] {
+  --tray-width: 30rem;
+}
+
+/* Desktop (64rem): a wide tray has room for a two-column list. */
+@media (min-width: 64rem) {
+  .set[data-size='wide'] {
+    --tray-width: 36rem;
+  }
+}
+
+.set:focus-visible {
+  outline: none;
+}
+
+/* --backdrop runs 0 to 1 with the set's own motion, reduced or not. */
+.set::backdrop {
+  background: rgb(13 11 31 / calc(0.6 * var(--backdrop, 1)));
+}
+
+:global(html[data-tray-open]) {
+  overflow: hidden;
+}
+
+.antennae {
+  position: absolute;
+  inset-block-start: 0.25rem;
+  inset-inline-start: 50%;
+  inline-size: 5.5rem;
+  block-size: 2.6rem;
+  transform: translateX(-50%);
+}
+
+/* The picture tube: the night room, a soft glass edge and faint scanlines. */
+.screen {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
+  border: 4px solid var(--tv-casing-light);
+  border-radius: 22px;
+  background: var(--color-bg);
+  box-shadow: inset 0 0 28px rgb(0 0 0 / 55%);
+}
+
+.screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 3%) 0 1px,
+    transparent 1px 3px
+  );
+  border-radius: inherit;
+}
+
+/* Speaker grille and two knobs under the screen. */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  block-size: 2.25rem;
+  padding: 0 var(--space-3) env(safe-area-inset-bottom, 0px);
+}
+
+.grille {
+  flex: 1;
+  block-size: 0.75rem;
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(
+    to right,
+    rgb(0 0 0 / 28%) 0 3px,
+    transparent 3px 7px
+  );
+}
+
+.knob {
+  inline-size: 1rem;
+  block-size: 1rem;
+  border-radius: 50%;
+  background: var(--tv-knob);
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 25%);
+}
+
+.knob + .knob {
+  background: var(--tv-casing-light);
+}
+
+/* Phones: the set fills the screen, square at the edges, antennae still on top. */
+@media (max-width: 39.99rem) {
+  .set {
+    inline-size: 100vw;
+    block-size: 100vh;
+    block-size: 100dvh;
+    margin: 0;
+    padding-block-start: calc(2.75rem + env(safe-area-inset-top, 0px));
+    border-radius: 0;
+  }
+
+  .antennae {
+    inset-block-start: calc(0.25rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Carried: a plain night-room panel, hauled in by the mascot at its left edge. */
+.set[data-look='carried'] {
+  padding: 0;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-raised);
+}
+
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* Outside the panel's left edge on wider screens, pushing it along. */
+.carrier {
+  position: absolute;
+  z-index: 1;
+  inset-block-end: 16%;
+  inset-inline-start: -6.75rem;
+  inline-size: 7.5rem;
+  pointer-events: none;
+}
+
+/* Phones: the panel fills the screen; the mascot rests in a strip along its top. */
+@media (max-width: 39.99rem) {
+  .set[data-look='carried'] {
+    padding-block-start: calc(5rem + env(safe-area-inset-top, 0px));
+    border: none;
+    border-radius: 0;
+  }
+
+  .carrier {
+    inset-block: calc(0.5rem + env(safe-area-inset-top, 0px)) auto;
+    inset-inline-start: var(--space-4);
+    inline-size: 4.5rem;
+  }
+}
+
+/* Everything between the title and the footer scrolls on its own; the set stays put. Focus moved
+   by Tab scrolls into view clear of the pinned footer. */
+.scroll {
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+/* Pinned under the scrolling content, so its action is always reachable. */
+.footer {
+  flex: none;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-border);
+  background: var(--color-bg);
+}

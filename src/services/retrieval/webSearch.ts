@@ -10,6 +10,7 @@ import {
   type NotUsed,
 } from '../../../shared/cardTypes.js';
 import { reportSessionEnded } from '../auth/sessionEnded';
+import { CSRF_HEADER } from '../../../shared/auth.js';
 import { isRecord, stringField } from './validate';
 
 /**
@@ -374,7 +375,8 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
 
   const post = (body?: unknown): RequestInit => ({
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    // The server refuses wider-web calls without it, so other sites can't spend credits here.
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', [CSRF_HEADER]: '1' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
@@ -400,7 +402,11 @@ export function createWebSearch(deps: WebSearchDependencies): WebSearchClient {
       ),
     streamDraftCard: async (body, signal) => {
       const init = post(body);
-      init.headers = { Accept: 'text/event-stream', 'Content-Type': 'application/json' };
+      init.headers = {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json',
+        [CSRF_HEADER]: '1',
+      };
       return parseDraftResponse(
         await call(DRAFT_CARD_PATH, init, signal, DRAFT_TIMEOUT_MS),
         body.sources.length,

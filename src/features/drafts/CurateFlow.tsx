@@ -118,18 +118,26 @@ const fromKept = ({ card, search }: DraftCardRecord, reveal: boolean): ToneCard 
 function useLibraryCards(revealSpoilers: boolean) {
   const { favourites, references, drafts } = useRepositories();
   return useLiveQuery(async () => {
-    const favouriteIds = new Set((await favourites.list()).map((f) => f.referenceId));
-    const saved = await references.getAll();
-    const cards = await Promise.all(
-      saved.map(async (reference) => {
-        const [interpretation] = await references.getInterpretations(reference.id);
-        return interpretation && (revealSpoilers || interpretation.spoiler !== 'major')
-          ? [{ reference, interpretation, own: false }]
-          : [];
-      }),
-    );
-    const appCards = cards.flat();
-    const kept = await drafts.list();
+    // All four reads at once, and two for the whole library, not one read per card (D69).
+    const [favouriteRows, saved, interpretations, kept] = await Promise.all([
+      favourites.list(),
+      references.getAll(),
+      references.getAllInterpretations(),
+      drafts.list(),
+    ]);
+    const favouriteIds = new Set(favouriteRows.map((f) => f.referenceId));
+    // Each card's first interpretation by ID, as `getInterpretations` ordered them.
+    const firstOf = new Map<string, Interpretation>();
+    for (const i of interpretations) {
+      const held = firstOf.get(i.referenceId);
+      if (!held || i.id < held.id) firstOf.set(i.referenceId, i);
+    }
+    const appCards = saved.flatMap((reference) => {
+      const interpretation = firstOf.get(reference.id);
+      return interpretation && (revealSpoilers || interpretation.spoiler !== 'major')
+        ? [{ reference, interpretation, own: false }]
+        : [];
+    });
     const realLabels = new Map(
       kept.map((k): [string, string] => [keptName(k.card, k.search, revealSpoilers), k.card.label]),
     );

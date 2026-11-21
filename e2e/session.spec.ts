@@ -92,3 +92,56 @@ test('after signing out, Back does not show the pages from before', async ({ pag
   await expect(page).toHaveURL(/\/sign-in\?next=%2Ffavourites$/);
   await expect(heading(page, 'Favourites')).toHaveCount(0);
 });
+
+test('the account tray slides out from the top bar, closes, and signs out', async ({ page }) => {
+  await mockAccount(page, { signedIn: true });
+  await page.goto('/packs');
+  const account = page.getByRole('button', { name: 'Your account, reader@example.test' });
+
+  await account.click();
+  const tray = page.getByRole('dialog', { name: 'Your account' });
+  await expect(tray).toBeVisible();
+  await expect(tray.getByText('On', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(tray).toHaveCount(0);
+  await expect(account).toBeFocused();
+
+  await account.click();
+  await page.goBack();
+  await expect(tray).toHaveCount(0);
+  await expect(page).toHaveURL(/\/packs$/);
+
+  await account.click();
+  await tray.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole('button', { name: /^Your account/ })).toHaveCount(0);
+});
+
+/** A long email wraps over several lines: the tray's middle has to scroll on a small screen. */
+const LONG_EMAIL = `${'a-very-long-name.'.repeat(6)}reader@example.test`;
+
+for (const [name, size] of [
+  ['a small phone', { width: 320, height: 568 }],
+  ['a phone on its side', { width: 568, height: 320 }],
+] as const) {
+  test(`the account tray scrolls its middle and keeps Sign out on ${name}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await mockAccount(page, { signedIn: true });
+    await page.addInitScript((email) => localStorage.setItem('pcd-account', email), LONG_EMAIL);
+    await page.goto('/discover');
+    await page.getByRole('button', { name: /^Your account/ }).click();
+    const tray = page.getByRole('dialog', { name: 'Your account' });
+    await expect(tray).toBeVisible();
+    // Once it has slid in, it fills the phone's screen.
+    await expect.poll(async () => (await tray.boundingBox())?.x).toBe(0);
+    expect((await tray.boundingBox())?.width).toBe(size.width);
+
+    const signOut = tray.getByRole('button', { name: 'Sign out' });
+    await expect(signOut).toBeInViewport();
+    // Tab reaches the last link, which scrolls into view; Sign out is still on screen.
+    const activity = tray.getByRole('link', { name: 'Activity' });
+    await activity.focus();
+    await expect(activity).toBeInViewport();
+    await expect(signOut).toBeInViewport();
+  });
+}

@@ -1,5 +1,5 @@
 import { groupBy } from '../../domain/collections';
-import { isFromOnline, type Source } from '../../domain/types';
+import { isFromOnline, type Reference, type Source } from '../../domain/types';
 import { candidateToReference } from '../../services/retrieval/toReference';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import { storeCuration } from '../curationStore';
@@ -19,7 +19,19 @@ export interface RetrievalRepository {
    * source curated content doesn't cite.
    */
   clear(): Promise<void>;
+  /**
+   * Keeps at most `max` cached online results (D69): the least recently updated go first, never
+   * one the reader favourited or filed in a pack. Their interpretations go with them, and their
+   * sources when nothing else cites them. Returns how many went.
+   */
+  pruneOnline(max: number): Promise<number>;
 }
+
+/** Owner choice (D69): at most this many cached online results are kept. */
+export const MAX_CACHED_ONLINE = 5000;
+const ONLINE_STATES = ['retrieved', 'source_curated'] as const;
+/** Oldest cached results are looked at this many at a time while choosing what to remove. */
+const PRUNE_BATCH = 500;
 
 /**
  * Compile-time lock (D45): anything carrying a `storage` level, i.e. any wider-web result, can't be
@@ -149,6 +161,62 @@ export function createRetrievalRepository(db: PopCultureDb): RetrievalRepository
             ),
           );
           await db.references.bulkDelete([...onlineIds]);
+        },
+      ),
+    pruneOnline: (max) =>
+      db.transaction(
+        'rw',
+        [db.references, db.interpretations, db.sources, db.favourites, db.packMembers],
+        async () => {
+          const online = db.references.where('editorialState').anyOf([...ONLINE_STATES]);
+          const excess = (await online.count()) - max;
+          if (excess <= 0) return 0;
+          const doomed: Reference[] = [];
+          // Oldest first, a batch at a time, skipping the ones the reader keeps.
+          for (let offset = 0; doomed.length < excess; offset += PRUNE_BATCH) {
+            const batch = await db.references
+              .orderBy('updatedAt')
+              .offset(offset)
+              .limit(PRUNE_BATCH)
+              .toArray();
+            if (batch.length === 0) break;
+            const oldest = batch.filter((r) => isFromOnline(r.editorialState));
+            const ids = oldest.map((r) => r.id);
+            const [favourited, filed] = await Promise.all([
+              db.favourites.where('referenceId').anyOf(ids).primaryKeys(),
+              db.packMembers.where('referenceId').anyOf(ids).toArray(),
+            ]);
+            const kept = new Set<string>([...favourited, ...filed.map((m) => m.referenceId)]);
+            const removable = oldest.filter((r) => !kept.has(r.id));
+            doomed.push(...removable.slice(0, excess - doomed.length));
+          }
+          const doomedIds = doomed.map((r) => r.id);
+          const doomedMeanings = await db.interpretations
+            .where('referenceId')
+            .anyOf(doomedIds)
+            .toArray();
+          await Promise.all([
+            db.interpretations.bulkDelete(doomedMeanings.map((i) => i.id)),
+            db.references.bulkDelete(doomedIds),
+          ]);
+          // A source goes only once no remaining reference or interpretation cites it (curated
+          // cards can share a source with a cached result: `sources.url` is unique).
+          const sourceIds = [
+            ...new Set([
+              ...doomed.flatMap((r) => r.sourceIds),
+              ...doomedMeanings.flatMap((i) => i.sourceIds),
+            ]),
+          ];
+          const [citedByCards, citedByMeanings] = await Promise.all([
+            db.references.where('sourceIds').anyOf(sourceIds).toArray(),
+            db.interpretations.where('sourceIds').anyOf(sourceIds).toArray(),
+          ]);
+          const stillCited = new Set([
+            ...citedByCards.flatMap((r) => r.sourceIds),
+            ...citedByMeanings.flatMap((i) => i.sourceIds),
+          ]);
+          await db.sources.bulkDelete(sourceIds.filter((id) => !stillCited.has(id)));
+          return doomed.length;
         },
       ),
   };

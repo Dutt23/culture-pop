@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import { useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
@@ -37,7 +38,7 @@ export function ReferencePage() {
 
 function ReferenceView({ id }: { id: string }) {
   const detail = useReference(id);
-  const favourites = useFavourites();
+  const favourites = useFavourites([id]);
   const { settings } = useSettings();
   const isOnline = useOnlineStatus();
   const location = useLocation();
@@ -45,6 +46,7 @@ function ReferenceView({ id }: { id: string }) {
   // The reveal lasts one visit (history entry); the sheet stays with its reference.
   const [endingShownOn, setEndingShownOn] = useState<string | null>(null);
   const [sheetFor, setSheetFor] = useState<string | null>(null);
+  const fileButtonRef = useRef<HTMLButtonElement>(null);
   // Opened from a pack: the card's link says so. With no link state at all (typed or refreshed
   // without history), this tab's stored pack stands in.
   const state: unknown = location.state;
@@ -171,6 +173,7 @@ function ReferenceView({ id }: { id: string }) {
           onToggle={() => void favourites.toggle(reference.id)}
         />
         <button
+          ref={fileButtonRef}
           type="button"
           className={styles.button}
           aria-expanded={sheetFor === id}
@@ -184,13 +187,17 @@ function ReferenceView({ id }: { id: string }) {
           </p>
         )}
       </div>
-      {sheetFor === id && (
-        <PackSheet
-          referenceId={reference.id}
-          title={reference.title}
-          onClose={() => setSheetFor(null)}
-        />
-      )}
+      <AnimatePresence>
+        {sheetFor === id && (
+          <PackSheet
+            key="sheet"
+            referenceId={reference.id}
+            title={reference.title}
+            opener={fileButtonRef}
+            onClose={() => setSheetFor(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {fromOnline && !explained && (
         <Section

@@ -51,6 +51,8 @@ describe('search', () => {
     expect(url).toBe(WEB_SEARCH_PATH);
     expect(String(url)).not.toContain('ferrari');
     expect(init?.method).toBe('POST');
+    // The server refuses wider-web calls without the app's own header (other sites can't add it).
+    expect(new Headers(init?.headers).get('X-PCD-Request')).toBe('1');
     expect(JSON.parse(String(init?.body))).toEqual({
       q: 'why are ferrari fans depressed',
       question: true,
@@ -318,6 +320,7 @@ describe('draftCard', () => {
     expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Accept')).toBe(
       'text/event-stream',
     );
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('X-PCD-Request')).toBe('1');
   });
 
   it.each([

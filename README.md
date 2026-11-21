@@ -81,3 +81,6 @@ Wider web search: Ask first / On / Off). It needs you to sign in, and the owner 
 your account; the app keeps only a sign-in cookie from our server, never a password or token. Those results are links only and
 unverified. They can be kept on this device, for you only, for 30 days while search history is on;
 they are never sent anywhere, and Clear history deletes them. Sources and their terms: `docs/SOURCE_INVENTORY.md`.
+Voice search (the talking TV button in the search box, shown only where the browser supports the Web
+Speech API) is turned into text by the browser's own speech service (Google for Chrome, Apple for
+Safari), never by our server; the app gets only the text, which is then treated like typed search.

@@ -62,6 +62,14 @@
   background: transparent;
 }
 
+/* Greyed while a search runs or the device is offline. */
+.primary:disabled,
+.secondary:disabled,
+.showNew:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Can run to two lines with a long title: a rounded box reads better than a stretched pill. */
 .showNew {
   justify-self: start;

@@ -98,13 +98,19 @@ function topicGrounded(text: string, evidence: string): boolean {
   return unreported !== checked && isGrounded(unreported, evidence, STRICT_SHARED_WORDS);
 }
 
+/**
+ * What an item vouches for: its title and its text. A dictionary entry names the phrase only in
+ * its title ("no cap"), so without it no sentence naming the phrase could pass.
+ */
+const evidenceOf = (item: EvidenceItem): string => `${item.title}. ${item.text}`;
+
 function keepLines(lines: Line[], byId: ByIdMap, max: number, topic = false): CitedLine[] {
   const kept: CitedLine[] = [];
   for (const line of lines) {
     if (kept.length === max) break;
     const cited = citedItems(line.ids, byId);
     if (!cited || line.t.length > MAX_LINE_CHARS) continue;
-    const evidence = cited.map((c) => c.text).join(' ');
+    const evidence = cited.map(evidenceOf).join(' ');
     const grounded = topic ? topicGrounded : isGrounded;
     if (grounded(line.t, evidence)) kept.push({ text: line.t, sources: sourcesOf(cited) });
   }
@@ -210,7 +216,7 @@ export function checkAnswer(
   );
   const example = keepExample(a.example, byId, search);
 
-  const evidenceText = items.map((i) => i.text.toLowerCase()).join('\n');
+  const evidenceText = items.map((i) => evidenceOf(i).toLowerCase()).join('\n');
   const free = (text: string, max: number, fallback: string, checkFirst = false) => {
     const t = text.trim();
     const bad = hasUnknownName(t, evidenceText, checkFirst) || copiesTone(t, tones);

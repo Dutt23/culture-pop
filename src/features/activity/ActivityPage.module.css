@@ -47,7 +47,3 @@
 .error {
   color: var(--color-danger);
 }
-
-.preview {
-  min-width: 0;
-}

@@ -44,3 +44,105 @@
   color: var(--color-accent-contrast);
   font-weight: var(--weight-bold);
 }
+
+/* Voice search (Web Speech API). Hidden entirely where the browser can't do it. */
+.voice {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-out),
+    color var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.voice:hover {
+  color: var(--color-accent);
+}
+
+.voice[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.voiceIcon {
+  inline-size: 1.375rem;
+  block-size: 1.375rem;
+}
+
+/* The TV smiles at rest; listening, its screen lights up, the mouth opens and the waves pulse. */
+.voiceMouth {
+  display: none;
+}
+
+.voice[aria-pressed='true'] .voiceSmile {
+  display: none;
+}
+
+.voice[aria-pressed='true'] .voiceMouth {
+  display: inline;
+}
+
+.voice[aria-pressed='true'] .voiceScreen {
+  fill: rgb(255 255 255 / 0.35);
+}
+
+.voice[aria-pressed='true'] .voiceWave {
+  animation: voice-wave 1.1s var(--motion-ease-out) infinite;
+}
+
+.voice[aria-pressed='true'] .voiceWave + .voiceWave {
+  animation-delay: 0.25s;
+}
+
+@keyframes voice-wave {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion (the setting, or the device while settings load): the waves simply stay on. */
+:global(:root[data-motion='reduce']) .voice[aria-pressed='true'] .voiceWave {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(:root[data-motion='system']) .voice[aria-pressed='true'] .voiceWave,
+  :global(:root:not([data-motion])) .voice[aria-pressed='true'] .voiceWave {
+    animation: none;
+  }
+}
+
+.voiceStatus,
+.voiceError,
+.voiceHint {
+  margin: var(--space-2) var(--space-4) 0;
+  font-size: var(--text-sm);
+}
+
+.voiceStatus {
+  color: var(--color-text);
+}
+
+.voiceStatus:empty {
+  margin: 0;
+}
+
+.voiceError {
+  color: var(--color-danger);
+}
+
+.voiceHint {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}

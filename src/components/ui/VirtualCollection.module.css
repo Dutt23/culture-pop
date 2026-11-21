@@ -1,0 +1,16 @@
+/* Several items side by side in one virtual row (VirtualCollection's minItemRem). */
+.row {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.cell {
+  min-width: 0;
+}
+
+/* Virtual rows: one per line, whatever grid the caller's own class asks for. */
+.virtual {
+  grid-template-columns: minmax(0, 1fr) !important;
+}

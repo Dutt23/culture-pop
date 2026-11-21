@@ -19,8 +19,17 @@ const WIRE = Array.from({ length: 201 }, (_, i) => `${i * 5},${droop(i / 200)}`)
  * The Stranger Things lights, strung across the top of the screen with the alphabet painted under
  * them; now and then they spell a word. A secret prop like the rest.
  */
-export function Lights({ still, className }: { still: boolean; className: string }) {
-  const lit = useSpelling(still);
+export function Lights({
+  still,
+  quiet = false,
+  className,
+}: {
+  still: boolean;
+  /** Off screen or resting: the bulbs keep twinkling but stop spelling words (D69). */
+  quiet?: boolean;
+  className: string;
+}) {
+  const lit = useSpelling(still || quiet);
   return (
     <RoomProp id="lights" as="div" className={classNames(className, lit && styles.spelling)}>
       <svg

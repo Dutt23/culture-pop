@@ -51,6 +51,27 @@
   max-width: var(--layout-wide);
   margin: 0 auto;
   padding: var(--space-4) var(--space-gutter) 0;
+  /* Room for the account button on the right, so a narrow phone never overlaps the name. */
+  padding-inline-end: calc(var(--space-gutter) + var(--tap-min) + var(--space-2));
+}
+
+/* The account button sits at the right of the header row, lined up with the page column. */
+.accountBar {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  /* Its own layer: the open menu must sit over positioned page content (card trays, sheets). */
+  z-index: var(--z-nav);
+  display: flex;
+  justify-content: flex-end;
+  max-width: var(--layout-wide);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-gutter) 0;
+  pointer-events: none;
+}
+
+.accountBar > * {
+  pointer-events: auto;
 }
 
 /* On a page whose night scene runs up behind the header (Discover's room, `data-behind-header`),
@@ -62,6 +83,8 @@
 
 .wordmark {
   display: inline-flex;
+  /* As tall as the account button, so the two line up. */
+  min-block-size: var(--tap-min);
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-display);

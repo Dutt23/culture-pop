@@ -267,3 +267,23 @@
     transform: translateY(-2px);
   }
 }
+
+/*
+ * Resting (D69): after 20 s without a touch or scroll the den sets data-resting. Fades keep
+ * running (twinkle, spot, static, glow, visor cost no layout); these drawings move, and in SVG
+ * every moving frame lays out the whole page again, so they pause until the reader is back.
+ */
+[data-resting] .note,
+[data-resting] .signal,
+[data-resting] .bike,
+[data-resting] .scan,
+[data-resting] .bob,
+[data-resting] .steam,
+[data-resting] .sway,
+[data-resting] .top,
+[data-resting] .fin,
+[data-resting] .coin,
+[data-resting] .scanner,
+[data-resting] .worm {
+  animation-play-state: paused;
+}

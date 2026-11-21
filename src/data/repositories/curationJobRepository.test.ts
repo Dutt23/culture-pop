@@ -6,6 +6,7 @@ import { createTestDatabase } from '../../test/renderApp';
 import {
   CurationCapacityError,
   createCurationJobRepository,
+  type CurationJob,
   type CurationJobInput,
 } from './curationJobRepository';
 import { createRepositories } from './index';
@@ -193,5 +194,109 @@ describe('curation activity jobs', () => {
     } finally {
       upgraded.close();
     }
+  });
+});
+
+describe('curation job reads and retention (D69)', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const NOW = Date.UTC(2026, 10, 21, 12);
+  const iso = (ms: number) => new Date(ms).toISOString();
+  /** `ageMs` is how long before NOW it was created; `touchedAgeMs` defaults to the same moment. */
+  const job = (
+    id: string,
+    status: CurationJob['status'],
+    ageMs: number,
+    touchedAgeMs = ageMs,
+  ): CurationJob => ({
+    ...input(),
+    id,
+    status,
+    createdAt: iso(NOW - ageMs),
+    updatedAt: iso(NOW - touchedAgeMs),
+  });
+  /** Distinct creation times, `jobN` newer than `jobN-1`, all about `days` old. */
+  const finishedBatch = (count: number, days: number) =>
+    Array.from({ length: count }, (_, i) =>
+      job(`job${String(i).padStart(3, '0')}`, 'completed', days * DAY - i * 60_000),
+    );
+
+  async function setup() {
+    const db = createTestDatabase();
+    await db.open();
+    return { db, jobs: createCurationJobRepository(db) };
+  }
+
+  it('lists newest first, reads only `limit` rows, and counts them all', async () => {
+    const { db, jobs } = await setup();
+    await db.curationJobs.bulkPut([
+      job('old', 'completed', 3 * DAY),
+      job('new', 'running', 1 * DAY),
+      job('mid', 'failed', 2 * DAY),
+    ]);
+    expect((await jobs.list()).map((j) => j.id)).toEqual(['new', 'mid', 'old']);
+    expect((await jobs.list(2)).map((j) => j.id)).toEqual(['new', 'mid']);
+    expect(await jobs.count()).toBe(3);
+    db.close();
+  });
+
+  it('live returns running jobs plus recent changes, newest first, without duplicates', async () => {
+    const { db, jobs } = await setup();
+    await db.curationJobs.bulkPut([
+      // Running and recently touched: matches both reads, must appear once.
+      job('running-recent', 'running', 5 * DAY, 1 * DAY),
+      // Running for ages and never touched since: still watched.
+      job('running-stale', 'running', 90 * DAY),
+      // Finished long ago but changed inside the window.
+      job('finished-recent', 'completed', 20 * DAY, 2 * DAY),
+      // Finished and untouched outside the window: left out.
+      job('finished-old', 'completed', 40 * DAY),
+    ]);
+    const since = iso(NOW - 3 * DAY);
+    expect((await jobs.live(since)).map((j) => j.id)).toEqual([
+      'running-recent',
+      'finished-recent',
+      'running-stale',
+    ]);
+    db.close();
+  });
+
+  it('prune keeps exactly the newest 200 when more finished jobs are all past 30 days', async () => {
+    const { db, jobs } = await setup();
+    const batch = finishedBatch(205, 40);
+    await db.curationJobs.bulkPut(batch);
+    expect(await jobs.prune(NOW)).toBe(5);
+    expect(await jobs.count()).toBe(200);
+    const left = new Set((await jobs.list()).map((j) => j.id));
+    for (const gone of batch.slice(0, 5)) expect(left.has(gone.id)).toBe(false);
+    for (const kept of batch.slice(5)) expect(left.has(kept.id)).toBe(true);
+    db.close();
+  });
+
+  it('prune deletes nothing when 200 or fewer finished jobs exist, however old', async () => {
+    const { db, jobs } = await setup();
+    await db.curationJobs.bulkPut(finishedBatch(10, 40));
+    expect(await jobs.prune(NOW)).toBe(0);
+    expect(await jobs.count()).toBe(10);
+    db.close();
+  });
+
+  it('prune keeps jobs inside the 30 day window even beyond 200', async () => {
+    const { db, jobs } = await setup();
+    await db.curationJobs.bulkPut(finishedBatch(205, 10));
+    expect(await jobs.prune(NOW)).toBe(0);
+    expect(await jobs.count()).toBe(205);
+    db.close();
+  });
+
+  it('prune never deletes a running job, however old', async () => {
+    const { db, jobs } = await setup();
+    await db.curationJobs.bulkPut([
+      job('running-ancient', 'running', 90 * DAY),
+      ...finishedBatch(205, 40),
+    ]);
+    expect(await jobs.prune(NOW)).toBe(5);
+    expect(await jobs.get('running-ancient')).toBeDefined();
+    expect(await jobs.count()).toBe(201);
+    db.close();
   });
 });

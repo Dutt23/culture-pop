@@ -248,28 +248,6 @@
   min-width: 0;
 }
 
-/* The filing sheet opens in place under its card, so it needs no overlay and no focus trap. */
-.sheet {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-accent);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-raised);
-}
-
-.sheet:focus-visible {
-  outline: var(--focus-ring-width) solid var(--color-focus);
-  outline-offset: var(--focus-ring-offset);
-}
-
-.sheetTitle {
-  font-family: var(--font-display);
-  font-size: var(--text-md);
-  overflow-wrap: anywhere;
-}
-
 .sheetList {
   display: grid;
   gap: var(--space-2);
@@ -292,4 +270,9 @@
   padding-block: var(--space-2);
   font-weight: var(--weight-bold);
   cursor: pointer;
+}
+
+/* The pack's backstage pass, above the search: hangs from the top of the page column. */
+.pass {
+  margin-block-end: var(--space-5);
 }

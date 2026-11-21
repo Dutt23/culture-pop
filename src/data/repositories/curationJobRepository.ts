@@ -39,6 +39,11 @@ export interface CurationJob extends CurationJobInput {
 
 export const MAX_RUNNING_CURATION_JOBS = 5;
 
+/** Owner choice (D69): finished jobs are kept 30 days, or the newest 200, whichever keeps more. */
+export const FINISHED_JOB_KEEP_DAYS = 30;
+export const FINISHED_JOB_KEEP_COUNT = 200;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export class CurationCapacityError extends Error {
   constructor() {
     super('Five cards are already being made. Wait for one to finish or cancel it.');
@@ -49,8 +54,20 @@ export class CurationCapacityError extends Error {
 export interface CurationJobRepository {
   /** Atomically admits at most five running jobs across tabs sharing this database. */
   create(input: CurationJobInput): Promise<CurationJob>;
-  /** Newest first, including finished jobs. */
-  list(): Promise<CurationJob[]>;
+  /** Newest first, including finished jobs; at most `limit` when given (Activity reads in pages). */
+  list(limit?: number): Promise<CurationJob[]>;
+  /** How many jobs are stored, finished or not. */
+  count(): Promise<number>;
+  /**
+   * Jobs still running plus any changed at or after `sinceIso`: what start-up watches, without
+   * reading the whole history (D69).
+   */
+  live(sinceIso: string): Promise<CurationJob[]>;
+  /**
+   * Deletes finished jobs older than the keep window, always keeping the newest
+   * `FINISHED_JOB_KEEP_COUNT`. Running jobs are never touched. Returns how many went.
+   */
+  prune(now: number): Promise<number>;
   get(id: string): Promise<CurationJob | undefined>;
   /** Only running jobs may transition. False means missing or already finished. */
   complete(id: string, response: DraftResponse): Promise<boolean>;
@@ -91,7 +108,36 @@ export function createCurationJobRepository(db: PopCultureDb): CurationJobReposi
         return job;
       });
     },
-    list: () => db.curationJobs.orderBy('createdAt').reverse().toArray(),
+    list: (limit) => {
+      const newest = db.curationJobs.orderBy('createdAt').reverse();
+      return (limit === undefined ? newest : newest.limit(limit)).toArray();
+    },
+    count: () => db.curationJobs.count(),
+    live: async (sinceIso) => {
+      const [running, changed] = await Promise.all([
+        db.curationJobs.where('status').equals('running').toArray(),
+        db.curationJobs.where('updatedAt').aboveOrEqual(sinceIso).toArray(),
+      ]);
+      const byId = new Map([...running, ...changed].map((job) => [job.id, job]));
+      return [...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    prune: (now) =>
+      db.transaction('rw', db.curationJobs, async () => {
+        const window = new Date(now - FINISHED_JOB_KEEP_DAYS * DAY_MS).toISOString();
+        // The newest FINISHED_JOB_KEEP_COUNT always stay, however old.
+        const lastKept = await db.curationJobs
+          .orderBy('createdAt')
+          .reverse()
+          .offset(FINISHED_JOB_KEEP_COUNT - 1)
+          .first();
+        if (!lastKept) return 0;
+        const cutoff = lastKept.createdAt < window ? lastKept.createdAt : window;
+        return db.curationJobs
+          .where('createdAt')
+          .below(cutoff)
+          .filter((job) => job.status !== 'running')
+          .delete();
+      }),
     get: (id) => db.curationJobs.get(id),
     complete: (id, response) => finish(id, { status: 'completed', response }),
     fail: (id, error, failure, notUsed) =>

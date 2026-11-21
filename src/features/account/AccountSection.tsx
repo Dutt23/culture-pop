@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { BusyButton, useBusy } from '../../components/ui/BusyButton';
 import { Section } from '../../components/ui/Section';
 import {
   createAuthClient,
@@ -22,6 +23,7 @@ export function AccountSection({ client = defaultClient }: { client?: AuthClient
     hint ? undefined : { signedIn: false },
   );
   const [error, setError] = useState('');
+  const [signingOut, runSignOut] = useBusy();
 
   useEffect(() => {
     if (!hint) return;
@@ -33,7 +35,8 @@ export function AccountSection({ client = defaultClient }: { client?: AuthClient
   }, [client, hint]);
 
   async function signOut() {
-    const result = await client.signOut();
+    const result = await runSignOut(() => client.signOut());
+    if (!result) return;
     if (result.ok) {
       setError('');
       setSession({ signedIn: false });
@@ -56,9 +59,14 @@ export function AccountSection({ client = defaultClient }: { client?: AuthClient
             Signed in as <strong>{session.email}</strong>
             {session.quota && <> · {session.quota.available} cards left</>}
           </p>
-          <button type="button" className={styles.button} onClick={signOut}>
+          <BusyButton
+            busy={signingOut}
+            busyLabel="Signing out…"
+            className={styles.button}
+            onClick={() => void signOut()}
+          >
             Sign out
-          </button>
+          </BusyButton>
         </div>
       ) : (
         <div className={styles.row}>

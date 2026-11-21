@@ -66,17 +66,12 @@ export function usePackData(): PackData | undefined {
   const raw = useLiveQuery(async () => {
     const [list, memberships] = await Promise.all([packs.list(), packs.memberships()]);
     const filedIds = [...new Set(memberships.map(({ member }) => member.referenceId))];
+    // Only the filed cards' aliases, by index: never the whole alias table (D69).
     const [filed, aliases] = await Promise.all([
       references.getByIds(filedIds),
-      references.getAllAliases(),
+      references.getAliasesFor(filedIds),
     ]);
-    const filedSet = new Set(filedIds);
-    return {
-      list,
-      memberships,
-      filed,
-      aliases: aliases.filter((alias) => filedSet.has(alias.referenceId)),
-    };
+    return { list, memberships, filed, aliases };
   }, [packs, references]);
 
   // Built once per database change, so the ranking's index (cached on these arrays) is reused.

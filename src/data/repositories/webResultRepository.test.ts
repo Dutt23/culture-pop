@@ -142,7 +142,7 @@ describe('schema v5', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(db.tables.map((t) => t.name)).toContain('webResults');
     expect(await db.webResults.count()).toBe(0);
     expect(await db.searchHistory.count()).toBe(1);
@@ -176,4 +176,30 @@ describe('device results never leave the device', () => {
       );
     },
   );
+});
+
+describe('sweepExpired (D69)', () => {
+  it('removes rows at or past 30 days and keeps newer ones', async () => {
+    const { db, repos } = await setup();
+    await db.webResults.bulkPut([
+      { key: 'ancient', savedAt: T0 - WEB_RESULTS_TTL_MS - 1, results: [DEVICE] },
+      { key: 'exactly-30-days', savedAt: T0 - WEB_RESULTS_TTL_MS, results: [DEVICE] },
+      { key: 'just-inside', savedAt: T0 - WEB_RESULTS_TTL_MS + 1, results: [DEVICE] },
+      { key: 'today', savedAt: T0, results: [DEVICE] },
+    ]);
+    expect(await repos.webResults.sweepExpired(T0)).toBe(2);
+    expect((await db.webResults.toArray()).map((row) => row.key).sort()).toEqual([
+      'just-inside',
+      'today',
+    ]);
+    db.close();
+  });
+
+  it('removes nothing when every row is fresh', async () => {
+    const { db, repos } = await setup();
+    await db.webResults.put({ key: 'today', savedAt: T0, results: [DEVICE] });
+    expect(await repos.webResults.sweepExpired(T0)).toBe(0);
+    expect(await db.webResults.count()).toBe(1);
+    db.close();
+  });
 });

@@ -42,8 +42,6 @@ const MAX_TITLE = 200;
 const MIN_SNIPPET = 40;
 /** From the request's start: under the app's 25 s wait, so the reader always gets our answer. */
 const DEADLINE_MS = 23_000;
-/** Per instance, same pattern as web-search; the providers' spend limits are the real cap. */
-const DAILY_DRAFT_CAP = 50;
 const KINDS = new Set(['wiki', 'web', 'app']);
 const WIKI_FROM = new Set(['wikipedia', 'wiktionary', 'wikiquote', 'wikidata']);
 const APP_FROM = new Set(['app card', 'your card']);
@@ -51,10 +49,8 @@ const TONE_FIELDS = ['label', 'gist', 'means', 'reply', 'summary'] as const;
 
 export interface DraftHandlerOptions {
   fetch?: typeof fetch;
-  now?: () => Date;
   /** Who may use the wider web; defaults to the signed-in person's permission (webAccess.ts). */
   checkAccess?: (request: Request) => WebAccess | Promise<WebAccess>;
-  dailyCap?: number;
   providers?: DraftProvider[];
 }
 
@@ -226,13 +222,8 @@ export function createDraftHandler(
 ): (request: Request) => Promise<Response> {
   const doFetch =
     options.fetch ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
-  const dailyCap = options.dailyCap ?? DAILY_DRAFT_CAP;
-  const now = options.now ?? (() => new Date());
-  const access = options.checkAccess ?? ((request: Request) => checkWebAccess(request));
-  // shortcut: per-instance memory, so cold starts and parallel instances each get their own count;
-  // the providers' spend limits are the real cap. Upgrade to a shared store if use grows.
-  let day = '';
-  let used = 0;
+  const access =
+    options.checkAccess ?? ((request: Request) => checkWebAccess(request, 'card_draft'));
 
   return async function handle(request) {
     const started = Date.now();
@@ -253,14 +244,6 @@ export function createDraftHandler(
 
     const providers = options.providers ?? providersFromEnv(process.env, doFetch);
     if (providers.length === 0) return json(503, { error: 'not_configured' });
-
-    const today = now().toISOString().slice(0, 10);
-    if (today !== day) {
-      day = today;
-      used = 0;
-    }
-    if (used >= dailyCap) return json(429, { error: 'daily_cap' });
-    used++;
 
     const { search, sources, tones = [] } = body;
     const urls = sources.flatMap((s) => (s.kind === 'web' && s.url ? [s.url] : []));

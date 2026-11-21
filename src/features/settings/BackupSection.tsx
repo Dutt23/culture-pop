@@ -1,5 +1,6 @@
 import { useId, useState, type ChangeEvent } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { BusyButton, useBusy } from '../../components/ui/BusyButton';
 import { Section } from '../../components/ui/Section';
 import { BackupError, backupFileName, MAX_BACKUP_BYTES, readBackup } from '../../data/backup';
 import own from './BackupSection.module.css';
@@ -35,6 +36,7 @@ export function BackupSection() {
   const { backup } = useRepositories();
   const [message, setMessage] = useState<Message | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [saving, runSave] = useBusy();
   const inputId = useId();
 
   const save = async () => {
@@ -86,12 +88,17 @@ export function BackupSection() {
       title="Backup"
       description="Save your favourites, packs, saved web links and settings to a file, to keep or to move to another phone. It never holds your search history, wider web results or your sign-in. Restoring only adds: what's already on this phone, settings included, stays as it is."
     >
-      <button type="button" className={styles.secondary} onClick={() => void save()}>
+      <BusyButton
+        busy={saving}
+        busyLabel="Saving…"
+        className={styles.secondary}
+        onClick={() => void runSave(save)}
+      >
         Save a backup file
-      </button>
+      </BusyButton>
       <div className={styles.withNote}>
         <label htmlFor={inputId} className={own.label}>
-          Restore from a backup file
+          {restoring ? 'Restoring…' : 'Restore from a backup file'}
         </label>
         {/* No `accept` filter: some phones label .json files oddly and would grey them out. */}
         <input
@@ -99,6 +106,7 @@ export function BackupSection() {
           type="file"
           className={own.file}
           disabled={restoring}
+          aria-busy={restoring || undefined}
           onChange={(event) => void restore(event)}
         />
       </div>

@@ -67,6 +67,12 @@ interface NotWhatIMeantProps {
 }
 
 /** Shown under online and saved results: other places to look, only when asked for. */
+/**
+ * Library results drawn at first; a broad search over a big library can match thousands, and
+ * drawing them all froze an older phone for seconds (D69). Fewer matches show exactly as before.
+ */
+const RESULTS_PAGE = 50;
+
 function NotWhatIMeant({ query, isOnline, widerWeb, skipCommunity }: NotWhatIMeantProps) {
   const [open, setOpen] = useState(false);
   return (
@@ -100,12 +106,6 @@ export function SearchPage() {
   const recordSearch = useRecordSearch();
   const recent = useRecentSearches(RECENT_CHIPS);
   const openResult = (referenceId: string) => recordSearch(query, referenceId);
-  const favourites = useFavourites();
-  const favouriteOf = (referenceId: string) => ({
-    isFavourite: favourites.ids.has(referenceId),
-    onToggle: () => void favourites.toggle(referenceId),
-  });
-
   // Spec §6: go online on a local miss, with consent. Also when a saved online answer already
   // stands in and online search is on: those saved cards are an older lookup, and the rest of the
   // cards (a film, a later page) stay missing until Refresh. Latched per query so saving the new
@@ -133,10 +133,13 @@ export function SearchPage() {
   const [filter, setFilter] = useState<ResultFilter>(NO_FILTER);
   const [onlyTagged, setOnlyTagged] = useState(false);
   const [filterQuery, setFilterQuery] = useState(query);
+  // How many library results are drawn: the best RESULTS_PAGE first, more on request (D69).
+  const [resultLimit, setResultLimit] = useState(RESULTS_PAGE);
   if (filterQuery !== query) {
     setFilterQuery(query);
     setFilter(NO_FILTER);
     setOnlyTagged(false);
+    setResultLimit(RESULTS_PAGE);
   }
   // Tags lift matching results; only "Only these" hides the rest (docs/SEARCH_TAGS_PLAN.md).
   const tags = useSearchTags();
@@ -175,6 +178,16 @@ export function SearchPage() {
   // Saved online results show either way: below a running lookup, or alone when one of them
   // (already explained from sources) resolves the query without going online.
   const savedOnline = search.savedOnline.filter((m) => !freshIds.has(m.reference.id));
+  // Hearts for the cards this search shows (D69).
+  const favourites = useFavourites([
+    ...search.matches.map((m) => m.reference.id),
+    ...onlineCandidates.map((c) => c.id),
+    ...search.savedOnline.map((m) => m.reference.id),
+  ]);
+  const favouriteOf = (referenceId: string) => ({
+    isFavourite: favourites.ids.has(referenceId),
+    onToggle: () => void favourites.toggle(referenceId),
+  });
   const options = filterOptions([
     ...search.matches.map((m) => m.reference),
     ...onlineCandidates,
@@ -446,7 +459,7 @@ export function SearchPage() {
             )}
           {localShown.length > 0 && (
             <ul className={styles.results}>
-              {localShown.map((match, index) => {
+              {localShown.slice(0, resultLimit).map((match, index) => {
                 const summary = search.summaries.get(match.reference.id);
                 return (
                   <AnimatedItem key={match.reference.id} index={index}>
@@ -462,6 +475,15 @@ export function SearchPage() {
                 );
               })}
             </ul>
+          )}
+          {localShown.length > resultLimit && (
+            <button
+              type="button"
+              className={styles.toggle}
+              onClick={() => setResultLimit((limit) => limit + RESULTS_PAGE)}
+            >
+              Show more results ({localShown.length - resultLimit} more)
+            </button>
           )}
 
           {favourites.error && (

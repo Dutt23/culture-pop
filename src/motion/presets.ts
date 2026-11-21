@@ -2,7 +2,7 @@ import type { Transition, Variants } from 'motion/react';
 
 /**
  * Central motion vocabulary (Motion for React): `reveal` = enter + stagger + exit, `deal` = a card
- * reaching the screen, `expand`, `sheet` = a modal sheet opening.
+ * reaching the screen, `expand`, `sheet` = a modal sheet opening, `tray` = a side tray opening.
  * `reduced` swaps every value for a short, transform-free fade. CSS micro-interactions
  * (hover, press, ambient drift) use the matching tokens in design/tokens.css.
  */
@@ -39,11 +39,13 @@ export interface MotionPresets {
   };
   /** A modal sheet: slides up from the bottom on a phone, scales in elsewhere. */
   sheet: (phone: boolean) => SheetMotion;
+  /** A tray (the account tray): slides in from the right edge and back out. */
+  tray: SheetMotion;
 }
 
 export interface SheetMotion {
-  hidden: { opacity?: number; y?: string; scale?: number };
-  visible: { opacity: number; y?: number; scale?: number };
+  hidden: { opacity?: number; x?: string; y?: string; scale?: number };
+  visible: { opacity: number; x?: number; y?: number; scale?: number };
   transition: Transition;
 }
 
@@ -102,5 +104,16 @@ export function createMotionPresets(reduced: boolean): MotionPresets {
             visible: { opacity: 1, y: 0, scale: 1 },
             transition: { duration: DURATION_BASE, ease: EASE_OUT },
           },
+    tray: reduced
+      ? {
+          hidden: { opacity: 0 },
+          visible: { opacity: 1 },
+          transition: { duration: DURATION_REDUCED },
+        }
+      : {
+          hidden: { x: '100%' },
+          visible: { opacity: 1, x: 0 },
+          transition: { duration: DURATION_BASE, ease: EASE_OUT },
+        },
   };
 }

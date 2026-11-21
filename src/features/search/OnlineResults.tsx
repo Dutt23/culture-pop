@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   ReferenceCard,
@@ -114,9 +115,9 @@ function OnlineStatus(props: OnlineResultsProps) {
           Search online?
         </h2>
         <p>
-          Nothing in your library for &ldquo;{props.query.trim()}&rdquo; yet. Your search text goes
-          to public reference sites (Wikipedia and friends, TVmaze). Nothing else is sent, and what
-          they find stays on this device. <Link to="/settings">Settings</Link>
+          Nothing in your library explains &ldquo;{props.query.trim()}&rdquo; yet. Your search text
+          goes to public reference sites (Wikipedia and friends, TVmaze). Nothing else is sent, and
+          what they find stays on this device. <Link to="/settings">Settings</Link>
         </p>
         <div className={styles.actions}>
           <button type="button" className={styles.primary} onClick={props.onAllow}>
@@ -388,12 +389,17 @@ interface SavedOnlineResultsProps {
  * already resolves the query (no lookup runs), and below fresh results otherwise. Never refreshed on a
  * timer: only when the reader asks (D37).
  */
+/** Saved online results drawn at first; fewer show exactly as before. */
+const SAVED_PAGE = 50;
+
 export function SavedOnlineResults({
   saved,
   onOpen,
   favouriteOf,
   onRefresh,
 }: SavedOnlineResultsProps) {
+  // The best SAVED_PAGE first: a big device cache can match thousands (D69).
+  const [limit, setLimit] = useState(SAVED_PAGE);
   if (saved.length === 0) return null;
   return (
     <Section
@@ -401,7 +407,7 @@ export function SavedOnlineResults({
       description="Found online before and kept on this device. Open one to see exactly what its sources say."
     >
       <ul className={styles.list}>
-        {saved.map(({ reference, teaser }, index) => (
+        {saved.slice(0, limit).map(({ reference, teaser }, index) => (
           <AnimatedItem key={reference.id} index={index}>
             <ReferenceCard
               reference={reference}
@@ -413,6 +419,15 @@ export function SavedOnlineResults({
           </AnimatedItem>
         ))}
       </ul>
+      {saved.length > limit && (
+        <button
+          type="button"
+          className={styles.secondary}
+          onClick={() => setLimit((shown) => shown + SAVED_PAGE)}
+        >
+          Show more saved results ({saved.length - limit} more)
+        </button>
+      )}
       {onRefresh && (
         <button type="button" className={styles.secondary} onClick={onRefresh}>
           Refresh

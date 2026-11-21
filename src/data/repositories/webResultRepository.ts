@@ -34,6 +34,8 @@ export interface WebResultRepository {
   /** The saved results for this query, or undefined when there are none or they have expired. */
   get(query: string, now: number, context?: string): Promise<SavedWebResults | undefined>;
   clear(): Promise<void>;
+  /** Deletes rows past the 30 days, by index (D69: swept once a day, not only on a new save). */
+  sweepExpired(now: number): Promise<number>;
 }
 
 const resultKey = (query: string, context?: string) =>
@@ -71,5 +73,10 @@ export function createWebResultRepository(db: PopCultureDb): WebResultRepository
       return results.length > 0 ? { ...row, results } : undefined;
     },
     clear: () => db.webResults.clear(),
+    sweepExpired: (now) =>
+      db.webResults
+        .where('savedAt')
+        .belowOrEqual(now - WEB_RESULTS_TTL_MS)
+        .delete(),
   };
 }

@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { PACK_NAME_MAX } from '../../data/repositories/packRepository';
+import { BusyButton, useBusy } from '../../components/ui/BusyButton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
@@ -63,6 +64,7 @@ export function PacksPage() {
 function NewPackForm() {
   const { packs } = useRepositories();
   const { error, attempt } = useAttempt();
+  const [creating, runCreate] = useBusy();
   const [name, setName] = useState('');
   const [ceiling, setCeiling] = useState<PackCeiling>('before_watching');
   const nameId = useId();
@@ -75,7 +77,7 @@ function NewPackForm() {
         onSubmit={(event) => {
           event.preventDefault();
           if (!name.trim()) return;
-          void attempt(() => packs.create({ name, ceiling })).then((created) => {
+          void runCreate(() => attempt(() => packs.create({ name, ceiling }))).then((created) => {
             if (created) setName('');
           });
         }}
@@ -103,9 +105,14 @@ function NewPackForm() {
           />
           <p className={styles.muted}>{CEILING_HINT[ceiling]}</p>
         </div>
-        <button type="submit" className={styles.primary}>
+        <BusyButton
+          type="submit"
+          busy={creating}
+          busyLabel="Creating…"
+          className={styles.primary}
+        >
           Create pack
-        </button>
+        </BusyButton>
         {error && (
           <p className={styles.error} role="alert">
             {error}

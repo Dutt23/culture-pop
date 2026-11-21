@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { DraftResponse } from '../../shared/cardTypes';
 import type { CurationJob, CurationJobInput } from '../data/repositories/curationJobRepository';
@@ -12,6 +20,10 @@ interface StartedCuration {
   completion: Promise<DraftResponse>;
 }
 interface CurationJobsContextValue {
+  /**
+   * Jobs still running plus any that changed since this tab opened, newest first. Not the whole
+   * history: Activity reads that page by page (D69).
+   */
   jobs: CurationJob[];
   activeCount: number;
   start(input: CurationJobInput): Promise<StartedCuration>;
@@ -24,16 +36,18 @@ const EMPTY_JOBS: CurationJob[] = [];
 export function CurationJobsProvider({ children }: { children: ReactNode }) {
   const { curationJobs } = useRepositories();
   const { webSearch } = useRetrievalService();
-  const jobs = useLiveQuery(() => curationJobs.list(), [curationJobs]) ?? EMPTY_JOBS;
+  const [bootIso] = useState(() => new Date().toISOString());
+  const jobs =
+    useLiveQuery(() => curationJobs.live(bootIso), [curationJobs, bootIso]) ?? EMPTY_JOBS;
   const controllers = useRef(new Map<string, AbortController>());
   const observed = useRef(new Set<string>());
   const owner = useRef(crypto.randomUUID());
-  const boot = useRef(Date.now());
+  const boot = useRef(Date.parse(bootIso));
 
   useEffect(() => {
     let mounted = true;
     void curationJobs
-      .list()
+      .live(bootIso)
       .then(async (rows) => {
         if (!mounted || typeof navigator.locks?.request !== 'function') return;
         for (const job of rows.filter(
@@ -52,7 +66,7 @@ export function CurationJobsProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [curationJobs]);
+  }, [curationJobs, bootIso]);
 
   useEffect(() => {
     const present = new Set(jobs.map((job) => job.id));

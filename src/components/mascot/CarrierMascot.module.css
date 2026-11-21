@@ -1,0 +1,136 @@
+.mascot {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  overflow: visible;
+}
+
+.body,
+.armBack,
+.armFront,
+.legBack,
+.legFront,
+.sweat {
+  transform-box: fill-box;
+}
+
+/* Carrying: a waddling walk, arms up holding the load, sweat flying. */
+@keyframes waddle {
+  from {
+    transform: translateY(0) rotate(-2deg);
+  }
+  to {
+    transform: translateY(-4px) rotate(2deg);
+  }
+}
+
+@keyframes step {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes drip {
+  0% {
+    opacity: 0;
+    transform: translate(0, -4px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-6px, 22px);
+  }
+}
+
+/* Resting: slow breaths, arms hanging, wiping its brow done. */
+@keyframes breathe {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(1.04);
+  }
+}
+
+.mascot * {
+  animation-play-state: var(--motion-ambient-state);
+}
+
+.mascot[data-phase='carrying'] .body {
+  transform-origin: 50% 100%;
+  animation: waddle 0.32s ease-in-out infinite alternate;
+}
+
+.mascot[data-phase='carrying'] .legBack {
+  animation: step 0.32s ease-in-out infinite alternate;
+}
+
+.mascot[data-phase='carrying'] .legFront {
+  animation: step 0.32s ease-in-out infinite alternate-reverse;
+}
+
+.mascot[data-phase='carrying'] .sweat path,
+.mascot[data-phase='pushing'] .sweat path {
+  animation: drip 0.7s ease-in infinite;
+}
+
+.sweat path:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.sweat path:nth-child(3) {
+  animation-delay: 0.45s;
+}
+
+.mascot[data-phase='resting'] .sweat {
+  opacity: 0;
+}
+
+.mascot[data-phase='resting'] .body {
+  transform-origin: 50% 100%;
+  animation: breathe 1.4s ease-in-out infinite alternate;
+}
+
+.rested {
+  display: none;
+}
+
+.mascot[data-phase='resting'] .working {
+  display: none;
+}
+
+.mascot[data-phase='resting'] .rested {
+  display: inline;
+}
+
+/* Arms drop to its sides to rest. */
+.armBack,
+.armFront {
+  transition: transform 0.3s var(--motion-ease-out);
+}
+
+.mascot[data-phase='resting'] .armBack {
+  transform-origin: 100% 100%;
+  transform: rotate(-120deg) translate(6px, 10px);
+}
+
+.mascot[data-phase='resting'] .armFront {
+  transform-origin: 0% 100%;
+  transform: rotate(110deg) translate(-4px, 6px);
+}
+
+/* Pushing: leans in, front arm straight out. */
+.mascot[data-phase='pushing'] .body {
+  transform-origin: 50% 100%;
+  transform: rotate(8deg);
+}
+
+.mascot[data-phase='pushing'] .armFront {
+  transform-origin: 0% 100%;
+  transform: rotate(35deg) translate(6px, 0);
+}

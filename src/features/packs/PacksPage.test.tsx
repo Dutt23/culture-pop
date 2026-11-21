@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OPEN_PACK_KEY } from '../../components/reference-card/openPack';
 import { createRepositories } from '../../data/repositories';
 import { createTestDatabase, renderApp } from '../../test/renderApp';
@@ -18,8 +18,15 @@ async function withPacks() {
 
 const packPage = (id: string) => `/packs/${encodeURIComponent(id)}`;
 
+// Closing the tray steps history back; jsdom does that late, into the next test. Not here.
+beforeEach(() => {
+  window.history.replaceState(null, '');
+  vi.spyOn(window.history, 'back').mockImplementation(() => {});
+});
+
 afterEach(() => {
   sessionStorage.clear();
+  vi.restoreAllMocks();
 });
 
 describe('packs', () => {
@@ -48,7 +55,7 @@ describe('packs', () => {
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
     await user.click(within(controls).getByRole('button', { name: 'More' }));
     await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
-    const sheet = screen.getByRole('dialog', { name: /to another pack/ });
+    const sheet = screen.getByRole('dialog', { name: 'Move The snap (Avengers) to another pack' });
     await user.click(await within(sheet).findByRole('button', { name: 'Before the Doom movie' }));
 
     await waitFor(async () =>
@@ -71,7 +78,7 @@ describe('packs', () => {
     const { user } = renderApp('/references/the-snap-avengers', db);
 
     await user.click(await screen.findByRole('button', { name: /File in pack/ }));
-    const sheet = screen.getByRole('dialog', { name: /in a pack/ });
+    const sheet = screen.getByRole('dialog', { name: 'File The snap (Avengers) in a pack' });
     await user.click(await within(sheet).findByRole('button', { name: 'Before the Doom movie' }));
 
     await waitFor(async () =>
@@ -79,6 +86,24 @@ describe('packs', () => {
         [xMen.id, doom.id].sort(),
       ),
     );
+  });
+
+  it('opens the picker as a dialog, files the card, and refocuses the opener', async () => {
+    const { db, repos, doom } = await withPacks();
+    const { user } = renderApp('/references/the-snap-avengers', db);
+
+    const opener = await screen.findByRole('button', { name: /File in pack/ });
+    await user.click(opener);
+    const tray = screen.getByRole('dialog', { name: 'File The snap (Avengers) in a pack' });
+    await user.click(await within(tray).findByRole('button', { name: 'Before the Doom movie' }));
+
+    await waitFor(async () =>
+      expect((await repos.packs.packsOf('the-snap-avengers')).map((p) => p.id)).toEqual([doom.id]),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), {
+      timeout: 3000,
+    });
+    expect(opener).toHaveFocus();
   });
 
   it('puts a removed card back in its place with Undo', async () => {
@@ -114,7 +139,7 @@ describe('packs', () => {
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
     await user.click(within(controls).getByRole('button', { name: 'More' }));
     await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
-    const sheet = screen.getByRole('dialog', { name: /to another pack/ });
+    const sheet = screen.getByRole('dialog', { name: 'Move The snap (Avengers) to another pack' });
     await user.click(await within(sheet).findByRole('button', { name: 'Before the Doom movie' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       /Moved “The snap \(Avengers\)” to Before the Doom movie/,
@@ -137,7 +162,7 @@ describe('packs', () => {
     const controls = await screen.findByRole('group', { name: 'The snap (Avengers)' });
     await user.click(within(controls).getByRole('button', { name: 'More' }));
     await user.click(screen.getByRole('button', { name: 'Move to another pack' }));
-    const sheet = screen.getByRole('dialog', { name: /to another pack/ });
+    const sheet = screen.getByRole('dialog', { name: 'Move The snap (Avengers) to another pack' });
     expect(await within(sheet).findByRole('button', { name: /Filed here/ })).toBeDisabled();
     expect(within(sheet).getByRole('button', { name: 'Before the Doom movie' })).toBeEnabled();
   });

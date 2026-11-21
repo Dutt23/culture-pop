@@ -95,3 +95,25 @@ describe('"Got it"', () => {
     expect(screen.queryByText('Nothing in this pack.')).not.toBeInTheDocument();
   });
 });
+
+describe('the pack pass', () => {
+  it('shows the pack with no count, and stamps it once every card is got', async () => {
+    const { db, repos, pack, path } = await withPack();
+    await repos.packs.markDone(pack.id, 'ok-boomer');
+    const { user } = renderApp(path, db);
+
+    const pass = await screen.findByRole('article', { name: 'Before X-Men' });
+    expect(within(pass).getByText('Backstage pass')).toBeInTheDocument();
+    expect(within(pass).queryByText(/\d+ of \d+/)).not.toBeInTheDocument();
+    expect(within(pass).queryByText('All access')).not.toBeInTheDocument();
+
+    const last = await screen.findByRole('group', { name: "D'oh! (The Simpsons)" });
+    await user.click(within(last).getByRole('button', { name: 'Got it' }));
+    // A new pass replaces the old one (so it can swing in): look it up again, not the old one.
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('article', { name: 'Before X-Men' })).getByText('All access'),
+      ).toBeInTheDocument(),
+    );
+  });
+});

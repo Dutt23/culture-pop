@@ -180,6 +180,26 @@ describe('signing in', () => {
     },
   );
 
+  it('greys the button, says "Signing in…" and ignores a second tap while it waits', async () => {
+    let finish: () => void = () => {};
+    const signInWithPassword = vi.fn(
+      () =>
+        new Promise<AuthResult>((resolve) => {
+          finish = () => resolve({ ok: false, error: 'wrong_password' });
+        }),
+    );
+    const s = setup(fakeClient({ signInWithPassword }));
+    type(s.email(), 'reader@example.test');
+    type(s.password(), 'correct horse battery');
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    const busy = screen.getByRole('button', { name: 'Signing in…' });
+    expect(busy).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(busy);
+    expect(signInWithPassword).toHaveBeenCalledTimes(1);
+    await act(async () => finish());
+    expect(screen.getByRole('button', { name: 'Sign in' })).not.toHaveAttribute('aria-disabled');
+  });
+
   it('says plainly when the password is wrong, and stays put', async () => {
     const s = setup(
       fakeClient({

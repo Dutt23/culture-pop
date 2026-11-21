@@ -1,0 +1,223 @@
+/* The account button: the app's accent, the person's initial. */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  padding: 0;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  box-shadow: var(--shadow-card);
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.avatar:active {
+  transform: scale(var(--motion-scale));
+}
+
+.avatar:focus-visible,
+.link:focus-visible,
+.signOut:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The mascot under a moon, on a strip of floor, like its sign-in room. */
+.hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  block-size: 9.5rem;
+  margin-block: var(--space-4) var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(60% 70% at 50% 35%, var(--color-ambient-1), transparent 70%),
+    var(--color-surface);
+}
+
+.moon {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-5);
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border-radius: 50%;
+  background: var(--color-warm);
+  box-shadow: 0 0 24px var(--color-warm);
+  opacity: 0.85;
+}
+
+.floor {
+  position: absolute;
+  inset: auto 0 0;
+  block-size: 1.5rem;
+  background: var(--color-surface-muted);
+}
+
+@keyframes bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+.mascot svg {
+  inline-size: 6.5rem;
+  block-size: 6.5rem;
+}
+
+.mascot {
+  position: relative;
+  z-index: 1;
+  margin-block-start: var(--space-3);
+  animation: bob 1.6s ease-in-out infinite alternate;
+  /* Holds still under reduced motion, like the ambient drift. */
+  animation-play-state: var(--motion-ambient-state);
+}
+
+.hello {
+  margin: var(--space-2) 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+
+.email {
+  margin: var(--space-1) 0 var(--space-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.fact dt {
+  font-size: var(--text-sm);
+}
+
+.fact dd {
+  margin: 0;
+}
+
+.pill {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.pill[data-tone='on'] {
+  background: var(--color-success);
+  color: var(--color-accent-contrast);
+}
+
+.pill[data-tone='off'] {
+  background: var(--color-warm-soft);
+  color: var(--color-warm);
+}
+
+.pill[data-tone='quiet'] {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.slot {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.links {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--tap-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.link svg {
+  color: var(--color-accent);
+}
+
+.signOut {
+  inline-size: 100%;
+  min-block-size: var(--tap-min);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font: inherit;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+/* Short phones (and landscape): a smaller room, so Sign out stays on screen. */
+@media (max-height: 40rem) {
+  .hero {
+    block-size: 6rem;
+    margin-block-start: var(--space-3);
+  }
+
+  .mascot svg {
+    inline-size: 4.25rem;
+    block-size: 4.25rem;
+  }
+
+  .hello {
+    font-size: var(--text-lg);
+  }
+
+  .email {
+    margin-block-end: var(--space-3);
+  }
+
+  /* Settings and Activity side by side. */
+  .links {
+    grid-template-columns: 1fr 1fr;
+    margin-block-start: var(--space-3);
+  }
+}

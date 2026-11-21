@@ -58,3 +58,17 @@ describe('kept cards', () => {
     db.close();
   });
 });
+
+describe('kept cards, paged reads (D69)', () => {
+  it('lists only `limit` newest, counts them all, and says which ids are kept', async () => {
+    const { db, repos } = await setup();
+    await repos.drafts.save(record('a', '2026-11-16T09:00:00.000Z'));
+    await repos.drafts.save(record('c', '2026-11-18T09:00:00.000Z'));
+    await repos.drafts.save(record('b', '2026-11-17T09:00:00.000Z'));
+    expect((await repos.drafts.list(2)).map((r) => r.id)).toEqual(['c', 'b']);
+    expect(await repos.drafts.count()).toBe(3);
+    expect(await repos.drafts.kept(['a', 'missing', 'c'])).toEqual(new Set(['a', 'c']));
+    expect(await repos.drafts.kept([])).toEqual(new Set());
+    db.close();
+  });
+});

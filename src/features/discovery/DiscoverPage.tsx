@@ -82,7 +82,9 @@ export function DiscoverPage() {
   const { reveal, reduced } = useMotionPresets();
   const [draft, setDraft] = useState('');
   const isOnline = useOnlineStatus();
-  const favourites = useFavourites();
+  // Hearts for the cards Discover can show (D69).
+  const shownIds = useMemo(() => (data?.references ?? []).map((r) => r.id), [data]);
+  const favourites = useFavourites(shownIds);
   const favouriteOf = (referenceId: string) => ({
     isFavourite: favourites.ids.has(referenceId),
     onToggle: () => void favourites.toggle(referenceId),

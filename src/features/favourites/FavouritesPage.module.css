@@ -70,3 +70,15 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+/* Inside the dark film strip a frame sits at the top; its night tokens come from data-scene. */
+.kept {
+  min-width: 0;
+  /* An opened card shows under the strip. */
+  margin-block-end: var(--space-3);
+}
+
+.kept [data-variant='frames'] .keptCard {
+  align-content: start;
+  height: 100%;
+}

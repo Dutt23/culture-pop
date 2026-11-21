@@ -363,11 +363,11 @@ describe('draft-card', () => {
     expect(r).toEqual({ status: 503, body: { error: 'out_of_credit' } });
   });
 
-  it('counts toward its own daily cap', async () => {
-    const { handle } = setup({ dailyCap: 1 });
-    const ask = () => handle(post({ search: SEARCH, sources: [wiki] }));
-    expect((await ask()).status).toBe(200);
-    expect(await read(await ask())).toEqual({ status: 429, body: { error: 'daily_cap' } });
+  it('answers 429 daily_cap from the shared count and asks no model', async () => {
+    const { handle, inputs } = setup({ checkAccess: async () => 'daily_cap' as const });
+    const r = await read(await handle(post({ search: SEARCH, sources: [wiki] })));
+    expect(r).toEqual({ status: 429, body: { error: 'daily_cap' } });
+    expect(inputs).toHaveLength(0);
   });
 
   it('keeps URLs out of titles, tone cards and the search', async () => {
@@ -417,12 +417,6 @@ describe('draft-card', () => {
     expect((sent.match(/w\d+x\d+/g) ?? []).join(' ').length).toBeLessThanOrEqual(6000);
     expect(r.body.notUsed).toEqual([{ source: 5, why: 'over the length limit' }]);
     expect(sent).not.toContain('Item5');
-  });
-
-  it('does not count a 400 toward the daily cap', async () => {
-    const { handle } = setup({ dailyCap: 1 });
-    expect((await handle(post({ search: SEARCH, sources: [] }))).status).toBe(400);
-    expect((await handle(post({ search: SEARCH, sources: [wiki] }))).status).toBe(200);
   });
 
   it('maps provider errors to 429 and 502', async () => {

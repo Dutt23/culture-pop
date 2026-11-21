@@ -1,6 +1,6 @@
 import { CODE_PATTERN, MAX_PASSWORD_BYTES, MIN_PASSWORD } from '../../shared/auth.js';
-import { json, readCapped } from './http.js';
-import { createRateLimit } from './rateLimit.js';
+import { json, readCapped, sleep } from './http.js';
+import { createHash } from 'node:crypto';
 import {
   clearedSessionCookie,
   createSession,
@@ -31,12 +31,12 @@ import {
 const MAX_BODY_BYTES = 1024;
 const MAX_EMAIL = 254;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MINUTE_MS = 60_000;
-/** Per minute: code emails per visitor and per address, then wrong codes or passwords. */
-const OTP_PER_VISITOR = 10;
-const OTP_PER_EMAIL = 3;
-const GUESSES_PER_VISITOR = 10;
-const GUESSES_PER_EMAIL = 5;
+/**
+ * Code requests, code checks and password sign-ins answer no sooner than this, whatever happened,
+ * so the time an answer takes doesn't tell a stranger whether an email has an account. A floor
+ * only: a Supabase answer slower than this still takes longer.
+ */
+export const MIN_ANSWER_MS = 800;
 const NO_STORE = { 'Cache-Control': 'private, no-store' };
 
 export interface AuthHandlerOptions {
@@ -55,6 +55,14 @@ const reply = (status: number, body: unknown, headers: Record<string, string> = 
 function visitor(request: Request): string {
   return request.headers.get('x-real-ip') ?? 'unknown';
 }
+
+/**
+ * Attempt buckets counted in Postgres (`bff.take_auth_attempt`, limits in `app_private.policy`),
+ * shared by every server instance. Codes and passwords share the guess buckets, so switching method
+ * buys no extra guesses. Keys are stored as SHA-256 digests, never as the email or IP address.
+ */
+type Bucket = 'otp_email' | 'otp_visitor' | 'guess_email' | 'guess_visitor';
+const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 
 async function readFields(request: Request): Promise<Record<string, unknown> | undefined> {
   try {
@@ -106,13 +114,36 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
     if (!config) return undefined;
     return { config, supabase: options.supabase ?? createSupabase(config) };
   };
-  const otpPerVisitor = createRateLimit(OTP_PER_VISITOR, MINUTE_MS, now);
-  const otpPerEmail = createRateLimit(OTP_PER_EMAIL, MINUTE_MS, now);
-  // Codes and passwords share these, so switching method doesn't buy extra guesses.
-  const guessPerVisitor = createRateLimit(GUESSES_PER_VISITOR, MINUTE_MS, now);
-  const guessPerEmail = createRateLimit(GUESSES_PER_EMAIL, MINUTE_MS, now);
-  const tooManyGuesses = (request: Request, email: string) =>
-    !guessPerVisitor(visitor(request)) || !guessPerEmail(email);
+  const wait = options.wait ?? sleep;
+
+  /** Counts one attempt in each bucket; a reply to send instead (429 or 503), or null to go on. */
+  async function overLimit(ready: Ready, checks: [Bucket, string][]): Promise<Response | null> {
+    try {
+      for (const [bucket, key] of checks) {
+        const allowed = await ready.supabase.rpc<boolean>('take_auth_attempt', {
+          p_bucket: bucket,
+          p_key_digest: digest(key),
+        });
+        if (allowed !== true) return reply(429, { error: 'too_many_attempts' });
+      }
+      return null;
+    } catch {
+      // No shared count, no attempt: fail closed.
+      return reply(503, { error: 'unavailable' });
+    }
+  }
+  const guessLimit = (ready: Ready, request: Request, email: string) =>
+    overLimit(ready, [
+      ['guess_visitor', visitor(request)],
+      ['guess_email', email],
+    ]);
+
+  /** Holds an answer until MIN_ANSWER_MS after `started`. */
+  async function padded(started: number, response: Response): Promise<Response> {
+    const left = MIN_ANSWER_MS - (now() - started);
+    if (left > 0) await wait(left);
+    return response;
+  }
 
   /** Common front door for the POST endpoints: configured and from our own pages. */
   function guard(request: Request): Response | Ready {
@@ -147,19 +178,22 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
       if (ready instanceof Response) return ready;
       const email = readEmail(await readFields(request));
       if (!email) return reply(400, { error: 'bad_email' });
-      if (!otpPerVisitor(visitor(request)) || !otpPerEmail(email)) {
-        return reply(429, { error: 'too_many_attempts' });
-      }
+      const limited = await overLimit(ready, [
+        ['otp_visitor', visitor(request)],
+        ['otp_email', email],
+      ]);
+      if (limited) return limited;
+      const started = now();
       try {
         await ready.supabase.sendOtp(email);
       } catch (error) {
         // A refusal (e.g. sign-ups closed and no such account) looks like success, so the answer
         // never tells a stranger which emails have accounts.
         const kind = kindOf(error);
-        if (kind === 'limited') return reply(429, { error: 'too_many_attempts' });
-        if (kind !== 'invalid') return reply(503, { error: 'unavailable' });
+        if (kind === 'limited') return padded(started, reply(429, { error: 'too_many_attempts' }));
+        if (kind !== 'invalid') return padded(started, reply(503, { error: 'unavailable' }));
       }
-      return reply(200, { ok: true });
+      return padded(started, reply(200, { ok: true }));
     },
 
     async verify(request) {
@@ -169,11 +203,16 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
       const email = readEmail(fields);
       const code = readCode(fields);
       if (!email || !code) return reply(400, { error: 'bad_request' });
-      if (tooManyGuesses(request, email)) return reply(429, { error: 'too_many_attempts' });
+      const limited = await guessLimit(ready, request, email);
+      if (limited) return limited;
+      const started = now();
       try {
-        return await signIn(request, ready, await ready.supabase.verifyOtp(email, code));
+        return await padded(
+          started,
+          await signIn(request, ready, await ready.supabase.verifyOtp(email, code)),
+        );
       } catch (error) {
-        return failure(error, 'wrong_code');
+        return padded(started, failure(error, 'wrong_code'));
       }
     },
 
@@ -185,15 +224,16 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
       const email = readEmail(fields);
       const password = readPassword(fields);
       if (!email || !password) return reply(400, { error: 'bad_request' });
-      if (tooManyGuesses(request, email)) return reply(429, { error: 'too_many_attempts' });
+      const limited = await guessLimit(ready, request, email);
+      if (limited) return limited;
+      const started = now();
       try {
-        return await signIn(
-          request,
-          ready,
-          await ready.supabase.signInWithPassword(email, password),
+        return await padded(
+          started,
+          await signIn(request, ready, await ready.supabase.signInWithPassword(email, password)),
         );
       } catch (error) {
-        return failure(error, 'wrong_password');
+        return padded(started, failure(error, 'wrong_password'));
       }
     },
 
@@ -213,12 +253,14 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
       if (password.length < MIN_PASSWORD || Buffer.byteLength(password) > MAX_PASSWORD_BYTES) {
         return reply(400, { error: 'weak_password' });
       }
-      if (tooManyGuesses(request, email)) return reply(429, { error: 'too_many_attempts' });
+      const limited = await guessLimit(ready, request, email);
+      if (limited) return limited;
       let tokens: AuthTokens;
+      const started = now();
       try {
         tokens = await ready.supabase.verifyOtp(email, code);
       } catch (error) {
-        return failure(error, 'wrong_code');
+        return padded(started, failure(error, 'wrong_code'));
       }
       // Don't leave the session the code just opened lying about at Supabase on any failure.
       const dropCodeSession = () =>

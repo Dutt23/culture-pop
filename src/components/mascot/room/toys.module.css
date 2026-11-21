@@ -225,3 +225,9 @@
     opacity: 1;
   }
 }
+
+/* Resting (D69): the toy scenes move, so they pause with the room's other movers. */
+[data-resting] .scene,
+[data-resting] .scene * {
+  animation-play-state: paused;
+}

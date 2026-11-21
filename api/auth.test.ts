@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createAuthHandlers, createAuthRoutes } from './_lib/authHandlers';
+import { createAuthHandlers, createAuthRoutes, MIN_ANSWER_MS } from './_lib/authHandlers';
 import { handleDigest, SESSION_COOKIE } from './_lib/session';
 import {
   SupabaseError,
@@ -38,11 +38,20 @@ interface Row {
   leaseOwner: string | null;
 }
 
+/** `app_private.policy` defaults for sign-in attempts per window. */
+const ATTEMPT_LIMITS: Record<string, number> = {
+  otp_email: 3,
+  otp_visitor: 10,
+  guess_email: 5,
+  guess_visitor: 10,
+};
+
 /** In-memory stand-in for the bff session functions and Supabase Auth. */
 function fakeSupabase() {
   const sessions = new Map<string, Row>();
   let nextId = 1;
   let refreshCount = 1;
+  const attempts = new Map<string, number>();
   const byId = (id: string) => [...sessions.values()].find((r) => r.id === id);
   const supabase = {
     sendOtp: vi.fn<Supabase['sendOtp']>(async () => {}),
@@ -114,6 +123,12 @@ function fakeSupabase() {
         }
         case 'quota_of':
           return [{ available: 7, reserved: 1 }];
+        case 'take_auth_attempt': {
+          // Like bff.take_auth_attempt: one window, the policy's default limits.
+          const key = `${a.p_bucket}:${a.p_key_digest}`;
+          attempts.set(key, (attempts.get(key) ?? 0) + 1);
+          return (attempts.get(key) ?? 0) <= ATTEMPT_LIMITS[a.p_bucket as string];
+        }
         case 'can_search_wider_web':
           return a.p_user === USER;
         default:
@@ -609,6 +624,51 @@ describe('set-password failures', () => {
       new SupabaseError('invalid', 403, 'reauthentication_needed'),
     );
     expect((await ask(s)).status).toBe(503);
+  });
+});
+
+describe('shared sign-in limits (security review, 2026-11-21)', () => {
+  it('counts attempts in Supabase by digest, never by the email or address itself', async () => {
+    const s = setup();
+    await s.otp(post('otp', { email: 'a@b.test' }, { 'x-real-ip': '203.0.113.7' }));
+    const calls = s.supabase.rpc.mock.calls.filter(([fn]) => fn === 'take_auth_attempt');
+    expect(calls.map(([, a]) => a.p_bucket)).toEqual(['otp_visitor', 'otp_email']);
+    for (const [, a] of calls) expect(a.p_key_digest).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(calls)).not.toMatch(/a@b\.test|203\.0\.113\.7/);
+  });
+
+  it('fails closed when the shared count cannot be reached', async () => {
+    const s = setup();
+    const rpc = s.supabase.rpc.getMockImplementation();
+    s.supabase.rpc.mockImplementation(async (fn, a) => {
+      if (fn === 'take_auth_attempt') throw new SupabaseError('unavailable', 0);
+      return rpc?.(fn, a);
+    });
+    expect((await s.otp(post('otp', { email: 'a@b.test' }))).status).toBe(503);
+    expect((await s.password(post('password', { email: 'a@b.test', password: 'x' }))).status).toBe(
+      503,
+    );
+    expect(s.supabase.sendOtp).not.toHaveBeenCalled();
+    expect(s.supabase.signInWithPassword).not.toHaveBeenCalled();
+  });
+});
+
+describe('answer timing (security review, 2026-11-21)', () => {
+  it('holds code requests and password sign-ins to the same minimum time, whatever happened', async () => {
+    const wait = vi.fn(async (_ms: number) => {});
+    const fake = fakeSupabase();
+    const h = createAuthHandlers({ config: CONFIG, supabase: fake.supabase, now: () => NOW, wait });
+    await h.otp(post('otp', { email: 'a@b.test' }));
+    fake.supabase.sendOtp.mockRejectedValueOnce(new SupabaseError('invalid', 422));
+    await h.otp(post('otp', { email: 'c@d.test' }));
+    await h.password(post('password', { email: 'e@f.test', password: 'wrong' }));
+    await h.password(post('password', { email: 'g@h.test', password: 'correct horse battery' }));
+    expect(wait.mock.calls.map(([ms]) => ms)).toEqual([
+      MIN_ANSWER_MS,
+      MIN_ANSWER_MS,
+      MIN_ANSWER_MS,
+      MIN_ANSWER_MS,
+    ]);
   });
 });
 

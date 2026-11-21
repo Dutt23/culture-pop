@@ -126,7 +126,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.references.get('doh-simpsons')).toMatchObject({ kind: 'quote', sourceIds: [] });
     expect(await db.references.get('legacy-unknown')).toMatchObject({
       kind: 'other',
@@ -200,7 +200,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     // The built-in meaning is replaced by the current seed (v7), glance lines included.
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       relation: 'original',
@@ -247,7 +247,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(db.tables.map((t) => t.name)).toContain('searchHistory');
     expect(await db.searchHistory.count()).toBe(0);
     expect(await db.references.count()).toBe(buildSeed().references.length);
@@ -272,7 +272,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(db.tables.map((t) => t.name)).toContain('savedLinks');
     expect(await db.savedLinks.count()).toBe(0);
     expect(await db.favourites.count()).toBe(1);
@@ -308,7 +308,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.interpretations.get('doh-simpsons.1')).toMatchObject({
       gist: 'Ugh, I just did something stupid.',
       socialMove: "They're laughing at their own mistake.",
@@ -345,7 +345,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['packs', 'packMembers']));
     expect(await db.packs.count()).toBe(0);
     expect(await db.packMembers.count()).toBe(0);
@@ -391,7 +391,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -431,7 +431,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.interpretations.count()).toBe(seed.interpretations.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
@@ -473,7 +473,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.references.get('i-choose-you-pokemon')).toMatchObject({ category: 'anime' });
     expect(await db.references.get('doh-simpsons')).toMatchObject({ category: 'cartoon' });
     // A saved online result can't be re-filed without asking Wikidata again, so it stays.
@@ -525,7 +525,7 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name);
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.references.count()).toBe(seed.references.length);
     expect(await db.aliases.count()).toBe(seed.aliases.length);
     expect(await db.packs.get(DOOMSDAY_PACK.id)).toMatchObject({
@@ -567,9 +567,69 @@ describe('schema upgrades', () => {
 
     const db = createDatabase(name, { readyPack: false });
     await db.open();
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
     expect(await db.draftCards.count()).toBe(0);
     expect(await db.savedLinks.count()).toBe(1);
+    db.close();
+  });
+
+  it('upgrades a v14 database to v15 keeping its jobs and making the new indexes queryable', async () => {
+    const name = `upgrade-v14-${Math.random().toString(36).slice(2)}`;
+    const v14 = new Dexie(name);
+    v14.version(1).stores(SCHEMA_V1);
+    v14.version(2).stores(SCHEMA_V2_CHANGES);
+    v14.version(3).stores({});
+    v14.version(4).stores(SCHEMA_V4_CHANGES);
+    v14.version(5).stores(SCHEMA_V5_CHANGES);
+    v14.version(6).stores(SCHEMA_V6_CHANGES);
+    v14.version(7).stores({});
+    v14.version(8).stores(SCHEMA_V8_CHANGES);
+    v14.version(9).stores({});
+    v14.version(10).stores({});
+    v14.version(11).stores({});
+    v14.version(12).stores({});
+    v14.version(13).stores({ draftCards: 'id, savedAt' });
+    v14.version(14).stores({ curationJobs: 'id, status, createdAt, ownerId' });
+    await v14.open();
+    await v14.table('curationJobs').bulkPut([
+      {
+        id: 'job-1',
+        status: 'completed',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        updatedAt: '2026-11-02T00:00:00.000Z',
+      },
+      {
+        id: 'job-2',
+        status: 'running',
+        createdAt: '2026-11-03T00:00:00.000Z',
+        updatedAt: '2026-11-04T00:00:00.000Z',
+      },
+    ]);
+    await v14.table('references').bulkPut([
+      makeReference('cached', 'Cached', { editorialState: 'retrieved', updatedAt: '2026-11-05' }),
+      makeReference('curated', 'Curated', {
+        editorialState: 'published',
+        updatedAt: '2026-11-06',
+      }),
+    ]);
+    v14.close();
+
+    const db = createDatabase(name, { readyPack: false });
+    await db.open();
+    expect(db.verno).toBe(15);
+    expect((await db.curationJobs.toArray()).map((job) => job.id).sort()).toEqual([
+      'job-1',
+      'job-2',
+    ]);
+    expect(
+      (await db.curationJobs.where('updatedAt').aboveOrEqual('2026-11-03').toArray()).map(
+        (job) => job.id,
+      ),
+    ).toEqual(['job-2']);
+    expect(await db.references.where('editorialState').equals('retrieved').primaryKeys()).toEqual([
+      'cached',
+    ]);
+    expect(await db.references.orderBy('updatedAt').primaryKeys()).toEqual(['cached', 'curated']);
     db.close();
   });
 

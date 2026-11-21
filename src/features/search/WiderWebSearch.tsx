@@ -391,7 +391,8 @@ function CommunitySuggests({
   refreshDisabled,
 }: CommunitySuggestsProps) {
   const savedOn = savedAt === undefined ? undefined : formatDate(new Date(savedAt).toISOString());
-  const savedLinks = useSavedLinks();
+  // Only these results' links are looked up, not every saved link (D69).
+  const savedLinks = useSavedLinks(results.map((result) => result.url));
   return (
     <section className={styles.community} aria-labelledby="web-results-title">
       <h2 id="web-results-title" className={styles.communityTitle}>

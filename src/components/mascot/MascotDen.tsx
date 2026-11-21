@@ -16,13 +16,16 @@ import {
 import type { RoomPropId } from './room/roomProps';
 import { ToyScenes } from './room/ToyScenes';
 import { UpperWall } from './room/UpperWall';
+import { useResting } from './useResting';
 
 /**
  * Discover's first screen: the mascot's night-time living room, wall to wall, with the page's
  * heading and search bar (`children`) on its wall. Every prop is a pop-culture reference, and
  * secretly a button: tap one and the mascot says what it is. Small things move, and as the page
  * scrolls the furniture drifts back and the heading fades. `still` (reduced motion) stops every
- * movement.
+ * movement. Fades always run; the drawings that move force the page to be laid out again on every
+ * frame (SVG movement can't go to the graphics chip), so they rest after 20 s without a touch or
+ * scroll and wake on the next one (D69). Off screen, everything pauses.
  */
 export function MascotDen({ still, children }: { still: boolean; children: ReactNode }) {
   const clipId = useId();
@@ -35,6 +38,7 @@ export function MascotDen({ still, children }: { still: boolean; children: React
   const opener = useRef<PropElement | null>(null);
   const denRef = useRef<HTMLDivElement>(null);
   const [offScreen, setOffScreen] = useState(false);
+  const resting = useResting(undefined, !still);
   const close = useCallback(() => {
     setOpenId(null);
     // Back to the prop without jumping the page to it.
@@ -81,6 +85,8 @@ export function MascotDen({ still, children }: { still: boolean; children: React
         ref={denRef}
         className={classNames(styles.den, still && styles.still, offScreen && styles.paused)}
         data-scene="night"
+        // Read by room.module.css and toys.module.css: their moving drawings pause.
+        data-resting={resting || undefined}
         // The room runs up behind the app header, so the site name stays light over it.
         data-behind-header
         {...{ [ROOM_ATTRIBUTE]: '' }}
@@ -91,7 +97,7 @@ export function MascotDen({ still, children }: { still: boolean; children: React
         <m.div className={styles.content} style={still ? undefined : { y: lift, opacity: fade }}>
           {children}
         </m.div>
-        <Lights still={still} className={styles.lights} />
+        <Lights still={still} quiet={offScreen || resting} className={styles.lights} />
         <UpperWall className={styles.upper} />
         <ToyScenes className={styles.toys} />
         <LowRow className={styles.lowRow} />

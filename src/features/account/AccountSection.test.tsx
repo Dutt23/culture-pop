@@ -51,4 +51,27 @@ describe('AccountSection', () => {
     expect(client.signOut).toHaveBeenCalled();
     expect(screen.getByText('Sign-in page')).toBeInTheDocument();
   });
+
+  it('greys Sign out while it runs, and brings it back with a message if it fails', async () => {
+    localStorage.setItem('pcd-account', 'reader@example.test');
+    let fail: () => void = () => {};
+    const client = {
+      ...fakeClient(),
+      signOut: vi.fn(
+        () =>
+          new Promise<{ ok: false; error: 'unavailable' }>((resolve) => {
+            fail = () => resolve({ ok: false, error: 'unavailable' });
+          }),
+      ),
+    };
+    show(client);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    expect(screen.getByRole('button', { name: 'Signing out…' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await act(async () => fail());
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't sign out. Try again.");
+    expect(screen.getByRole('button', { name: 'Sign out' })).not.toHaveAttribute('aria-disabled');
+  });
 });

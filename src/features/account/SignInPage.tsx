@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { BusyButton } from '../../components/ui/BusyButton';
 import { Page } from '../../components/ui/Page';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
@@ -357,9 +358,14 @@ export function SignInPage({ client = defaultClient }: { client?: AuthClient }) 
           <p id={STATUS_ID} className={styles.status} data-kind="ok" role="status">
             {message?.kind === 'ok' ? message.text : ''}
           </p>
-          <button type="submit" className={styles.primary} aria-busy={busy}>
-            {busy ? 'One moment…' : submitLabel}
-          </button>
+          <BusyButton
+            type="submit"
+            busy={busy}
+            busyLabel={submitLabel === 'Send code' ? 'Sending code…' : 'Signing in…'}
+            className={styles.primary}
+          >
+            {submitLabel}
+          </BusyButton>
           <p className={styles.footer}>
             {mode === 'password' ? (
               <button
@@ -375,6 +381,7 @@ export function SignInPage({ client = defaultClient }: { client?: AuthClient }) 
                   <button
                     type="button"
                     className={styles.link}
+                    aria-disabled={busy || undefined}
                     onClick={() => !busy && void sendCode(email.trim())}
                   >
                     Send a new code

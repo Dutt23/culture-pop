@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
+import { BusyButton, useBusy } from '../../components/ui/BusyButton';
+import { SideTray } from '../../components/ui/SideTray';
 import { cardElement } from '../../motion/cardElement';
 import { dissolve } from '../../motion/dissolve';
 import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
@@ -16,34 +18,38 @@ interface PackSheetProps {
   /** The card left this pack (removed, or moved to `movedTo`). */
   onLeft?: (movedTo?: { id: string; name: string }) => void;
   onClose: () => void;
+  /** The button that opened it: gets focus back when the tray closes. */
+  opener: RefObject<HTMLElement | null>;
 }
 
 /**
  * The one way to file a card that works everywhere (touch, keyboard, mouse): tap a pack name to
  * file the card at the end of it, or, opened from a pack, to move it there. Packs the card is
- * already in are listed but can't be tapped.
+ * already in are listed but can't be tapped. It is a `SideTray` (the mascot carries it in), so the
+ * parent renders it inside <AnimatePresence>.
  */
-export function PackSheet({ referenceId, title, fromPackId, onLeft, onClose }: PackSheetProps) {
+export function PackSheet({
+  referenceId,
+  title,
+  fromPackId,
+  onLeft,
+  onClose,
+  opener,
+}: PackSheetProps) {
   const { packs } = useRepositories();
   const list = useLiveQuery(() => packs.list(), [packs]);
   const filedIn = usePacksOf(referenceId);
   const { error, attempt } = useAttempt();
   const { reduced } = useMotionPresets();
-  const headingId = useId();
-  const sheetRef = useRef<HTMLElement>(null);
+  const [busy, runBusy] = useBusy();
+  // Which button started the work, so only that one shows the spinner.
+  const [doing, setDoing] = useState('');
 
-  // Set false when focus has already been placed elsewhere.
-  const returnFocus = useRef(true);
-
-  // Focus moves into the sheet, and back to whatever opened it once it closes.
+  // Focus goes back here on close: the opener, or the page heading once the card has left.
+  const returnTo = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const shouldReturn = returnFocus;
-    sheetRef.current?.focus();
-    return () => {
-      if (shouldReturn.current && opener?.isConnected) opener.focus();
-    };
-  }, []);
+    returnTo.current = opener.current;
+  }, [opener]);
 
   const filed = new Set((filedIn ?? []).map((pack) => pack.id));
   const run = async (action: () => Promise<unknown>) => {
@@ -51,37 +57,57 @@ export function PackSheet({ referenceId, title, fromPackId, onLeft, onClose }: P
   };
   // The card crumbles out of this pack's list, Move button and all: the page heading takes focus.
   const leave = async (action: () => Promise<unknown>, movedTo?: { id: string; name: string }) => {
-    const dust = dissolve(cardElement(sheetRef.current?.closest('li'), referenceId), reduced);
+    const dust = dissolve(cardElement(opener.current?.closest('li'), referenceId), reduced);
     if (!(await attempt(action))) {
       dust.restore();
       return;
     }
-    returnFocus.current = false;
-    document.querySelector<HTMLElement>('#main h1')?.focus();
+    returnTo.current = document.querySelector<HTMLElement>('#main h1');
     onLeft?.(movedTo);
     onClose();
+  };
+  const start = (key: string, work: () => Promise<void>) => {
+    if (busy) return;
+    setDoing(key);
+    void runBusy(work);
   };
   const fileIn = (packId: string) => () =>
     packs.fileCard(referenceId, packId, Infinity, fromPackId);
 
   return (
-    <section
-      ref={sheetRef}
-      role="dialog"
-      aria-labelledby={headingId}
-      tabIndex={-1}
-      className={styles.sheet}
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape') return;
-        // Handled: an open tour leaves this Escape alone.
-        event.preventDefault();
-        onClose();
-      }}
+    <SideTray
+      look="carried"
+      // Titles often carry their own quote marks, so none are added around them.
+      title={fromPackId ? `Move ${title} to another pack` : `File ${title} in a pack`}
+      opener={returnTo}
+      onClose={onClose}
+      // A request is still running: closing now would hide its result.
+      stayOpen={busy}
+      footer={
+        (fromPackId || error) && (
+          <>
+            {fromPackId && (
+              <BusyButton
+                busy={busy && doing === 'remove'}
+                busyLabel="Removing…"
+                aria-disabled={busy || undefined}
+                className={styles.button}
+                onClick={() =>
+                  start('remove', () => leave(() => packs.removeMember(fromPackId, referenceId)))
+                }
+              >
+                Remove from this pack
+              </BusyButton>
+            )}
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
+          </>
+        )
+      }
     >
-      <h3 id={headingId} className={styles.sheetTitle}>
-        {/* Titles often carry their own quote marks, so none are added around them. */}
-        {fromPackId ? `Move ${title} to another pack` : `File ${title} in a pack`}
-      </h3>
       {list && list.length === 0 && (
         <p className={styles.muted}>
           No packs yet. <Link to="/packs">Make one</Link>
@@ -92,42 +118,27 @@ export function PackSheet({ referenceId, title, fromPackId, onLeft, onClose }: P
           {list.map((pack) => (
             <li key={pack.id}>
               {/* Already filed there: tapping would only move it to the end, so it's off. */}
-              <button
-                type="button"
+              <BusyButton
+                busy={busy && doing === pack.id}
+                busyLabel="Filing…"
                 className={styles.sheetButton}
                 disabled={filed.has(pack.id)}
+                aria-disabled={busy || undefined}
                 onClick={() =>
-                  void (fromPackId
-                    ? leave(fileIn(pack.id), { id: pack.id, name: pack.name })
-                    : run(fileIn(pack.id)))
+                  start(pack.id, () =>
+                    fromPackId
+                      ? leave(fileIn(pack.id), { id: pack.id, name: pack.name })
+                      : run(fileIn(pack.id)),
+                  )
                 }
               >
                 {pack.name}
                 {filed.has(pack.id) && <span className={styles.muted}> · Filed here</span>}
-              </button>
+              </BusyButton>
             </li>
           ))}
         </ul>
       )}
-      <div className={styles.row}>
-        {fromPackId && (
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => void leave(() => packs.removeMember(fromPackId, referenceId))}
-          >
-            Remove from this pack
-          </button>
-        )}
-        <button type="button" className={styles.button} onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+    </SideTray>
   );
 }

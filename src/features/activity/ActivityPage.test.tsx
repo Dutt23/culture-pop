@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DraftCard, DraftResponse } from '../../../shared/cardTypes.js';
 import type { CurationJob } from '../../data/repositories/curationJobRepository';
 import { ActivityPage } from './ActivityPage';
@@ -16,8 +16,20 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../app/CurationJobsProvider', () => ({ useCurationJobs: () => mocks }));
 vi.mock('../../app/RepositoriesContext', () => {
-  const drafts = { save: mocks.save, list: mocks.list };
-  return { useRepositories: () => ({ drafts }) };
+  // Activity reads jobs page by page and asks only whether the read jobs' cards are kept (D69).
+  const drafts = {
+    save: mocks.save,
+    list: mocks.list,
+    keptFromActivity: async () => {
+      const kept: { id: string }[] = (await mocks.list()) ?? [];
+      return new Set(kept.map((card) => card.id).filter((id) => id.startsWith('activity:')));
+    },
+  };
+  const curationJobs = {
+    list: async (limit?: number) => mocks.jobs.slice(0, limit),
+    count: async () => mocks.jobs.length,
+  };
+  return { useRepositories: () => ({ drafts, curationJobs }) };
 });
 vi.mock('../settings/SettingsContext', () => ({
   useSettings: () => ({ settings: { spoilers: 'hide' } }),
@@ -99,13 +111,20 @@ const show = () =>
     </MemoryRouter>,
   );
 
+// Closing the tray steps history back; jsdom does that late, into the next test. Not here.
 beforeEach(() => {
+  window.history.replaceState(null, '');
+  vi.spyOn(window.history, 'back').mockImplementation(() => {});
   mocks.jobs = [];
   mocks.activeCount = 0;
   mocks.cancel.mockReset().mockResolvedValue(undefined);
   mocks.retry.mockReset().mockResolvedValue(undefined);
   mocks.save.mockReset().mockResolvedValue(undefined);
   mocks.list.mockReset().mockResolvedValue([]);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('ActivityPage', () => {
@@ -123,13 +142,13 @@ describe('ActivityPage', () => {
     show();
     expect(await screen.findByText('Saved to Your cards')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Review card' }));
-    expect(screen.getByText('Saved preview')).toBeInTheDocument();
+    expect(await screen.findByText('Saved preview')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Keep' })).not.toBeInTheDocument();
     expect(mocks.save).not.toHaveBeenCalled();
   });
-  it('shows an empty state and navigation', () => {
+  it('shows an empty state and navigation', async () => {
     show();
-    expect(screen.getByText('No card requests yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No card requests yet.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Find sources for another card' })).toHaveAttribute(
       'href',
       '/search',
@@ -141,7 +160,7 @@ describe('ActivityPage', () => {
     mocks.activeCount = 1;
     show();
     expect(screen.getByRole('status')).toHaveTextContent('1 of 5 cards in progress');
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(mocks.cancel).toHaveBeenCalledWith('running'));
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith(mocks.jobs[1]));
@@ -152,7 +171,7 @@ describe('ActivityPage', () => {
     mocks.activeCount = 5;
     mocks.cancel.mockRejectedValue(new Error('storage failed'));
     show();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not cancel');
   });
@@ -167,8 +186,8 @@ describe('ActivityPage', () => {
       },
     ];
     show();
-    fireEvent.click(screen.getByRole('button', { name: 'Review card' }));
-    const preview = screen.getByRole('region', { name: 'Preview for Search done' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Review card' }));
+    const preview = await screen.findByRole('dialog', { name: 'Review “Search done”' });
     expect(preview).toHaveTextContent('My context');
     fireEvent.click(within(preview).getByRole('button', { name: 'Keep' }));
     await waitFor(() =>
@@ -183,8 +202,35 @@ describe('ActivityPage', () => {
       ),
     );
     expect(await screen.findByText('Saved to Your cards')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: 'Preview for Search done' }),
-    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Review “Search done”' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('opens the review in a tray; Escape closes it and focus returns to the button', async () => {
+    mocks.jobs = [
+      {
+        ...job('done', 'completed'),
+        response: { card, notUsed: [], provider: 'fake', promptVersion: 'v9' },
+      },
+    ];
+    show();
+    const opener = await screen.findByRole('button', { name: 'Review card' });
+    expect(opener).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(opener).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(opener);
+    const tray = await screen.findByRole('dialog', { name: 'Review “Search done”' });
+    expect(within(tray).getByText('A useful card')).toBeInTheDocument();
+    expect(opener).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.keyDown(tray, { key: 'Escape' });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Review “Search done”' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(opener).toHaveFocus();
+    expect(opener).toHaveAttribute('aria-expanded', 'false');
   });
 });

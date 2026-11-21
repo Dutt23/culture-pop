@@ -109,6 +109,12 @@
   cursor: progress;
 }
 
+/* Greyed while a request runs (the main button greys itself: BusyButton). */
+.link[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .message,
 .status {
   margin: 0;

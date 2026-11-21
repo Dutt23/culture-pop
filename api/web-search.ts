@@ -37,8 +37,6 @@ const MAX_REQUEST_BYTES = 2048;
 /** What we send the phone stays small; results are dropped from the end until it fits. */
 const MAX_RESPONSE_BYTES = 16 * 1024;
 const TIMEOUT_MS = 8000;
-/** 31 days × 150 = 4,650, under the ~5,000 free `fast` searches a month. */
-const DAILY_CAP = 150;
 
 /** How far a provider's terms let results be kept: `none`, this `device` only, or `shared`. */
 export type StorageLevel = 'none' | 'device' | 'shared';
@@ -64,8 +62,6 @@ export type { SearchKind };
 export interface HandlerOptions {
   fetch?: typeof fetch;
   timeoutMs?: number;
-  dailyCap?: number;
-  now?: () => Date;
   /** Who may use the wider web; defaults to the signed-in person's permission (webAccess.ts). */
   checkAccess?: (request: Request) => WebAccess | Promise<WebAccess>;
 }
@@ -229,13 +225,8 @@ export function createHandler(
   const doFetch =
     options.fetch ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
   const timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
-  const dailyCap = options.dailyCap ?? DAILY_CAP;
-  const now = options.now ?? (() => new Date());
-  const access = options.checkAccess ?? ((request: Request) => checkWebAccess(request));
-  // shortcut: per-instance memory, so cold starts and parallel instances each get their own count;
-  // Parallel's dashboard spend limit is the real cap. Upgrade to a shared store if use grows.
-  let day = '';
-  let used = 0;
+  const access =
+    options.checkAccess ?? ((request: Request) => checkWebAccess(request, 'web_search'));
 
   return async function handle(request) {
     if (isCrossSite(request)) return json(403, { error: 'cross_site' });
@@ -253,16 +244,6 @@ export function createHandler(
     const fake = devFlag('WEB_SEARCH_FAKE');
     const apiKey = fake ? 'local-fake' : process.env.PARALLEL_API_KEY;
     if (!apiKey) return json(503, { error: 'not_configured' });
-
-    if (!fake) {
-      const today = now().toISOString().slice(0, 10);
-      if (today !== day) {
-        day = today;
-        used = 0;
-      }
-      if (used >= dailyCap) return json(429, { error: 'daily_cap' });
-      used++;
-    }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);

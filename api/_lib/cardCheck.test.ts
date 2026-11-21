@@ -393,4 +393,34 @@ describe('checkAnswer fixes', () => {
       { source: 5, why: 'x'.repeat(80) },
     ]);
   });
+
+  it('treats a source title as evidence, so a dictionary headword can be named', () => {
+    // A dictionary entry keeps the phrase only in its title; the definition never repeats it.
+    const dictionary: EvidenceItem[] = [
+      {
+        id: 'E1',
+        role: 'meaning',
+        from: 'wiktionary',
+        title: 'no cap',
+        text: '(African-American Vernacular) Used to emphasize that one is telling the truth.',
+        source: 0,
+      },
+    ];
+    const sentence = '"No cap" is used to emphasize that one is telling the truth.';
+    const result = checkAnswer(
+      { ...base, gist: 'I am telling the truth.', summary: [{ t: sentence, ids: ['E1'] }] },
+      dictionary,
+      'no cap',
+      [],
+    );
+    expect(result.card?.summary.map((line) => line.text)).toEqual([sentence]);
+    // The title vouches for the headword only: an unsupported claim is still dropped.
+    const invented = checkAnswer(
+      { ...base, summary: [{ t: '"No cap" started in a 1990s rap song.', ids: ['E1'] }] },
+      dictionary,
+      'no cap',
+      [],
+    );
+    expect(invented).toMatchObject({ card: null, reason: 'nothing_left' });
+  });
 });

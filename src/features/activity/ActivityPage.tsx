@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router';
 import { useCurationJobs } from '../../app/CurationJobsProvider';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { Page } from '../../components/ui/Page';
+import { VirtualCollection } from '../../components/ui/VirtualCollection';
+import { usePagedList } from '../../app/usePagedList';
+import { SideTray } from '../../components/ui/SideTray';
 import {
   MAX_RUNNING_CURATION_JOBS,
   type CurationJob,
@@ -12,6 +16,10 @@ import { DraftReveal } from '../drafts/DraftReveal';
 import { useSettings } from '../settings/SettingsContext';
 import draftStyles from '../drafts/drafts.module.css';
 import styles from './ActivityPage.module.css';
+
+const NO_JOBS: CurationJob[] = [];
+/** A first guess at one request's height; each is measured once on screen. */
+const JOB_ESTIMATE_PX = 150;
 
 const STATUS = {
   running: 'Making card…',
@@ -22,18 +30,25 @@ const STATUS = {
 } as const;
 
 export function ActivityPage() {
-  const { jobs, activeCount, cancel, retry } = useCurationJobs();
-  const { drafts } = useRepositories();
+  const { activeCount, cancel, retry } = useCurationJobs();
+  const { drafts, curationJobs } = useRepositories();
   const { settings } = useSettings();
+  // Newest 1,000 first, 1,000 more as the reader scrolls: never the whole history (D69).
+  const { rows, total, more } = usePagedList(
+    (limit) => curationJobs.list(limit),
+    () => curationJobs.count(),
+    [curationJobs],
+  );
+  const jobs = rows ?? NO_JOBS;
   const [openId, setOpenId] = useState<string | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<ReadonlySet<string>>(new Set());
-  const savedCards = useLiveQuery(() => drafts.list(), [drafts]);
+  // Read alongside the jobs, not after them (no extra round trip): keys only, kept cards only.
+  const keptIds = useLiveQuery(() => drafts.keptFromActivity(), [drafts]);
   const savedJobIds = new Set([
     ...saved,
-    ...(savedCards ?? [])
-      .filter((card) => card.id.startsWith('activity:'))
-      .map((card) => card.id.slice('activity:'.length)),
+    ...[...(keptIds ?? [])].map((id) => id.slice('activity:'.length)),
   ]);
   const [retrying, setRetrying] = useState<ReadonlySet<string>>(new Set());
   const open = jobs.find((job) => job.id === openId);
@@ -73,12 +88,19 @@ export function ActivityPage() {
           {error}
         </p>
       )}
-      {jobs.length === 0 ? (
+      {total === 0 && rows !== undefined ? (
         <p>No card requests yet.</p>
       ) : (
-        <ul className={styles.jobs} aria-label="Card requests">
-          {jobs.map((job) => (
-            <li key={job.id} className={styles.job}>
+        <VirtualCollection
+          label="Card requests"
+          className={styles.jobs}
+          items={jobs}
+          total={total}
+          estimateSize={JOB_ESTIMATE_PX}
+          onNeedMore={more}
+          getKey={(job) => job.id}
+          renderItem={(job) => (
+            <div className={styles.job}>
               <h2 className={styles.title}>{job.request.search}</h2>
               <p className={styles.note}>
                 {savedJobIds.has(job.id) ? 'Saved to Your cards' : STATUS[job.status]}
@@ -110,10 +132,14 @@ export function ActivityPage() {
                   <button
                     type="button"
                     className={styles.button}
+                    aria-haspopup="dialog"
                     aria-expanded={openId === job.id}
-                    onClick={() => setOpenId(openId === job.id ? null : job.id)}
+                    onClick={(event) => {
+                      opener.current = event.currentTarget;
+                      setOpenId(job.id);
+                    }}
                   >
-                    {openId === job.id ? 'Close preview' : 'Review card'}
+                    Review card
                   </button>
                 )}
                 {['failed', 'cancelled', 'interrupted'].includes(job.status) && (
@@ -127,49 +153,55 @@ export function ActivityPage() {
                   </button>
                 )}
               </div>
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+        />
       )}
-      {open?.response && (
-        <section
-          className={`${draftStyles.flow} ${styles.preview}`}
-          data-scene="night"
-          aria-label={`Preview for ${open.request.search}`}
-        >
-          <DraftReveal
+      <AnimatePresence>
+        {open?.response && (
+          <SideTray
             key={open.id}
-            response={open.response}
-            sent={open.sent}
-            search={open.request.search}
-            userContext={open.userContext}
-            color={open.color}
-            revealSpoilers={settings.spoilers === 'show'}
-            readOnly={savedJobIds.has(open.id)}
-            onKeep={(card) =>
-              drafts.save({
-                id: `activity:${open.id}`,
-                search: open.request.search,
-                card,
-                sources: open.sent.map(({ from, title, url, provenance }) => ({
-                  from,
-                  title,
-                  ...(url ? { url } : {}),
-                  ...(provenance ? { provenance } : {}),
-                })),
-                promptVersion: open.response!.promptVersion,
-                savedAt: new Date().toISOString(),
-                ...(open.userContext ? { userContext: open.userContext } : {}),
-                ...(open.color ? { color: open.color } : {}),
-              })
-            }
-            onDone={(kept) => {
-              if (kept) setSaved((ids) => new Set(ids).add(open.id));
-              setOpenId(null);
-            }}
-          />
-        </section>
-      )}
+            title={`Review “${open.request.search}”`}
+            look="tv"
+            size="wide"
+            opener={opener}
+            onClose={() => setOpenId(null)}
+          >
+            <div className={draftStyles.flow}>
+              <DraftReveal
+                response={open.response}
+                sent={open.sent}
+                search={open.request.search}
+                userContext={open.userContext}
+                color={open.color}
+                revealSpoilers={settings.spoilers === 'show'}
+                readOnly={savedJobIds.has(open.id)}
+                onKeep={(card) =>
+                  drafts.save({
+                    id: `activity:${open.id}`,
+                    search: open.request.search,
+                    card,
+                    sources: open.sent.map(({ from, title, url, provenance }) => ({
+                      from,
+                      title,
+                      ...(url ? { url } : {}),
+                      ...(provenance ? { provenance } : {}),
+                    })),
+                    promptVersion: open.response!.promptVersion,
+                    savedAt: new Date().toISOString(),
+                    ...(open.userContext ? { userContext: open.userContext } : {}),
+                    ...(open.color ? { color: open.color } : {}),
+                  })
+                }
+                onDone={(kept) => {
+                  if (kept) setSaved((ids) => new Set(ids).add(open.id));
+                  setOpenId(null);
+                }}
+              />
+            </div>
+          </SideTray>
+        )}
+      </AnimatePresence>
     </Page>
   );
 }

@@ -54,6 +54,16 @@ describe('createSupabase', () => {
     expect(headersOf(fetchImpl.mock.calls[5]?.[1]).get('Authorization')).toBe('Bearer a');
   });
 
+  it("keeps Supabase's session id from the access token, so logout can end it", async () => {
+    const sessionId = '0b5c3e9a-1f2d-4c6b-9a8e-7d6c5b4a3f21';
+    const payload = Buffer.from(JSON.stringify({ sub: 'u1', session_id: sessionId })).toString(
+      'base64url',
+    );
+    const body = { ...TOKEN_BODY, access_token: `e30.${payload}.sig` };
+    const { supabase } = withResponse(() => Response.json(body));
+    expect((await supabase.verifyOtp('x@y.test', '123456')).session_id).toBe(sessionId);
+  });
+
   it('turns a token response into the stored shape', async () => {
     const { supabase } = withResponse(() => Response.json(TOKEN_BODY));
     expect(await supabase.verifyOtp('x@y.test', '123456')).toEqual({

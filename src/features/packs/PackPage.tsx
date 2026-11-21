@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useRepositories } from '../../app/RepositoriesContext';
 import { PACK_NAME_MAX } from '../../data/repositories/packRepository';
+import { BusyButton, useBusy } from '../../components/ui/BusyButton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SkeletonCards } from '../../components/ui/SkeletonCards';
 import { Page } from '../../components/ui/Page';
@@ -16,6 +17,7 @@ import type { Pack } from '../../domain/types';
 import { useSearch } from '../search/useSearch';
 import { useSearchQuery } from '../search/useSearchQuery';
 import { PackDoneList } from './PackDoneList';
+import { PackPass } from './PackPass';
 import { PackHits } from './PackHits';
 import { PackMemberItem } from './PackMemberItem';
 import { PACK_TOUR } from './packTours';
@@ -107,6 +109,13 @@ function PackView({ packId }: { packId: string }) {
       intro={members.length > 0 ? GOT_IT_HINT : undefined}
       wide
     >
+      {!searching && members.length + cards.done.length > 0 && (
+        <PackPass
+          pack={pack}
+          done={cards.done.length}
+          total={members.length + cards.done.length}
+        />
+      )}
       <div className={styles.stack} data-tour="pack-search-in">
         <SegmentedControl
           legend="Search in"
@@ -226,11 +235,13 @@ function PackSettings({ pack }: { pack: Pack }) {
   const { error, attempt } = useAttempt();
   const [name, setName] = useState(pack.name);
   const nameId = useId();
+  const [renaming, runRename] = useBusy();
+  const [deleting, runDelete] = useBusy();
 
   const deletePack = async () => {
     const question = `Delete the pack “${pack.name}”? Its cards stay in your library.`;
     if (!window.confirm(question)) return;
-    if (await attempt(() => packs.deletePack(pack.id))) void navigate('/packs');
+    if (await runDelete(() => attempt(() => packs.deletePack(pack.id)))) void navigate('/packs');
   };
 
   return (
@@ -239,7 +250,7 @@ function PackSettings({ pack }: { pack: Pack }) {
         className={styles.inline}
         onSubmit={(event) => {
           event.preventDefault();
-          if (name.trim()) void attempt(() => packs.rename(pack.id, name));
+          if (name.trim()) void runRename(() => attempt(() => packs.rename(pack.id, name)));
         }}
       >
         <label htmlFor={nameId} className={styles.label}>
@@ -254,9 +265,9 @@ function PackSettings({ pack }: { pack: Pack }) {
           autoComplete="off"
           required
         />
-        <button type="submit" className={styles.button}>
+        <BusyButton type="submit" busy={renaming} busyLabel="Renaming…" className={styles.button}>
           Rename
-        </button>
+        </BusyButton>
       </form>
       <div data-tour="pack-spoilers">
         <SegmentedControl
@@ -280,9 +291,14 @@ function PackSettings({ pack }: { pack: Pack }) {
           >
             {pack.now ? 'Pinned to top' : 'Pin to top'}
           </button>
-          <button type="button" className={styles.danger} onClick={() => void deletePack()}>
+          <BusyButton
+            busy={deleting}
+            busyLabel="Deleting…"
+            className={styles.danger}
+            onClick={() => void deletePack()}
+          >
             Delete pack
-          </button>
+          </BusyButton>
         </div>
         <p className={styles.muted}>A pinned pack shows first in your packs and in pack search.</p>
       </div>

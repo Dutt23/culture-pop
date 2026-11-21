@@ -36,6 +36,8 @@ export interface AuthTokens {
   expires_at: number;
   user_id: string;
   email: string;
+  /** Supabase's own session id (from the access token), so logout can end that session too. */
+  session_id?: string;
 }
 
 /**
@@ -73,6 +75,22 @@ export interface Supabase {
   rpc<T>(fn: string, args: Record<string, unknown>): Promise<T>;
 }
 
+/**
+ * The `session_id` claim of our own, just-issued access token. Read only to name the session at
+ * logout; nothing is authorised from it, so the signature isn't checked here.
+ */
+function sessionIdOf(accessToken: string): string | undefined {
+  try {
+    const payload: unknown = JSON.parse(
+      Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    );
+    const id = (payload as { session_id?: unknown }).session_id;
+    return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) ? id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function toTokens(body: unknown): AuthTokens {
   const b = body as {
     access_token?: unknown;
@@ -95,6 +113,7 @@ function toTokens(body: unknown): AuthTokens {
     expires_at: b.expires_at,
     user_id: b.user.id,
     email: b.user.email,
+    session_id: sessionIdOf(b.access_token),
   };
 }
 

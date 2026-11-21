@@ -48,7 +48,7 @@ const LlmBenchPage = import.meta.env.DEV
 /** `authClient` lets tests answer the sign-in check without a server. */
 export function AppRoutes({ authClient }: { authClient?: AuthClient } = {}) {
   return (
-    <AppShell>
+    <AppShell authClient={authClient}>
       <Routes>
         {/* Someone already signed in goes straight on from here (D66). */}
         <Route element={<SignInGate client={authClient} />}>

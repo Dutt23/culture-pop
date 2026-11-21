@@ -322,12 +322,6 @@ describe('video searches', () => {
       expect(sent.advanced_settings).toEqual({ max_results: 10 });
     },
   );
-
-  it('counts towards the same daily cap', async () => {
-    const { handle } = setup({ results: [] }, { dailyCap: 1 });
-    expect((await handle(videoRequest('closer'))).status).toBe(200);
-    expect((await handle(request(QUERY))).status).toBe(429);
-  });
 });
 
 describe('search tags hint', () => {
@@ -691,18 +685,14 @@ describe('errors', () => {
 });
 
 describe('daily cap', () => {
-  it('stops calling Parallel once the cap is used, and resets the next UTC day', async () => {
-    let now = new Date('2026-11-16T23:59:00Z');
-    const { fetchMock, handle } = setup(undefined, { dailyCap: 2, now: () => now });
-    expect((await handle(request(QUERY))).status).toBe(200);
-    expect((await handle(request(QUERY))).status).toBe(200);
+  it('answers 429 daily_cap from the shared count and never calls Parallel', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    const handle = createHandler({ fetch: fetchMock, checkAccess: async () => 'daily_cap' as const });
     expect(await read(await handle(request(QUERY)))).toEqual({
       status: 429,
       body: { error: 'daily_cap' },
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    now = new Date('2026-11-17T00:00:01Z');
-    expect((await handle(request(QUERY))).status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

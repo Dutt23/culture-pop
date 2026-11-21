@@ -61,6 +61,27 @@ describe('Your cards', () => {
     expect((await repos.drafts.list()).map((r) => r.id)).toEqual(['a']);
   });
 
+  it('shows up to 20 kept cards as a film strip and more as rows', async () => {
+    const cards = (n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        record(`c${i}`, `Card ${i}`, `2026-11-01T00:${String(i).padStart(2, '0')}:00.000Z`),
+      );
+    const few = await seed(...cards(2));
+    const first = renderApp('/favourites', few.db);
+    expect(await screen.findByRole('list', { name: 'Kept cards' })).toHaveAttribute(
+      'data-variant',
+      'frames',
+    );
+    first.unmount();
+
+    const many = await seed(...cards(21));
+    renderApp('/favourites', many.db);
+    expect(await screen.findByRole('list', { name: 'Kept cards' })).toHaveAttribute(
+      'data-variant',
+      'rows',
+    );
+  });
+
   it('opens a kept card to read it in full', async () => {
     const { db } = await seed({
       ...record('a', 'A dismissive comeback', '2026-11-01T00:00:00.000Z'),

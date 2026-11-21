@@ -9,6 +9,8 @@ import {
   SearchIcon,
   SettingsIcon,
 } from '../components/ui/icons';
+import type { AuthClient } from '../services/auth/authClient';
+import { AccountMenu } from './AccountMenu';
 import styles from './AppShell.module.css';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useCurationJobs } from './CurationJobsProvider';
@@ -22,7 +24,13 @@ const NAV_ITEMS = [
   { to: '/settings', label: 'Settings', Icon: SettingsIcon },
 ] as const;
 
-export function AppShell({ children }: { children: ReactNode }) {
+interface AppShellProps {
+  children: ReactNode;
+  /** Lets tests sign out without a server. */
+  authClient?: AuthClient;
+}
+
+export function AppShell({ children, authClient }: AppShellProps) {
   const isOnline = useOnlineStatus();
   // Signing in is the only thing a signed-out visitor can do (D66), so that page has no tabs.
   const onSignIn = useLocation().pathname === '/sign-in';
@@ -47,6 +55,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
       </header>
+      {/* Outside the header, so a night scene behind it doesn't recolour the menu. */}
+      {!onSignIn && (
+        <div className={styles.accountBar}>
+          <AccountMenu client={authClient} />
+        </div>
+      )}
       {finished && (
         <p className={styles.activityNotice} role="status">
           <Link to="/activity">

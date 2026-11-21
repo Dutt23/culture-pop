@@ -235,6 +235,18 @@ export function createDatabase(
   // v14: local activity snapshots. Existing records stay in their original stores.
   db.version(14).stores({ curationJobs: 'id, status, createdAt, ownerId' });
 
+  // v15 (D69): screens read by index, never whole tables. Activity jobs by when they last changed
+  // (start-up reads only running or just-finished ones); references by editorial state (Discover
+  // reads the curated library without scanning cached online results), by last update (the cap on
+  // cached online results removes the oldest first); references and interpretations by cited source
+  // (a removed result's sources go only when nothing else cites them). New indexes only.
+  db.version(15).stores({
+    curationJobs: 'id, status, createdAt, ownerId, updatedAt',
+    references:
+      'id, normalizedTitle, category, decade, kind, editorialState, updatedAt, *sourceIds',
+    interpretations: 'id, referenceId, *sourceIds',
+  });
+
   db.on('populate', (tx) => {
     const seed = buildSeed();
     void tx.table('references').bulkAdd(seed.references);

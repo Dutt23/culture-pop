@@ -1,0 +1,78 @@
+:where(.collection) {
+  /* Room for items a virtualiser isn't drawing (Collection's padStart / padEnd). */
+  --pad-start: 0px;
+  --pad-end: 0px;
+
+  /* Padding, not margin: a margin could collapse into a neighbour's and shorten the list. */
+  margin: 0;
+  padding: var(--pad-start) 0 var(--pad-end);
+  list-style: none;
+}
+
+.collection:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Variant rules sit in :where() (no specificity), so a caller's own class can set gap or
+   columns. */
+
+/* Rows: a plain column. */
+:where(.collection[data-variant='rows']) {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* Lanyards: passes hang side by side as the screen widens (40rem tablet, 64rem desktop). */
+:where(.collection[data-variant='lanyards']) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5) var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 40rem) {
+  :where(.collection[data-variant='lanyards']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  :where(.collection[data-variant='lanyards']) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Frames: a strip of film that scrolls sideways, sprocket holes along both edges. */
+:where(.collection[data-variant='frames']) {
+  --film: #0d0b1f;
+  --sprocket: rgb(243 239 255 / 55%);
+
+  display: grid;
+  grid-auto-columns: minmax(12rem, 70%);
+  grid-auto-flow: column;
+  gap: var(--space-3);
+  padding: var(--space-5) calc(var(--space-3) + var(--pad-end)) var(--space-5)
+    calc(var(--space-3) + var(--pad-start));
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle, var(--sprocket) 0.2rem, transparent 0.22rem) 0 0.25rem / 1rem 1rem
+      repeat-x,
+    radial-gradient(circle, var(--sprocket) 0.2rem, transparent 0.22rem) 0 calc(100% - 0.25rem) /
+      1rem 1rem repeat-x,
+    var(--film);
+}
+
+@media (min-width: 48rem) {
+  :where(.collection[data-variant='frames']) {
+    grid-auto-columns: minmax(14rem, 40%);
+  }
+}
+
+:where(.collection[data-variant='frames']) > .item {
+  scroll-snap-align: start;
+}
