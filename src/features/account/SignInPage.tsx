@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { BusyButton } from '../../components/ui/BusyButton';
 import { Page } from '../../components/ui/Page';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import {
   createAuthClient,
   type AuthClient,

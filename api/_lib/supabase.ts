@@ -85,7 +85,10 @@ function sessionIdOf(accessToken: string): string | undefined {
       Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString('utf8'),
     );
     const id = (payload as { session_id?: unknown }).session_id;
-    return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) ? id : undefined;
+    return typeof id === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+      ? id
+      : undefined;
   } catch {
     return undefined;
   }

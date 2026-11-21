@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useRef, useState } from 'react';
 import { usePagedList, type PagedList } from '../../app/usePagedList';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { requestPersistentStorage } from '../../data/persistentStorage';
 import { ALL_FAVOURITES_UP_TO, isLarge, rememberSize, wasLarge } from '../../data/scale';
 import type { Reference } from '../../domain/types';

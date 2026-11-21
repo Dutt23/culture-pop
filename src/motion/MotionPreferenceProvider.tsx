@@ -1,10 +1,8 @@
 import { domAnimation, LazyMotion, MotionConfig, useReducedMotion } from 'motion/react';
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { MotionPreference } from '../domain/settings';
-import { createMotionPresets, type MotionPresets } from './presets';
-
-const FULL_PRESETS = createMotionPresets(false);
-const MotionPresetsContext = createContext<MotionPresets>(FULL_PRESETS);
+import { createMotionPresets } from './presets';
+import { MotionPresetsContext } from './useMotionPresets';
 
 interface MotionPreferenceProviderProps {
   preference: MotionPreference;
@@ -26,8 +24,4 @@ export function MotionPreferenceProvider({ preference, children }: MotionPrefere
       </MotionConfig>
     </LazyMotion>
   );
-}
-
-export function useMotionPresets(): MotionPresets {
-  return useContext(MotionPresetsContext);
 }

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useMemo, useState } from 'react';
 import { usePagedList, type PagedList } from '../../app/usePagedList';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { safeHref } from '../../components/ui/safeHref';
 import { requestPersistentStorage } from '../../data/persistentStorage';
 import type { SavedLink } from '../../domain/types';

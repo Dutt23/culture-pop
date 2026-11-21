@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { AppProviders } from '../app/AppProviders';
 import { AppRoutes } from '../app/AppRoutes';
-import type { RetrievalService } from '../app/RetrievalContext';
+import type { RetrievalService } from '../app/retrievalServiceContext';
 import { createDatabase, type PopCultureDb } from '../data/db';
 import { fakeAuthClient } from './fakeAuth';
 import { unusedRetrievalService } from './fakeRetrieval';

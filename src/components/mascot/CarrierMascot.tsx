@@ -16,12 +16,7 @@ const MUSCLE = '#5530cf';
 
 export function CarrierMascot({ phase }: { phase: CarrierPhase }) {
   return (
-    <svg
-      className={styles.mascot}
-      data-phase={phase}
-      viewBox="-24 -26 172 160"
-      aria-hidden="true"
-    >
+    <svg className={styles.mascot} data-phase={phase} viewBox="-24 -26 172 160" aria-hidden="true">
       {/* Sweat: three drops flying off its head while it works. */}
       <g className={styles.sweat}>
         <path d="M6 18 q-5 8 0 11 q5 -3 0 -11 Z" fill="#9fd8ff" />

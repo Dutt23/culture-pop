@@ -1,5 +1,5 @@
 import type { WebSearchFailure } from '../../services/retrieval/webSearch';
-import { FAILURE_TEXT } from '../search/WiderWebSearch';
+import { FAILURE_TEXT } from '../search/webSearchText';
 
 /** The search copy names the wider web search; a card has its own words. */
 export const DRAFT_FAILURE_TEXT: Record<WebSearchFailure, string> = {

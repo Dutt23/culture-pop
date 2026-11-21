@@ -13,7 +13,7 @@ const { replies, listeners, library, workerSearch } = vi.hoisted(() => ({
   workerSearch: { calls: 0 },
 }));
 
-vi.mock('../../app/RepositoriesContext', async () => {
+vi.mock('../../app/useRepositories', async () => {
   const { buildSeed: seed } = await import('../../data/seed');
   const { references, aliases, interpretations } = seed();
   const references_ = {

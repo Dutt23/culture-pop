@@ -29,7 +29,7 @@ import {
   surpriseNote,
 } from '../../domain/labels';
 import { isFromOnline, type Reference } from '../../domain/types';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { useFavourites } from '../favourites/useFavourites';
 import { useRecordSearch, useRegulars } from '../search/useSearchHistory';
 import type { BrowseGroup } from './browseRows';

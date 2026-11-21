@@ -13,7 +13,7 @@ import type { AuthClient } from '../services/auth/authClient';
 import { AccountMenu } from './AccountMenu';
 import styles from './AppShell.module.css';
 import { useOnlineStatus } from './useOnlineStatus';
-import { useCurationJobs } from './CurationJobsProvider';
+import { useCurationJobs } from './useCurationJobs';
 
 const NAV_ITEMS = [
   { to: '/discover', label: 'Discover', Icon: CompassIcon },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { BusyButton, useBusy } from '../../components/ui/BusyButton';
+import { BusyButton } from '../../components/ui/BusyButton';
+import { useBusy } from '../../components/ui/useBusy';
 import { Section } from '../../components/ui/Section';
 import {
   createAuthClient,

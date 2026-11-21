@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { UNGRADED } from './curationLook';
 import { flyToReel } from './flyToReel';
 import type { Frame } from './frames';

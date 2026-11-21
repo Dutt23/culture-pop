@@ -1,6 +1,6 @@
 import { m } from 'motion/react';
 import type { ReactNode } from 'react';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 
 interface AnimatedItemProps {
   /** Position in the list; drives the capped stagger delay. */

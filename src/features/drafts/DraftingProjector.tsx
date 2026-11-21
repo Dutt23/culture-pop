@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { Antennae, Body, Smile } from '../../components/mascot/Mascot';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import styles from './drafts.module.css';
 
 const LINES = [

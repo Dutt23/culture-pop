@@ -1,6 +1,6 @@
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useSettings } from '../../features/settings/SettingsContext';
+import { useSettings } from '../../features/settings/useSettings';
 import styles from './IntroSplash.module.css';
 import { GenrePlace } from '../mascot/GenrePlace';
 import { Mascot, type Costume } from '../mascot/Mascot';

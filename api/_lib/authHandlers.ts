@@ -305,11 +305,14 @@ export function createAuthHandlers(options: AuthHandlerOptions = {}): {
         return reply(200, { signedIn: false }, stale);
       }
       // Either can be missing for a moment (null): the page treats that as "don't know", and the
-      // server still checks the permission on every paid call.
+      // server still checks the permission on every paid call. The balance is today's card drafts
+      // left under the shared daily limits (`take_web_credit` spends them).
       const [quota, widerWeb] = await Promise.all([
         ready.supabase
-          .rpc<{ available: number; reserved: number }[]>('quota_of', { p_user: result.userId })
-          .then(([row]) => row ?? null)
+          .rpc<number>('card_drafts_left', { p_user: result.userId })
+          .then((left) =>
+            Number.isInteger(left) && left >= 0 ? { available: left, reserved: 0 } : null,
+          )
           .catch(() => null),
         ready.supabase
           .rpc<boolean>('can_search_wider_web', { p_user: result.userId })

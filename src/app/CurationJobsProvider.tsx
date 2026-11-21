@@ -1,36 +1,16 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { DraftResponse } from '../../shared/cardTypes';
 import type { CurationJob, CurationJobInput } from '../data/repositories/curationJobRepository';
 import { WebSearchError } from '../services/retrieval/webSearch';
 import { DRAFT_FAILURE_TEXT } from '../features/drafts/failureText';
-import { useRepositories } from './RepositoriesContext';
+import { useRepositories } from './useRepositories';
 import { useRetrievalService } from './retrievalService';
+import {
+  CurationJobsContext as Context,
+  type CurationJobsContextValue,
+  type StartedCuration,
+} from './useCurationJobs';
 
-interface StartedCuration {
-  job: CurationJob;
-  completion: Promise<DraftResponse>;
-}
-interface CurationJobsContextValue {
-  /**
-   * Jobs still running plus any that changed since this tab opened, newest first. Not the whole
-   * history: Activity reads that page by page (D69).
-   */
-  jobs: CurationJob[];
-  activeCount: number;
-  start(input: CurationJobInput): Promise<StartedCuration>;
-  cancel(id: string): Promise<void>;
-  retry(job: CurationJob): Promise<void>;
-}
-const Context = createContext<CurationJobsContextValue | null>(null);
 const EMPTY_JOBS: CurationJob[] = [];
 
 export function CurationJobsProvider({ children }: { children: ReactNode }) {
@@ -137,10 +117,4 @@ export function CurationJobsProvider({ children }: { children: ReactNode }) {
     };
   }, [curationJobs, jobs, webSearch]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
-}
-
-export function useCurationJobs(): CurationJobsContextValue {
-  const value = useContext(Context);
-  if (!value) throw new Error('CurationJobsProvider is missing');
-  return value;
 }

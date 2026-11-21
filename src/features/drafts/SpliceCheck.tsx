@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { roleOf, type FlagReason } from '../../../shared/cardCurate.js';
 import type { ToneCard } from '../../../shared/cardTypes.js';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { CardNoteButton } from './CardNoteButton';
 import type { Frame } from './frames';
 import film from './FilmStrip.module.css';

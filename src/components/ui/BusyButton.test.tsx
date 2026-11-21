@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { BusyButton, useBusy } from './BusyButton';
+import { BusyButton } from './BusyButton';
+import { useBusy } from './useBusy';
 
 /** A save button wired the way pages use it: `useBusy` + `BusyButton`. */
 function Saver({ work }: { work: () => Promise<void> }) {

@@ -1,6 +1,6 @@
 import { Subject, throwError, type Observable } from 'rxjs';
 import { vi } from 'vitest';
-import type { RetrievalService } from '../app/RetrievalContext';
+import type { RetrievalService } from '../app/retrievalServiceContext';
 import { retrieve$ } from '../services/retrieval/retrieve';
 import type { GetJson, ProviderId, RetrievalResult } from '../services/retrieval/types';
 import type { WebSearchClient } from '../services/retrieval/webSearch';

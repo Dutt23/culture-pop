@@ -687,7 +687,10 @@ describe('errors', () => {
 describe('daily cap', () => {
   it('answers 429 daily_cap from the shared count and never calls Parallel', async () => {
     const fetchMock = vi.fn<typeof fetch>();
-    const handle = createHandler({ fetch: fetchMock, checkAccess: async () => 'daily_cap' as const });
+    const handle = createHandler({
+      fetch: fetchMock,
+      checkAccess: async () => 'daily_cap' as const,
+    });
     expect(await read(await handle(request(QUERY)))).toEqual({
       status: 429,
       body: { error: 'daily_cap' },

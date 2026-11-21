@@ -51,7 +51,9 @@ async function fakeSpeech(page: Page) {
       const engine = w.__speech.active;
       if (!engine) throw new Error('not listening');
       words.forEach((text, index) => {
-        const result = Object.assign([{ transcript: text }], { isFinal: index === words.length - 1 });
+        const result = Object.assign([{ transcript: text }], {
+          isFinal: index === words.length - 1,
+        });
         engine.onresult?.({ resultIndex: 0, results: [result] });
       });
       w.__speech.active = null;

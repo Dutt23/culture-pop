@@ -108,11 +108,7 @@
   flex: 1;
   block-size: 0.75rem;
   border-radius: var(--radius-pill);
-  background: repeating-linear-gradient(
-    to right,
-    rgb(0 0 0 / 28%) 0 3px,
-    transparent 3px 7px
-  );
+  background: repeating-linear-gradient(to right, rgb(0 0 0 / 28%) 0 3px, transparent 3px 7px);
 }
 
 .knob {

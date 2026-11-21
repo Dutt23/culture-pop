@@ -1,6 +1,6 @@
 import { m } from 'motion/react';
 import { useId, type ReactNode } from 'react';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { classNames } from './classNames';
 import styles from './Lanyard.module.css';
 

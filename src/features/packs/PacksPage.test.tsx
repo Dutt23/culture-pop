@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OPEN_PACK_KEY } from '../../components/reference-card/openPack';
 import { createRepositories } from '../../data/repositories';
+import { ALL_PACK_MEMBERS_UP_TO } from '../../data/scale';
 import { createTestDatabase, renderApp } from '../../test/renderApp';
 import { FROM_PACK_DRAG_TYPE, REFERENCE_DRAG_TYPE } from './usePacks';
 
@@ -209,6 +210,39 @@ describe('packs', () => {
     await user.type(await screen.findByRole('searchbox', { name: 'Search all packs' }), 'boomer');
     expect(await screen.findByText('Nothing in your packs.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /OK boomer/i })).not.toBeInTheDocument();
+  });
+
+  it('lists a big library from counts alone and reads filed cards only to search', async () => {
+    localStorage.setItem('pcd:sizes', JSON.stringify({ packMembers: ALL_PACK_MEMBERS_UP_TO + 1 }));
+    const { db, repos, xMen, doom } = await withPacks();
+    // Really big: the counts-only read records the true size, which must stay over the limit.
+    await db.packMembers.bulkAdd(
+      Array.from({ length: ALL_PACK_MEMBERS_UP_TO + 1 }, (_, position) => ({
+        id: `pm:big:${position}`,
+        packId: doom.id,
+        referenceId: `big:${position}`,
+        position,
+        addedAt: new Date(0).toISOString(),
+      })),
+    );
+    await repos.packs.fileCard('ok-boomer', xMen.id, 0);
+    await repos.packs.fileCard('the-snap-avengers', xMen.id, 1);
+    await repos.packs.markDone(xMen.id, 'ok-boomer');
+    // Only the whole-membership read (pack search) reads every member row.
+    const memberships = vi.spyOn(db.packMembers, 'toArray');
+    try {
+      const { user } = renderApp('/packs', db);
+
+      const row = await screen.findByRole('link', { name: /Before X-Men/ });
+      expect(row).toHaveTextContent('1 card');
+      expect(memberships).not.toHaveBeenCalled();
+
+      await user.type(screen.getByRole('searchbox', { name: 'Search all packs' }), 'snap');
+      expect(await screen.findByRole('link', { name: SNAP })).toBeInTheDocument();
+      expect(memberships).toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('pcd:sizes');
+    }
   });
 
   it('pins a pack to the top of the list', async () => {

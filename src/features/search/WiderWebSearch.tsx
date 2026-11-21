@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { useRetrievalService } from '../../app/retrievalService';
 import { FavouriteButton } from '../../components/favourite-button/FavouriteButton';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
@@ -17,37 +17,7 @@ import {
 import { useSavedLinks } from '../favourites/useSavedLinks';
 import styles from './OnlineResults.module.css';
 import own from './WiderWebSearch.module.css';
-
-export const FAILURE_TEXT: Record<WebSearchFailure, string> = {
-  offline: "You're offline. The wider web search needs a connection.",
-  signed_out: 'Sign in to search the wider web.',
-  not_allowed: "The wider web search isn't turned on for your account yet. Ask the owner.",
-  bad_query: 'This search is too long for the wider web search. Try fewer words.',
-  rate_limited: 'Too many searches just now. Try again in a minute.',
-  daily_cap: "Today's wider web searches are used up. Try again tomorrow.",
-  out_of_credit: 'The wider web search is paused for now. Try again later.',
-  not_configured: "The wider web search isn't set up on the server yet.",
-  blocked: 'The server refused the search.',
-  no_card: "These results don't explain it. Try ticking others.",
-  failed: "The wider web search didn't answer. Try again.",
-  aborted: 'The search was cancelled.',
-};
-
-/** The consent card's wording; Settings repeats it in short (D45). */
-export const WEB_SEARCH_DISCLOSURE = [
-  'Your search text goes through our server to Parallel (parallel.ai), a paid web-search service.',
-  'Nothing else is sent: no account, no device details, no location.',
-  'Parallel keeps searches and may use them to improve its service.',
-  'Results are links to other sites, and nobody has checked them.',
-  'Results from the wider web can be kept on this device, for you only, for 30 days while search',
-  'history is on. They are never sent anywhere else, and Clear history deletes them.',
-  'A link you save with the heart (its title and address only) stays on this device until you',
-  'remove it or reset the app.',
-  'If you make a card from results, the search, the results you picked and any style cards go',
-  'through our server to OpenAI (or Cloudflare if OpenAI is busy) to write a draft, and Parallel',
-  "reads the web pages you picked. They don't use it to train their models. The card is kept only",
-  'on this device.',
-].join(' ');
+import { FAILURE_TEXT, isAccessFailure, WEB_SEARCH_DISCLOSURE } from './webSearchText';
 
 const failureOf = (error: unknown): WebSearchFailure =>
   error instanceof WebSearchError ? error.failure : 'failed';
@@ -74,6 +44,7 @@ interface WiderWebSearchProps {
   stories: boolean;
   /** The reader's "on" search tags, sent as a hint ("about anime"); never the search text. */
   about?: readonly string[];
+
   /**
    * False once this search finished on this page, or while the online lookup may still answer it:
    * the block moves when results arrive, and a remount must not pay for the same search twice.
@@ -332,9 +303,6 @@ export function WebConsent({ title, action, onAllow, onCancel }: WebConsentProps
     </section>
   );
 }
-
-export const isAccessFailure = (failure: WebSearchFailure): boolean =>
-  failure === 'signed_out' || failure === 'not_allowed';
 
 /** "Sign in", coming back to this page afterwards. */
 function SignInLink() {

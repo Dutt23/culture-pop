@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import type { BrowsableCategory } from '../../domain/discovery';
 import {
   addCustomTag,

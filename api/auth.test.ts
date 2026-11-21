@@ -121,8 +121,8 @@ function fakeSupabase() {
           }
           return ended;
         }
-        case 'quota_of':
-          return [{ available: 7, reserved: 1 }];
+        case 'card_drafts_left':
+          return 7;
         case 'take_auth_attempt': {
           // Like bff.take_auth_attempt: one window, the policy's default limits.
           const key = `${a.p_bucket}:${a.p_key_digest}`;
@@ -350,6 +350,20 @@ describe('GET /api/auth/session', () => {
     expect(response.headers.get('Set-Cookie')).toBeNull();
   });
 
+  it('says "don\'t know" (null) for the balance when the lookup fails or looks wrong', async () => {
+    const s = setup();
+    const handle = await signIn(s);
+    const rpc = s.supabase.rpc.getMockImplementation();
+    for (const bad of [new SupabaseError('unavailable', 0), -1, 'x', null]) {
+      s.supabase.rpc.mockImplementation(async (fn, a) => {
+        if (fn !== 'card_drafts_left') return rpc?.(fn, a);
+        if (bad instanceof Error) throw bad;
+        return bad;
+      });
+      expect(await (await s.session(get(handle))).json()).toMatchObject({ quota: null });
+    }
+  });
+
   it('says "don\'t know" (null) for wider web search when that lookup fails', async () => {
     const s = setup();
     const handle = await signIn(s);
@@ -371,12 +385,12 @@ describe('GET /api/auth/session', () => {
     expect(JSON.parse(text)).toEqual({
       signedIn: true,
       email: 'reader@example.test',
-      quota: { available: 7, reserved: 1 },
+      quota: { available: 7, reserved: 0 },
       widerWeb: true,
     });
     expect(text).not.toMatch(/access-|refresh-/);
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
-    expect(s.supabase.rpc).toHaveBeenCalledWith('quota_of', { p_user: USER });
+    expect(s.supabase.rpc).toHaveBeenCalledWith('card_drafts_left', { p_user: USER });
   });
 
   it('clears a cookie whose session is gone', async () => {

@@ -41,7 +41,10 @@ class FakeRecognition implements SpeechRecognitionLike {
     const results = words.map((transcript) =>
       Object.assign([{ transcript }], { isFinal, length: 1 }),
     );
-    this.onresult?.({ resultIndex: 0, results: Object.assign(results, { length: results.length }) });
+    this.onresult?.({
+      resultIndex: 0,
+      results: Object.assign(results, { length: results.length }),
+    });
   }
   fail(error: string) {
     this.onerror?.({ error });
@@ -62,7 +65,11 @@ function Harness({ onSubmit }: { onSubmit: (value: string) => void }) {
 }
 
 function installSpeech(key: 'SpeechRecognition' | 'webkitSpeechRecognition' = 'SpeechRecognition') {
-  Object.defineProperty(window, key, { configurable: true, writable: true, value: FakeRecognition });
+  Object.defineProperty(window, key, {
+    configurable: true,
+    writable: true,
+    value: FakeRecognition,
+  });
 }
 
 function removeSpeech() {

@@ -2,10 +2,11 @@ import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Mascot } from '../components/mascot/Mascot';
-import { BusyButton, useBusy } from '../components/ui/BusyButton';
+import { BusyButton } from '../components/ui/BusyButton';
+import { useBusy } from '../components/ui/useBusy';
 import { ActivityIcon, SettingsIcon } from '../components/ui/icons';
 import { SIDE_TRAY_LEAVE_MS, SideTray } from '../components/ui/SideTray';
-import { useMotionPresets } from '../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../motion/useMotionPresets';
 import {
   createAuthClient,
   readAccountHint,
@@ -164,9 +165,7 @@ function AccountTray({ client, email, opener, onClose }: AccountTrayProps) {
                   : `${session.quota.available} cards left`}
               </span>
             ) : (
-              <span className={styles.slot}>
-                Your daily use shows here once it&apos;s ready.
-              </span>
+              <span className={styles.slot}>Your daily use shows here once it&apos;s ready.</span>
             )}
           </dd>
         </div>

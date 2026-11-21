@@ -8,11 +8,11 @@ import {
   type CurationJobInput,
 } from '../data/repositories/curationJobRepository';
 import { WebSearchError } from '../services/retrieval/webSearch';
-import type { RetrievalService } from './RetrievalContext';
+import type { RetrievalService } from './retrievalServiceContext';
 import { unusedRetrievalService } from '../test/fakeRetrieval';
 import { createTestDatabase } from '../test/renderApp';
 import { AppProviders } from './AppProviders';
-import { useCurationJobs } from './CurationJobsProvider';
+import { useCurationJobs } from './useCurationJobs';
 
 type Runtime = ReturnType<typeof useCurationJobs>;
 type Started = Awaited<ReturnType<Runtime['start']>>;

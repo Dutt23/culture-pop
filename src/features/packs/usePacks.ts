@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { PackNameError } from '../../data/repositories/packRepository';
+import { ALL_PACK_MEMBERS_UP_TO, rememberSize, wasLarge } from '../../data/scale';
 import type { SegmentedOption } from '../../components/ui/SegmentedControl';
 import { groupBy } from '../../domain/collections';
 import { CEILING_LABEL } from '../../domain/labels';
@@ -60,23 +61,48 @@ export interface PackData {
   counts: ReadonlyMap<string, number>;
 }
 
-/** Every pack with its memberships. Reads only what is filed, never the whole library or online. */
-export function usePackData(): PackData | undefined {
+/**
+ * Every pack with its memberships. Reads only what is filed, never the whole library or online.
+ * Pass `needsMembers = false` when only the pack list and its counts are shown: a big library
+ * (over `ALL_PACK_MEMBERS_UP_TO` filed cards) then reads packs and counts alone, and every member
+ * row, filed card and alias only once members are needed again. A small one reads as before.
+ */
+export function usePackData(needsMembers = true): PackData | undefined {
   const { packs, references } = useRepositories();
+  const countsOnly = !needsMembers && wasLarge('packMembers', ALL_PACK_MEMBERS_UP_TO);
   const raw = useLiveQuery(async () => {
+    if (countsOnly) {
+      const list = await packs.list();
+      const counts = await packs.memberCounts(list.map((pack) => pack.id));
+      rememberSize(
+        'packMembers',
+        [...counts.values()].reduce((sum, c) => sum + c.total, 0),
+      );
+      return { countsOnly: true as const, list, counts };
+    }
     const [list, memberships] = await Promise.all([packs.list(), packs.memberships()]);
+    rememberSize('packMembers', memberships.length);
     const filedIds = [...new Set(memberships.map(({ member }) => member.referenceId))];
     // Only the filed cards' aliases, by index: never the whole alias table (D69).
     const [filed, aliases] = await Promise.all([
       references.getByIds(filedIds),
       references.getAliasesFor(filedIds),
     ]);
-    return { list, memberships, filed, aliases };
-  }, [packs, references]);
+    return { countsOnly: false as const, list, memberships, filed, aliases };
+  }, [packs, references, countsOnly]);
 
   // Built once per database change, so the ranking's index (cached on these arrays) is reused.
   return useMemo(() => {
-    if (!raw) return undefined;
+    // A live query keeps its last result while the next loads: never hand counts-only data to a
+    // search, which would read as "nothing found".
+    if (!raw || raw.countsOnly !== countsOnly) return undefined;
+    if (raw.countsOnly) {
+      return {
+        index: { packs: raw.list, members: [], references: [], aliases: [] },
+        packsByReference: new Map<string, Pack[]>(),
+        counts: new Map([...raw.counts].map(([id, count]) => [id, count.toLearn])),
+      };
+    }
     const members = raw.memberships.map(({ member }) => member);
     const stillToLearn = members.filter((member) => !member.doneAt);
     const byReference = groupBy(raw.memberships, ({ member }) => member.referenceId);
@@ -89,7 +115,7 @@ export function usePackData(): PackData | undefined {
         [...groupBy(stillToLearn, (m) => m.packId)].map(([id, rows]) => [id, rows.length]),
       ),
     };
-  }, [raw]);
+  }, [raw, countsOnly]);
 }
 
 /** `undefined` while loading, `null` when the pack does not exist. */

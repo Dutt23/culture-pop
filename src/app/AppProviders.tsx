@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import type { PopCultureDb } from '../data/db';
 import { SettingsProvider } from '../features/settings/SettingsContext';
 import { RepositoriesProvider } from './RepositoriesContext';
-import { RetrievalProvider, type RetrievalService } from './RetrievalContext';
+import { RetrievalProvider } from './RetrievalContext';
+import type { RetrievalService } from './retrievalServiceContext';
 import { StorageGate } from './StorageGate';
 import { CurationJobsProvider } from './CurationJobsProvider';
 

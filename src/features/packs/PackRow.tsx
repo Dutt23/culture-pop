@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { classNames } from '../../components/ui/classNames';
 import { CEILING_LABEL, PINNED_LABEL } from '../../domain/labels';
 import type { Pack } from '../../domain/types';

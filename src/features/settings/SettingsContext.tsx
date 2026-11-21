@@ -1,23 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
-import { parseSettings, type SettingKey, type Settings } from '../../domain/settings';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useRepositories } from '../../app/useRepositories';
+import { parseSettings, type Settings } from '../../domain/settings';
 import { MotionPreferenceProvider } from '../../motion/MotionPreferenceProvider';
 import { MOTION_ATTRIBUTE } from '../../motion/presets';
-
-interface SettingsContextValue {
-  settings: Settings;
-  /** False until stored settings have been read; until then `settings` holds defaults. */
-  settingsLoaded: boolean;
-  setSetting: <K extends SettingKey>(key: K, value: Settings[K]) => Promise<void>;
-  /** Clears favourites, packs, settings, search history and cached online results. Curated content stays. */
-  resetLocalData: () => Promise<void>;
-  /** "Not now" on the online-search prompt: lasts until the app is reloaded, never stored. */
-  onlineSearchSkipped: boolean;
-  skipOnlineSearch: () => void;
-}
-
-const SettingsContext = createContext<SettingsContextValue | null>(null);
+import { SettingsContext, type SettingsContextValue } from './useSettings';
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { settings: settingsRepository, resetUserData } = useRepositories();
@@ -71,10 +58,4 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       <MotionPreferenceProvider preference={settings.motion}>{children}</MotionPreferenceProvider>
     </SettingsContext.Provider>
   );
-}
-
-export function useSettings(): SettingsContextValue {
-  const value = useContext(SettingsContext);
-  if (!value) throw new Error('useSettings must be used inside SettingsProvider');
-  return value;
 }

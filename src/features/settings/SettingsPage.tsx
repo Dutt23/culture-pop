@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
-import { BusyButton, useBusy } from '../../components/ui/BusyButton';
+import { BusyButton } from '../../components/ui/BusyButton';
+import { useBusy } from '../../components/ui/useBusy';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { resetTours, TOUR_PARAM } from '../../components/tour/useTour';
 import { SETTING_LABELS, type SettingKey, type Settings } from '../../domain/settings';
 import { AccountSection } from '../account/AccountSection';
 import { BackupSection } from './BackupSection';
-import { useSettings } from './SettingsContext';
+import { useSettings } from './useSettings';
 import styles from './SettingsPage.module.css';
 
 function optionsOf<K extends SettingKey>(key: K): readonly SegmentedOption<Settings[K]>[] {
@@ -221,9 +222,9 @@ export function SettingsPage() {
           Search text leaves the device only through online search (if you turn it on), a wider web
           search you tap, or an external search link you tap. Search history and results found
           online are kept here until you clear them; wider web results are kept for 30 days, only
-          while search history is on. Web links you save stay until you remove them or reset.
-          Voice search (the talking TV button in the search box) is turned into text by your
-          browser’s speech service (Google for Chrome, Apple for Safari), never by our server.
+          while search history is on. Web links you save stay until you remove them or reset. Voice
+          search (the talking TV button in the search box) is turned into text by your browser’s
+          speech service (Google for Chrome, Apple for Safari), never by our server.
         </Note>
         <Note
           topic="resetting"

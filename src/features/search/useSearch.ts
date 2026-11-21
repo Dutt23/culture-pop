@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { isLarge, rememberSize, wasLarge, WORKER_FROM_CARDS } from '../../data/scale';
 import { getSearchClient } from '../../services/search/searchClient';
 import { prepareLibrary, rankLibrary, type LibraryResult } from './rankLibrary';

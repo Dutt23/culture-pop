@@ -1,7 +1,7 @@
 import { m } from 'motion/react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLocation, useNavigationType } from 'react-router';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import styles from './Page.module.css';
 
 const APP_NAME = 'Pop Culture Decoder';

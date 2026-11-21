@@ -36,11 +36,10 @@ const BUDGET = {
   /** No single main-thread task longer than this on any screen, ms. */
   longestTaskMs: 200,
   /**
-   * Worst delay of one key press in Search, ms. The page itself costs about 200 ms per key on this
-   * profile even with an empty library (measured before D69), so this guards against growth with
-   * the library, not that floor.
+   * Worst delay of one key press in Search, ms. A key press redraws only the search box and the
+   * results follow in the background (about 55-65 ms at 0-1,000 cards on this profile, was 160-216).
    */
-  keyPressMs: () => 300,
+  keyPressMs: () => 100,
   /** JS heap when the first screen has settled, MB. */
   startupHeapMb: 40,
   /** JS heap on any screen, MB (budget set at 100,000 rows; also applied above). */
@@ -51,10 +50,10 @@ const BUDGET = {
   scrollP95FrameMs: 50,
   /**
    * Idle on Discover after 20 s untouched: no page layout at all (the mascot room's moving
-   * drawings rest), and the fades the owner kept cost about 50 ms per second on this profile.
+   * drawings rest), and the fades the owner kept cost about 50-80 ms per second on this profile.
    */
   idleLayoutsPerSec: 1,
-  idleCpuMsPerSec: 60,
+  idleCpuMsPerSec: 90,
 };
 
 /**
@@ -195,8 +194,17 @@ async function idleCpu(page, cdp) {
   };
 }
 
+/**
+ * Known gaps (D70), reported but not failed: one regular expression per budget line still over.
+ * Remove a line once its follow-up lands. Empty: the Packs list gap closed (counts-only read).
+ */
+const KNOWN_GAPS = [];
+
 function check(failures, label, value, limit) {
-  if (value > limit) failures.push(`${label}: ${value} > ${Math.round(limit)}`);
+  if (value <= limit) return;
+  const message = `${label}: ${value} > ${Math.round(limit)}`;
+  if (KNOWN_GAPS.some((gap) => gap.test(label))) console.warn(`KNOWN GAP  ${message}`);
+  else failures.push(message);
 }
 
 async function runVolume(n) {

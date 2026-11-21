@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { CarrierMascot, type CarrierPhase } from '../mascot/CarrierMascot';
 import { Antennae } from '../mascot/Mascot';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import type { SheetMotion } from '../../motion/presets';
 import { TrayHeader } from './TrayHeader';
 import styles from './SideTray.module.css';
@@ -149,8 +149,7 @@ export function SideTray({
   const [arrived, setArrived] = useState(reduced);
   // False while <AnimatePresence> plays the tray's exit.
   const present = useIsPresent();
-  const phase: CarrierPhase =
-    leaving || !present ? 'pushing' : arrived ? 'resting' : 'carrying';
+  const phase: CarrierPhase = leaving || !present ? 'pushing' : arrived ? 'resting' : 'carrying';
   const close = () => {
     if (!stayOpen) onClose();
   };
@@ -170,6 +169,8 @@ export function SideTray({
       html.removeAttribute(OPEN_ATTRIBUTE);
       // Only if focus went down with the tray: a page it led to may have focused its heading.
       const active = document.activeElement;
+      // Reads the latest opener on purpose: it is set by the page's own button, possibly after mount.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (!active || active === document.body) opener?.current?.focus();
     };
   }, [opener]);

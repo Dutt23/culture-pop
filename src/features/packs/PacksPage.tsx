@@ -1,7 +1,8 @@
 import { useId, useMemo, useState } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { PACK_NAME_MAX } from '../../data/repositories/packRepository';
-import { BusyButton, useBusy } from '../../components/ui/BusyButton';
+import { BusyButton } from '../../components/ui/BusyButton';
+import { useBusy } from '../../components/ui/useBusy';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
@@ -20,13 +21,14 @@ import { PackSearchField } from './PackSearchField';
 import { CARDS_PER_GROUP, CEILING_OPTIONS, useAttempt, usePackData } from './usePacks';
 
 export function PacksPage() {
-  const data = usePackData();
   const [query, setQuery] = useSearchQuery();
+  const searching = query.trim() !== '';
+  // Member rows are read only while searching, once there are many (see usePackData).
+  const data = usePackData(searching);
   const groups = useMemo(
     () => (data ? groupHits(searchPacks(query, { kind: 'all' }, data.index)) : []),
     [data, query],
   );
-  const searching = query.trim() !== '';
   const tour = useTour('packs', data !== undefined);
 
   return (
@@ -105,12 +107,7 @@ function NewPackForm() {
           />
           <p className={styles.muted}>{CEILING_HINT[ceiling]}</p>
         </div>
-        <BusyButton
-          type="submit"
-          busy={creating}
-          busyLabel="Creating…"
-          className={styles.primary}
-        >
+        <BusyButton type="submit" busy={creating} busyLabel="Creating…" className={styles.primary}>
           Create pack
         </BusyButton>
         {error && (

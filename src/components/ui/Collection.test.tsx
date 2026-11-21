@@ -20,11 +20,11 @@ describe('Collection', () => {
     );
     const list = screen.getByRole('list', { name: 'Letters' });
     expect(list).toHaveAttribute('data-variant', 'rows');
-    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'Alpha',
-      'Bravo',
-      'Charlie',
-    ]);
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
 
   it('shows the empty state instead of an empty list', () => {

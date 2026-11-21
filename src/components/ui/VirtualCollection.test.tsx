@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DRAW_ALL_UP_TO, VirtualCollection } from './VirtualCollection';
+import { VirtualCollection } from './VirtualCollection';
+import { DRAW_ALL_UP_TO } from './virtualCollectionLayout';
 
 const ESTIMATE = 100;
 const makeItems = (count: number) => Array.from({ length: count }, (_, i) => ({ id: `item-${i}` }));

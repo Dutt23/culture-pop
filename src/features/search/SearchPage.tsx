@@ -1,12 +1,18 @@
 import { animationScope, searchContextKey } from '../../../shared/text';
 import { AnimatePresence, m } from 'motion/react';
-import { useId, useState, type ReactNode } from 'react';
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
-import { SearchPeek } from '../../components/mascot/SearchPeek';
 import type { PeekOutcome } from '../../components/mascot/usePeek';
-import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
-import { SearchBar } from '../../components/search-bar/SearchBar';
-import { AnimatedItem } from '../../components/ui/AnimatedItem';
 import { Chip } from '../../components/ui/Chip';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ExternalSearchLinks } from '../../components/ui/ExternalSearchLinks';
@@ -32,14 +38,17 @@ import {
   splitFolded,
   suggestCommunityLinks,
 } from '../../services/retrieval/community';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { isExactTitle } from '../../services/retrieval/rerank';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import type { WebResult } from '../../services/retrieval/webSearch';
 import { CardNoteButton } from '../drafts/CardNoteButton';
 import { CurateFlow } from '../drafts/CurateFlow';
 import { useFavourites } from '../favourites/useFavourites';
-import { useSettings } from '../settings/SettingsContext';
+import { useSettings } from '../settings/useSettings';
+import { LibraryResultItem } from './LibraryResultItem';
+import { LiveSearchBar } from './LiveSearchBar';
+import { LiveQueryContext } from './liveQuery';
 import { OnlineResults, SavedOnlineResults } from './OnlineResults';
 import { SearchFilters } from './SearchFilters';
 import { SearchTags } from './SearchTags';
@@ -95,8 +104,26 @@ function NotWhatIMeant({ query, isOnline, widerWeb, skipCommunity }: NotWhatIMea
   );
 }
 
+/**
+ * A key press redraws only the search box; the results follow from a deferred copy of the text,
+ * drawn in the background and dropped if the next key comes first, so typing stays quick on an
+ * older phone. What the results show, and in what order, is unchanged.
+ */
 export function SearchPage() {
-  const [query, setQuery, settleQuery] = useSearchQuery();
+  const [liveQuery, setQuery, settleQuery] = useSearchQuery();
+  const query = useDeferredValue(liveQuery);
+  const live = useMemo(
+    () => ({ query: liveQuery, setQuery, settleQuery }),
+    [liveQuery, setQuery, settleQuery],
+  );
+  return (
+    <LiveQueryContext value={live}>
+      <SearchResults query={query} />
+    </LiveQueryContext>
+  );
+}
+
+const SearchResults = memo(function SearchResults({ query }: { query: string }) {
   const hasQuery = normalizePhrase(query).length > 0;
   const search = useSearch(query);
   const isOnline = useOnlineStatus();
@@ -105,7 +132,15 @@ export function SearchPage() {
   const [consentError, setConsentError] = useState(false);
   const recordSearch = useRecordSearch();
   const recent = useRecentSearches(RECENT_CHIPS);
-  const openResult = (referenceId: string) => recordSearch(query, referenceId);
+  // Read at tap time, so the callback (and every card holding it) stays the same as the text changes.
+  const openedQuery = useRef(query);
+  useLayoutEffect(() => {
+    openedQuery.current = query;
+  }, [query]);
+  const openResult = useCallback(
+    (referenceId: string) => recordSearch(openedQuery.current, referenceId),
+    [recordSearch],
+  );
   // Spec §6: go online on a local miss, with consent. Also when a saved online answer already
   // stands in and online search is on: those saved cards are an older lookup, and the rest of the
   // cards (a film, a later page) stay missing until Refresh. Latched per query so saving the new
@@ -184,6 +219,11 @@ export function SearchPage() {
     ...onlineCandidates.map((c) => c.id),
     ...search.savedOnline.map((m) => m.reference.id),
   ]);
+  const { toggle: toggleFavouriteAsync } = favourites;
+  const toggleFavourite = useCallback(
+    (referenceId: string) => void toggleFavouriteAsync(referenceId),
+    [toggleFavouriteAsync],
+  );
   const favouriteOf = (referenceId: string) => ({
     isFavourite: favourites.ids.has(referenceId),
     onToggle: () => void favourites.toggle(referenceId),
@@ -309,17 +349,11 @@ export function SearchPage() {
   return (
     <Page title="Search" eyebrow="Decode a reference" wide>
       <div className={styles.searchBar} data-tour="search-bar">
-        <SearchPeek query={query} outcome={peekOutcome} enabled={!reduced && !tour.open}>
-          <SearchBar
-            value={query}
-            autoFocus={!hasQuery}
-            onChange={setQuery}
-            onSubmit={(value) => {
-              settleQuery();
-              recordSearch(value);
-            }}
-          />
-        </SearchPeek>
+        <LiveSearchBar
+          outcome={peekOutcome}
+          outcomeQuery={query}
+          peekEnabled={!reduced && !tour.open}
+        />
       </div>
       <div data-tour="search-tags">
         <SearchTags
@@ -462,16 +496,17 @@ export function SearchPage() {
               {localShown.slice(0, resultLimit).map((match, index) => {
                 const summary = search.summaries.get(match.reference.id);
                 return (
-                  <AnimatedItem key={match.reference.id} index={index}>
-                    <ReferenceCard
-                      reference={match.reference}
-                      teaser={summary?.teaser}
-                      meaningsCount={summary?.meaningsCount}
-                      matchNote={matchReason(match)}
-                      onOpen={() => openResult(match.reference.id)}
-                      favourite={favouriteOf(match.reference.id)}
-                    />
-                  </AnimatedItem>
+                  <LibraryResultItem
+                    key={match.reference.id}
+                    index={index}
+                    reference={match.reference}
+                    teaser={summary?.teaser}
+                    meaningsCount={summary?.meaningsCount}
+                    matchNote={matchReason(match)}
+                    isFavourite={favourites.ids.has(match.reference.id)}
+                    onOpen={openResult}
+                    onToggleFavourite={toggleFavourite}
+                  />
                 );
               })}
             </ul>
@@ -579,4 +614,4 @@ export function SearchPage() {
       {tour.open && <Tour steps={SEARCH_TOUR} onClose={tour.close} />}
     </Page>
   );
-}
+});

@@ -12,7 +12,7 @@ import {
 } from '../../components/reference-card/ReferenceCard';
 import type { CardSummary } from '../../domain/summaries';
 import type { Reference } from '../../domain/types';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { browseRows, columnsFor, type BrowseGroup } from './browseRows';
 import styles from './VirtualBrowse.module.css';
 

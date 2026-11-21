@@ -3,7 +3,7 @@ import { browserHttpDependencies, createGetJson } from '../services/retrieval/ht
 import { retrieve$ } from '../services/retrieval/retrieve';
 import { withSessionCache } from '../services/retrieval/sessionCache';
 import { createWebSearch } from '../services/retrieval/webSearch';
-import { RetrievalContext, type RetrievalService } from './RetrievalContext';
+import { RetrievalContext, type RetrievalService } from './retrievalServiceContext';
 
 const SEARCH_DEBOUNCE_MS = 500;
 

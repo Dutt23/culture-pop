@@ -274,6 +274,45 @@ describe('packs', () => {
     db.close();
   });
 
+  it('counts filed cards and cards still to learn per pack without reading member rows', async () => {
+    const { db, repos } = await setup();
+    const a = await repos.packs.create({ name: 'A', ceiling: 'open' });
+    const b = await repos.packs.create({ name: 'B', ceiling: 'open' });
+    const empty = await repos.packs.create({ name: 'C', ceiling: 'open' });
+    for (const id of ['ok-boomer', 'doh-simpsons', 'the-snap-avengers']) {
+      await repos.packs.fileCard(id, a.id, Infinity);
+    }
+    await repos.packs.fileCard('ok-boomer', b.id, 0);
+    await repos.packs.markDone(a.id, 'doh-simpsons');
+    await repos.packs.markDone(b.id, 'ok-boomer');
+
+    const counts = await repos.packs.memberCounts([a.id, b.id, empty.id]);
+    expect(Object.fromEntries(counts)).toEqual({
+      [a.id]: { total: 3, toLearn: 2 },
+      [b.id]: { total: 1, toLearn: 0 },
+      [empty.id]: { total: 0, toLearn: 0 },
+    });
+    db.close();
+  });
+
+  it('still counts cards still to learn when positions have a gap', async () => {
+    const { db, repos } = await setup();
+    const pack = await repos.packs.create({ name: 'A', ceiling: 'open' });
+    for (const id of ['ok-boomer', 'doh-simpsons', 'the-snap-avengers']) {
+      await repos.packs.fileCard(id, pack.id, Infinity);
+    }
+    await repos.packs.markDone(pack.id, 'the-snap-avengers');
+    // Never written by the app: a row removed without closing the gap.
+    const first = (await repos.packs.members(pack.id))[0];
+    await db.packMembers.delete(first.id);
+
+    expect((await repos.packs.memberCounts([pack.id])).get(pack.id)).toEqual({
+      total: 2,
+      toLearn: 1,
+    });
+    db.close();
+  });
+
   it('marks a card done in one pack only', async () => {
     const { db, repos } = await setup();
     const a = await repos.packs.create({ name: 'A', ceiling: 'open' });

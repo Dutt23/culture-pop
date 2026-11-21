@@ -2,7 +2,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PROVENANCE_LABEL } from '../../domain/labels';
 import type { Interpretation, Source } from '../../domain/types';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { ExternalAnchor } from '../ui/ExternalAnchor';
 import { safeHref } from '../ui/safeHref';
 import styles from './InterpretationCard.module.css';

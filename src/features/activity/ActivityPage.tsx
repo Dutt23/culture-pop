@@ -2,8 +2,8 @@ import { AnimatePresence } from 'motion/react';
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router';
-import { useCurationJobs } from '../../app/CurationJobsProvider';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useCurationJobs } from '../../app/useCurationJobs';
+import { useRepositories } from '../../app/useRepositories';
 import { Page } from '../../components/ui/Page';
 import { VirtualCollection } from '../../components/ui/VirtualCollection';
 import { usePagedList } from '../../app/usePagedList';
@@ -13,7 +13,7 @@ import {
   type CurationJob,
 } from '../../data/repositories/curationJobRepository';
 import { DraftReveal } from '../drafts/DraftReveal';
-import { useSettings } from '../settings/SettingsContext';
+import { useSettings } from '../settings/useSettings';
 import draftStyles from '../drafts/drafts.module.css';
 import styles from './ActivityPage.module.css';
 

@@ -1,12 +1,12 @@
 import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { ReferenceCard } from '../../components/reference-card/ReferenceCard';
 import { classNames } from '../../components/ui/classNames';
 import type { Pack, Reference } from '../../domain/types';
 import { cardElement } from '../../motion/cardElement';
 import { dissolve } from '../../motion/dissolve';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { PackChips } from './PackChips';
 import styles from './Packs.module.css';
 import { PackSheet } from './PackSheet';

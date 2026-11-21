@@ -9,7 +9,7 @@ import {
 import { Antennae, Body, Smile } from '../../components/mascot/Mascot';
 import { BusyButton } from '../../components/ui/BusyButton';
 import { ExternalAnchor } from '../../components/ui/ExternalAnchor';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { UNGRADED } from './curationLook';
 import { flyToLibrary } from './flyToReel';
 import type { Frame } from './frames';
@@ -99,9 +99,11 @@ export function DraftReveal(props: DraftRevealProps) {
   const cheerTimer = useRef(0);
   useEffect(() => {
     alive.current = true;
+    // The array is only ever pushed to, never replaced, so this is the same list at cleanup.
+    const animations = running.current;
     return () => {
       alive.current = false;
-      running.current.forEach((a) => a.cancel());
+      animations.forEach((a) => a.cancel());
       clearTimeout(cheerTimer.current);
     };
   }, []);

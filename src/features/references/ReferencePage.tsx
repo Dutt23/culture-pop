@@ -24,7 +24,7 @@ import { useFavourites } from '../favourites/useFavourites';
 import { PackChips } from '../packs/PackChips';
 import { PackSheet } from '../packs/PackSheet';
 import { usePacksOf } from '../packs/usePacks';
-import { useSettings } from '../settings/SettingsContext';
+import { useSettings } from '../settings/useSettings';
 import styles from './ReferencePage.module.css';
 import { FindItOn } from './FindItOn';
 import { SameWorldChips } from './SameWorldChips';

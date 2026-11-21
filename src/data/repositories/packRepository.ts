@@ -40,6 +40,16 @@ export interface PackRepository {
   memberships(): Promise<PackMembership[]>;
   /** The packs a reference is filed in, listed like `list()`. */
   packsOf(referenceId: string): Promise<Pack[]>;
+  /**
+   * Per pack, how many cards are filed and how many are still to learn, without reading the member
+   * rows: for the pack list of a big library (counts by index, a few look-ups per pack).
+   */
+  memberCounts(packIds: readonly string[]): Promise<Map<string, PackMemberCount>>;
+}
+
+export interface PackMemberCount {
+  total: number;
+  toLearn: number;
 }
 
 /** Longest pack name, so a name stays one or two lines on a card. */
@@ -83,6 +93,41 @@ export function createPackRepository(db: PopCultureDb): PackRepository {
         : p.name.toLowerCase() === clean.toLowerCase();
     const taken = await db.packs.filter((p) => p.id !== exceptId && same(p)).first();
     if (taken) throw new PackNameError(`You already have a pack called “${taken.name}”.`);
+  }
+
+  /**
+   * Positions are dense and done cards sit after the rest (`settle`), so the cards still to learn
+   * are positions 0..k-1: binary search for k instead of reading every row. A gap (never expected)
+   * falls back to reading this pack's rows.
+   */
+  async function countMembers(packId: string): Promise<PackMemberCount> {
+    const total = await db.packMembers.where('packId').equals(packId).count();
+    const countByReading = () =>
+      db.packMembers
+        .where('packId')
+        .equals(packId)
+        .filter((member) => !member.doneAt)
+        .count();
+    const at = (position: number) =>
+      db.packMembers.where('[packId+position]').equals([packId, position]).first();
+    // The highest position, by index: a gap shows as a last position past `total - 1`.
+    const last = await db.packMembers
+      .where('[packId+position]')
+      .between([packId, -Infinity], [packId, Infinity], true, true)
+      .last();
+    if (last && last.position !== total - 1) return { total, toLearn: await countByReading() };
+    // Common case: nothing marked "Got it", so the last card is still to learn.
+    if (last && !last.doneAt) return { total, toLearn: total };
+    let low = 0;
+    let high = last ? total - 1 : total;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      const row = await at(mid);
+      if (!row) return { total, toLearn: await countByReading() };
+      if (row.doneAt) high = mid;
+      else low = mid + 1;
+    }
+    return { total, toLearn: low };
   }
 
   async function touch(packId: string, now: string) {
@@ -197,6 +242,10 @@ export function createPackRepository(db: PopCultureDb): PackRepository {
         const pack = byId.get(member.packId);
         return pack ? [{ pack, member }] : [];
       });
+    },
+    async memberCounts(packIds) {
+      const counts = await Promise.all(packIds.map(countMembers));
+      return new Map(packIds.map((id, i) => [id, counts[i]]));
     },
     async packsOf(referenceId) {
       const rows = await db.packMembers.where('referenceId').equals(referenceId).toArray();

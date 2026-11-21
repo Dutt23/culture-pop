@@ -16,13 +16,21 @@ export const WORKER_FROM_CARDS = 1000;
 /** Favourites up to this many are read whole, as before D69; beyond, only the ones on screen. */
 export const ALL_FAVOURITES_UP_TO = 1000;
 
+/**
+ * Filed cards (pack member rows) up to this many are read whole for the Packs list, as before.
+ * Beyond, the list reads only packs and per-pack counts; every member row, filed card and alias is
+ * read only while the reader searches (measured: Packs frozen 0.4 s at 10,000 filed cards and
+ * 2.9 s at 100,000 on a 4× slower processor before this).
+ */
+export const ALL_PACK_MEMBERS_UP_TO = 1000;
+
 /** Whether a table of this size uses the experimental large-library paths. */
 export function isLarge(size: number, limit: number): boolean {
   return LARGE_LIBRARY_MODE && size > limit;
 }
 
 const KEY = 'pcd:sizes';
-type Table = 'references' | 'favourites';
+type Table = 'references' | 'favourites' | 'packMembers';
 
 function stored(): Partial<Record<Table, number>> {
   try {

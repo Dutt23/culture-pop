@@ -1,8 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback } from 'react';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import type { HistoryEntry } from '../../domain/history';
-import { useSettings } from '../settings/SettingsContext';
+import { useSettings } from '../settings/useSettings';
 
 const NONE: HistoryEntry[] = [];
 

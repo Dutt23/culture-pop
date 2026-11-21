@@ -16,7 +16,7 @@ import {
   type ObservableInput,
   type SchedulerLike,
 } from 'rxjs';
-import type { RetrievalService } from '../../app/RetrievalContext';
+import type { RetrievalService } from '../../app/retrievalServiceContext';
 import {
   RetrievalError,
   type RetrievalFailure,

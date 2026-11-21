@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import type { ToneCard } from '../../../shared/cardTypes.js';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import { filterColour } from './curationLook';
 import { flyToReel, spinReel } from './flyToReel';
 import styles from './FilmStrip.module.css';

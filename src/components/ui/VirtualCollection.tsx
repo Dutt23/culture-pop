@@ -17,17 +17,13 @@ import {
 } from 'react';
 import { classNames } from './classNames';
 import { Collection } from './Collection';
+import { columnsFor, DRAW_ALL_UP_TO } from './virtualCollectionLayout';
 import styles from './VirtualCollection.module.css';
 
 /** Rows kept in the page beyond each edge of the screen, so a fast scroll never shows a gap. */
 const OVERSCAN = 4;
 /** Ask for the next page this many items before the end of what's been read. */
 const LOAD_AHEAD = 10;
-/**
- * Lists this short are drawn whole, exactly as before D69 (every reader today): only longer ones
- * draw just the rows near the screen.
- */
-export const DRAW_ALL_UP_TO = 200;
 
 export interface VirtualCollectionProps<T> {
   /** The items read so far (a paged list's `rows`). */
@@ -91,12 +87,6 @@ function useListPlace(list: RefObject<HTMLUListElement | null>, enabled: boolean
     return () => observer?.disconnect();
   }, [measure]);
   return place;
-}
-
-/** Items per row: as many of `minPx` as fit with their gaps, at least one. */
-export function columnsFor(width: number, minPx: number, gap: number): number {
-  if (minPx <= 0 || width <= 0) return 1;
-  return Math.max(1, Math.floor((width + gap) / (minPx + gap)));
 }
 
 /**

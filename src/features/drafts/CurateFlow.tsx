@@ -20,13 +20,13 @@ import {
   type DraftResponse,
   type ToneCard,
 } from '../../../shared/cardTypes.js';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { CurationCapacityError } from '../../data/repositories/curationJobRepository';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
-import { useCurationJobs } from '../../app/CurationJobsProvider';
+import { useCurationJobs } from '../../app/useCurationJobs';
 import type { DraftCardRecord } from '../../data/repositories/draftRepository';
 import type { Interpretation, Reference } from '../../domain/types';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import type { MotionPresets } from '../../motion/presets';
 import type { RetrievedCandidate } from '../../services/retrieval/types';
 import {
@@ -37,7 +37,7 @@ import {
 import type { AuthClient } from '../../services/auth/authClient';
 import { useWiderWebAccess } from '../account/useWiderWebAccess';
 import { AccessNotice, WebConsent } from '../search/WiderWebSearch';
-import { useSettings } from '../settings/SettingsContext';
+import { useSettings } from '../settings/useSettings';
 import { CurationTray } from './CurationTray';
 import { gradeOf, keptName, LIMIT_HINTS } from './curationLook';
 import { DraftingProjector } from './DraftingProjector';

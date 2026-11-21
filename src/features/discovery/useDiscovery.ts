@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useRepositories } from '../../app/RepositoriesContext';
+import { useRepositories } from '../../app/useRepositories';
 import { isLarge, rememberSize, wasLarge, WORKER_FROM_CARDS } from '../../data/scale';
 import { discoverable } from '../../domain/discovery';
 import { summarizeByReference, type CardSummary } from '../../domain/summaries';

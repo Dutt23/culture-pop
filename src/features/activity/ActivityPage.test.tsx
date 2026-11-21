@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
 }));
 
-vi.mock('../../app/CurationJobsProvider', () => ({ useCurationJobs: () => mocks }));
-vi.mock('../../app/RepositoriesContext', () => {
+vi.mock('../../app/useCurationJobs', () => ({ useCurationJobs: () => mocks }));
+vi.mock('../../app/useRepositories', () => {
   // Activity reads jobs page by page and asks only whether the read jobs' cards are kept (D69).
   const drafts = {
     save: mocks.save,
@@ -31,7 +31,7 @@ vi.mock('../../app/RepositoriesContext', () => {
   };
   return { useRepositories: () => ({ drafts, curationJobs }) };
 });
-vi.mock('../settings/SettingsContext', () => ({
+vi.mock('../settings/useSettings', () => ({
   useSettings: () => ({ settings: { spoilers: 'hide' } }),
 }));
 vi.mock('../../components/ui/Page', () => ({

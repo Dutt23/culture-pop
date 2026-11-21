@@ -12,7 +12,7 @@ import { Page } from '../../components/ui/Page';
 import { Section } from '../../components/ui/Section';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { buildSeed } from '../../data/seed';
-import { useMotionPresets } from '../../motion/MotionPreferenceProvider';
+import { useMotionPresets } from '../../motion/useMotionPresets';
 import styles from './DevComponentsPage.module.css';
 
 const SAMPLE = buildSeed();
