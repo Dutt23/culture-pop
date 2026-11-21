@@ -7,6 +7,8 @@ export interface RoomPropInfo {
   thing: string;
   title: string;
   line: string;
+  /** What "Know more" searches, when the title isn't a good search on its own. */
+  search?: string;
 }
 
 export const ROOM_PROPS = {
@@ -15,6 +17,7 @@ export const ROOM_PROPS = {
     thing: 'A light shining in the sky',
     title: 'A hero signal',
     line: 'A city shines a symbol into the night sky when it needs its masked hero. The mascot made one with its own face.',
+    search: 'Bat-Signal',
   },
   et: {
     thing: 'A bike crossing the moon',
@@ -116,6 +119,28 @@ export const ROOM_PROPS = {
     thing: 'Band poster of two helmets',
     title: 'Daft Punk',
     line: 'The French dance duo who only ever showed up in robot helmets, one gold and one silver.',
+  },
+  // Resting on the wall above the posters (wide screens).
+  swordInStone: {
+    thing: 'A sword stuck in a stone',
+    title: 'Excalibur, the sword in the stone',
+    line: 'From the King Arthur legends: only the true king can pull the sword from the stone.',
+    search: 'Excalibur',
+  },
+  daggers: {
+    thing: 'Two crimson daggers crossed on the wall',
+    title: 'Solo Leveling',
+    line: "Sung Jinwoo's jagged crimson daggers, from the story of the world's weakest hunter who levels up alone.",
+  },
+  roseWhip: {
+    thing: 'A thorny green whip on a hook',
+    title: 'YuYu Hakusho (1990)',
+    line: "Kurama's Rose Whip: he pulls a rose from his hair and it snaps out into a whip of thorns.",
+  },
+  energySword: {
+    thing: 'A glowing blue sword leaning on the wall',
+    title: 'Star Wars (1977)',
+    line: 'A lightsaber: a humming blade of light. Jedi and Sith duel with them across the galaxy.',
   },
   ddlj: {
     thing: 'Poster of mountains and yellow fields',

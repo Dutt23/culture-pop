@@ -81,7 +81,8 @@
 /* The wall above the window and the low row are for wide screens only. */
 .upper,
 .lowRow,
-.toys {
+.toys,
+.wall {
   display: none;
   pointer-events: none;
 }
@@ -149,6 +150,16 @@
 
   .toys {
     inline-size: calc(var(--side-w) * 0.3);
+  }
+
+  /* The empty wall between the search bar and the posters, same width as the poster row. */
+  .wall {
+    display: block;
+    grid-row: 2;
+    align-self: end;
+    inline-size: var(--side-w);
+    aspect-ratio: 300 / 90;
+    pointer-events: none;
   }
 }
 

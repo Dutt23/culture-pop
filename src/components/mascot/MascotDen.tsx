@@ -2,6 +2,7 @@ import { m, useScroll, useTransform } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { classNames } from '../ui/classNames';
 import styles from './MascotDen.module.css';
+import { BackProps } from './room/BackProps';
 import { Furniture } from './room/Furniture';
 import { Lights } from './room/Lights';
 import { LowRow } from './room/LowRow';
@@ -100,6 +101,7 @@ export function MascotDen({ still, children }: { still: boolean; children: React
         <Lights still={still} quiet={offScreen || resting} className={styles.lights} />
         <UpperWall className={styles.upper} />
         <ToyScenes className={styles.toys} />
+        <BackProps className={styles.wall} />
         <LowRow className={styles.lowRow} />
         <div className={styles.stage} data-testid="mascot-den">
           <m.div className={styles.furniture} style={still ? undefined : { y: drift }}>

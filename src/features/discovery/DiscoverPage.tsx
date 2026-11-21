@@ -124,7 +124,9 @@ export function DiscoverPage() {
       title="Decode any reference"
       intro="Quotes, memes, shows and sayings — explained in plain language, spoiler-free."
       wide
-      scene={(top) => <MascotDen still={reduced}>{top}</MascotDen>}
+      scene={(top) => (
+        <MascotDen still={reduced}>{top}</MascotDen>
+      )}
       lead={
         <SearchBar
           value={draft}

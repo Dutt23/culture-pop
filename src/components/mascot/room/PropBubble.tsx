@@ -1,8 +1,10 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router';
+import { searchName } from '../../../domain/externalSearch';
 import { classNames } from '../../ui/classNames';
 import { Mascot } from '../Mascot';
-import { ROOM_PROPS, type RoomPropId } from './roomProps';
+import { ROOM_PROPS, type RoomPropId, type RoomPropInfo } from './roomProps';
 import styles from './PropBubble.module.css';
 
 interface PropBubbleProps {
@@ -20,7 +22,9 @@ export function PropBubble({ id, still, onClose }: PropBubbleProps) {
   const titleId = useId();
   const lineId = useId();
   const doneRef = useRef<HTMLButtonElement>(null);
-  const { title, line } = ROOM_PROPS[id];
+  const { title, line, search }: RoomPropInfo = ROOM_PROPS[id];
+  // "Know more" searches the app itself; its Search page links on to Wikipedia and friends.
+  const query = search ?? searchName(title);
 
   useEffect(() => {
     doneRef.current?.focus();
@@ -48,6 +52,9 @@ export function PropBubble({ id, still, onClose }: PropBubbleProps) {
           {line}
         </p>
         <div className={styles.controls}>
+          <Link to={`/search?q=${encodeURIComponent(query)}`} className={styles.more}>
+            Know more
+          </Link>
           <button ref={doneRef} type="button" className={styles.done} onClick={onClose}>
             Got it
           </button>

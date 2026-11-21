@@ -111,10 +111,15 @@ const pickIn = (check: HTMLElement, title: string) =>
 async function pickAndCheck(user: ReturnType<typeof userEvent.setup>, ...titles: string[]) {
   for (const title of titles) await user.click(await frame(title));
   await user.click(screen.getByRole('button', { name: /^Review \d frames?$/ }));
-  const example =
-    screen.queryByRole('button', { name: TONE }) ??
-    screen.queryByRole('button', { name: 'bless your heart (spoiler)' });
-  if (example) await user.click(example);
+  // A card to match the style of, when there is one: it is picked on the paper page.
+  const match = screen.queryByRole('button', { name: '+ Pick a card' });
+  if (match) {
+    await user.click(match);
+    const example =
+      screen.queryByRole('button', { name: TONE }) ??
+      screen.queryByRole('button', { name: 'bless your heart (spoiler)' });
+    await user.click(example ?? screen.getByRole('button', { name: 'Fold back' }));
+  }
   await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
   return screen.findByRole('region', { name: 'Splice check' });
 }
@@ -169,6 +174,7 @@ describe('curate a card', () => {
     await user.click(makeButton());
     await user.click(await screen.findByRole('checkbox', { name: 'Reconsider this source' }));
     await user.click(screen.getByRole('button', { name: 'Revise sources and curate again' }));
+    await user.click(screen.getByRole('button', { name: '+ Your text or link' }));
     await user.type(
       screen.getByRole('textbox', { name: 'Your context or text' }),
       'My interpretation',
@@ -205,9 +211,21 @@ describe('curate a card', () => {
       promptVersion: 'v2',
       savedAt: '2026-11-01T00:00:00.000Z',
     });
-    const source = await frame('My existing explanation');
+    // Your cards open on the paper page, never as a list on the pass.
+    await frame('What does OK boomer mean');
+    expect(screen.queryByRole('button', { name: 'My existing explanation' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '+ Your cards' }));
+    const page = await screen.findByRole('region', { name: 'Your cards' });
+    const source = await within(page).findByRole('button', { name: 'My existing explanation' });
     await user.click(source);
     expect(source).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(page).getByRole('button', { name: 'Fold back' }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Your cards' })).toBeNull());
+    // Back on the pass, the pick shows under "Added by you", with × to take it out.
+    const added = screen.getByRole('region', { name: 'Added by you' });
+    expect(
+      within(added).getByRole('button', { name: 'Remove My existing explanation' }),
+    ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
     expect(screen.getByRole('region', { name: 'Card style' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
@@ -220,6 +238,7 @@ describe('curate a card', () => {
     const { user } = await renderFlow({ webSearch: 'on' }, draftCard);
     await user.click(await frame('What does OK boomer mean'));
     await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    await user.click(screen.getByRole('button', { name: '+ Describe the tone yourself' }));
     await user.type(screen.getByRole('textbox', { name: 'Tone' }), 'Warm and concise');
     await user.type(screen.getByRole('textbox', { name: 'Structure' }), 'Explanation then context');
     await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
@@ -380,6 +399,7 @@ describe('curate a card', () => {
     await second.repos.drafts.save(kept);
     await second.user.click(await frame('What does OK boomer mean'));
     await second.user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    await second.user.click(screen.getByRole('button', { name: '+ Pick a card' }));
     expect(await screen.findByRole('button', { name: TONE })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /\(spoiler\)/ })).toBeNull();
   });
@@ -835,64 +855,188 @@ describe('the lanyard pass (owner, 2026-11-22)', () => {
     );
   });
 
-  it('starts from one of my cards: it sets format, colour, style and its sources, and says so', async () => {
-    const { user, repos } = await renderFlow();
-    await repos.drafts.save({
-      id: 'reference-card',
-      search: 'old search',
-      card: { ...RESPONSE.card, kind: 'list', label: 'My boomer list' },
-      color: 'sage',
-      sources: [
-        { from: 'bbc.co.uk', title: 'BBC on ok boomer', url: BBC.url },
-        { from: 'dictionary.com', title: 'Dictionary on ok boomer', url: DICT.url },
-        // No link: nothing to send, so it isn't brought in.
-        { from: 'your card', title: 'An app card' },
-      ],
-      promptVersion: 'v2',
-      savedAt: '2026-11-01T00:00:00.000Z',
-    });
-    const start = await screen.findByRole('group', { name: 'How do you want to start?' });
-    expect(within(start).getByRole('radio', { name: 'Pick one by one' })).toBeChecked();
-
-    await user.click(within(start).getByRole('radio', { name: 'Start from one of my cards' }));
-    await user.click(await screen.findByRole('button', { name: /My boomer list/ }));
-
-    expect(within(start).getByRole('radio', { name: 'Pick one by one' })).toBeChecked();
-    expect(
-      screen.getByText(/These 2 sources come from your card\. The new card will use what they say/),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Review 2 frames' }));
-
-    const format = screen.getByRole('group', { name: 'Card format' });
-    const colour = screen.getByRole('group', { name: 'Card colour' });
-    expect(within(format).getByRole('button', { name: 'List' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(within(colour).getByRole('button', { name: 'Sage' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: /My boomer list/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+  it('is two steps, Sources then Style, with the step said on the pass', async () => {
+    const { user } = await renderFlow();
+    await user.click(await frame('What does OK boomer mean'));
+    expect(screen.getByText('Step 1 of 2 · Sources')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    expect(screen.getByText('Step 2 of 2 · Style (optional)')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Card style' })).toBeInTheDocument();
   });
 
-  it('a card with no pages of its own sets only the style, and says to pick sources', async () => {
-    const { user, repos } = await renderFlow();
+  it('goes back and forward between the steps and keeps what was picked and chosen', async () => {
+    const { user } = await renderFlow();
+    await user.click(await frame('What does OK boomer mean'));
+    await user.click(screen.getByRole('button', { name: '+ Your text or link' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Your context or text' }),
+      'My reading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    const colour = screen.getByRole('group', { name: 'Card colour' });
+    await user.click(within(colour).getByRole('button', { name: 'Peach' }));
+
+    await user.click(screen.getByRole('button', { name: 'Back to sources' }));
+    expect(await frame('What does OK boomer mean')).toHaveAttribute('aria-pressed', 'true');
+    const added = screen.getByRole('region', { name: 'Added by you' });
+    expect(within(added).getByRole('button', { name: 'Remove Your note' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    expect(
+      within(screen.getByRole('group', { name: 'Card colour' })).getByRole('button', {
+        name: 'Peach',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('the page turns over between your cards and your text or link, and focus goes in', async () => {
+    const { user } = await renderFlow();
+    await frame('What does OK boomer mean');
+    const cards = screen.getByRole('button', { name: '+ Your cards' });
+    expect(cards).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: 'Your context or text' })).toBeNull();
+
+    await user.click(cards);
+    const page = await screen.findByRole('region', { name: 'Your cards' });
+    expect(cards).toHaveAttribute('aria-expanded', 'true');
+    expect(within(page).getByRole('heading', { name: 'Your cards' })).toHaveFocus();
+    expect(within(page).getByRole('searchbox', { name: 'Search your library' })).toBeVisible();
+
+    await user.click(within(page).getByRole('button', { name: 'Your text or link' }));
+    const turned = await screen.findByRole('region', { name: 'Your text or link' });
+    expect(within(turned).getByRole('heading', { name: 'Your text or link' })).toHaveFocus();
+    expect(within(turned).getByRole('textbox', { name: 'Your context or text' })).toBeVisible();
+    // One page, not two: the cards side has turned over, not opened another.
+    expect(screen.queryByRole('region', { name: 'Your cards' })).toBeNull();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('your own note and link show on the pass, each with × to take it out', async () => {
+    const { user } = await renderFlow();
+    await frame('What does OK boomer mean');
+    await user.click(screen.getByRole('button', { name: '+ Your text or link' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Your context or text' }),
+      'Said by my aunt',
+    );
+    const link = screen.getByRole('textbox', { name: 'Your source link' });
+    await user.type(link, 'https://example.net/boomer');
+    await user.click(screen.getByRole('button', { name: 'Add link' }));
+    await user.click(screen.getByRole('button', { name: 'Fold back' }));
+
+    const added = screen.getByRole('region', { name: 'Added by you' });
+    await user.click(within(added).getByRole('button', { name: 'Remove Your note' }));
+    expect(within(added).queryByRole('button', { name: 'Remove Your note' })).toBeNull();
+    await user.click(within(added).getByRole('button', { name: /^Remove / }));
+    expect(within(added).queryByRole('button', { name: /^Remove / })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Review 0 frames' })).toBeInTheDocument();
+  });
+
+  it("matches one card's style: it shows as 'Styled like …' with ×, and sends no facts", async () => {
+    const draftCard = vi.fn<WebSearchClient['draftCard']>(async () => RESPONSE);
+    const { user, repos } = await renderFlow({ webSearch: 'on' }, draftCard);
     await repos.drafts.save({
-      id: 'style-only',
+      id: 'style-card',
       search: 'old search',
-      card: { ...RESPONSE.card, label: 'Just a style' },
-      sources: [],
+      card: { ...RESPONSE.card, label: 'My boomer list' },
+      sources: [{ from: 'bbc.co.uk', title: 'BBC on ok boomer', url: BBC.url }],
       promptVersion: 'v2',
       savedAt: '2026-11-01T00:00:00.000Z',
     });
-    await user.click(await screen.findByRole('radio', { name: 'Start from one of my cards' }));
-    await user.click(await screen.findByRole('button', { name: /Just a style/ }));
-    expect(screen.getByText(/Pick the sources from the film\./)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Review 0 frames' })).toBeInTheDocument();
+    await user.click(await frame('What does OK boomer mean'));
+    await user.click(screen.getByRole('button', { name: 'Review 1 frame' }));
+    await user.click(screen.getByRole('button', { name: '+ Pick a card' }));
+    const page = await screen.findByRole('region', { name: 'Match a card’s style' });
+    await user.click(await within(page).findByRole('button', { name: 'My boomer list' }));
+
+    // Picking one folds the page away and shows the choice.
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Match a card’s style' })).toBeNull(),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Remove Styled like My boomer list' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
+    await user.click(makeButton());
+    await waitFor(() => expect(draftCard).toHaveBeenCalledTimes(1));
+    const body = draftCard.mock.calls[0]?.[0];
+    // Its style goes as a tone card; its own sources are not brought in as facts.
+    expect(body?.tones).toEqual([expect.objectContaining({ label: 'My boomer list' })]);
+    expect(body?.sources).toHaveLength(1);
+    expect(JSON.stringify(body?.sources)).not.toContain('BBC on ok boomer');
+  });
+
+  it('Escape folds the page first, then closes the pass; focus goes back to its button', async () => {
+    const { user, onClose } = await renderFlow();
+    await frame('What does OK boomer mean');
+    const cards = screen.getByRole('button', { name: '+ Your cards' });
+    await user.click(cards);
+    const page = await screen.findByRole('region', { name: 'Your cards' });
+
+    fireEvent.keyDown(page, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Your cards' })).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(cards).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole('dialog', { name: PASS }), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("the browser's own close (cancel) folds the page first too", async () => {
+    const { user, onClose } = await renderFlow();
+    await frame('What does OK boomer mean');
+    await user.click(screen.getByRole('button', { name: '+ Your cards' }));
+    await screen.findByRole('region', { name: 'Your cards' });
+    fireEvent(
+      screen.getByRole('dialog', { name: PASS }),
+      new Event('cancel', { cancelable: true }),
+    );
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Your cards' })).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('the page opens and stays open under StrictMode, as in development', async () => {
+    browserLikeBack();
+    const { user, onClose } = await renderFlow({ webSearch: 'on' }, undefined, undefined, {
+      strict: true,
+    });
+    await frame('What does OK boomer mean');
+    await user.click(screen.getByRole('button', { name: '+ Your cards' }));
+    await screen.findByRole('region', { name: 'Your cards' });
+    await settle();
+    expect(screen.getByRole('region', { name: 'Your cards' })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('with motion on, the page unfolds, turns over and folds as moves, then lands', async () => {
+    const animate = stubAnimate();
+    const { user } = await renderFlow({ webSearch: 'on', motion: 'full' });
+    await frame('What does OK boomer mean');
+    await user.click(screen.getByRole('button', { name: '+ Your cards' }));
+    const page = await screen.findByRole('region', { name: 'Your cards' });
+    await user.click(within(page).getByRole('button', { name: 'Your text or link' }));
+    await screen.findByRole('region', { name: 'Your text or link' });
+    await user.click(screen.getByRole('button', { name: 'Fold back' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Your text or link' })).toBeNull(),
+    );
+    const moves = animate.mock.contexts.filter((el) => (el as Element).matches?.('section'));
+    // Unfold, turn out, turn in, fold.
+    expect(moves.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('under reduced motion the page simply appears and goes, with no moves', async () => {
+    const animate = stubAnimate();
+    const { user } = await renderFlow({ webSearch: 'on', motion: 'reduce' });
+    await frame('What does OK boomer mean');
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-motion', 'reduce'));
+    await user.click(screen.getByRole('button', { name: '+ Your cards' }));
+    await screen.findByRole('region', { name: 'Your cards' });
+    await user.click(screen.getByRole('button', { name: 'Fold back' }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Your cards' })).toBeNull());
+    const moves = animate.mock.contexts.filter((el) => (el as Element).matches?.('section'));
+    expect(moves).toHaveLength(0);
   });
 
   it('Escape closes it under reduced motion too', async () => {

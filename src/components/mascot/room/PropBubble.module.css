@@ -40,8 +40,16 @@
 
 .controls {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-3);
   margin-top: var(--space-3);
+}
+
+.more {
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
 }
 
 .done {

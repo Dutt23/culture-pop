@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DraftCard } from '../../../shared/cardTypes.js';
 import { AppProviders } from '../../app/AppProviders';
@@ -160,10 +160,14 @@ describe('Your cards', () => {
       </AppProviders>,
     );
 
-    expect(await screen.findByRole('button', { name: /Polite brush-off/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /BBC page/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /BBC page/ })).toBeInTheDocument();
+    // Kept cards are offered on the paper page behind "+ Your cards", not listed on the pass.
+    expect(screen.queryByRole('button', { name: /Polite brush-off/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '+ Your cards' }));
+    const page = await screen.findByRole('region', { name: 'Your cards' });
+    expect(await within(page).findByRole('button', { name: /Polite brush-off/ })).toBeVisible();
     expect(
-      screen.getByRole('region', { name: 'Add library cards as sources' }),
+      within(page).getByRole('region', { name: 'Add library cards as sources' }),
     ).toBeInTheDocument();
   });
 });

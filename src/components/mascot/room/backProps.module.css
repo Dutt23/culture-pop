@@ -1,0 +1,40 @@
+/*
+ * Props resting behind the posters. Movement only: the den's `still` class stops every animation,
+ * and `paused` pauses them off screen. Resting (D69) pauses them too, below.
+ */
+
+.back {
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pulse {
+  animation: pulse 3.4s ease-in-out infinite;
+}
+
+.sway {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: whipSway 5s ease-in-out infinite;
+}
+
+[data-resting] .pulse,
+[data-resting] .sway {
+  animation-play-state: paused;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.18;
+  }
+}
+
+@keyframes whipSway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}

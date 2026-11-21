@@ -1,16 +1,32 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MotionPreferenceProvider } from '../../motion/MotionPreferenceProvider';
 import { MascotDen } from './MascotDen';
 import { ROOM_PROPS, type RoomPropId } from './room/roomProps';
 
+function SearchAt() {
+  const { search } = useLocation();
+  return <p>Searching {new URLSearchParams(search).get('q')}</p>;
+}
+
 function renderDen(still = false) {
   return render(
     <MotionPreferenceProvider preference="system">
-      <MascotDen still={still}>
-        <input aria-label="Search" />
-      </MascotDen>
+      <MemoryRouter initialEntries={['/discover']}>
+        <Routes>
+          <Route
+            path="/discover"
+            element={
+              <MascotDen still={still}>
+                <input aria-label="Search" />
+              </MascotDen>
+            }
+          />
+          <Route path="/search" element={<SearchAt />} />
+        </Routes>
+      </MemoryRouter>
     </MotionPreferenceProvider>,
   );
 }
@@ -36,6 +52,27 @@ describe('the mascot room', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(['Got it']);
+  });
+
+  it('"Know more" opens our Search with the reference filled in', async () => {
+    const user = userEvent.setup();
+    renderDen();
+
+    await user.click(prop('roseWhip'));
+    await user.click(screen.getByRole('link', { name: 'Know more' }));
+
+    // The year in the title is left out of the search.
+    expect(screen.getByText('Searching YuYu Hakusho')).toBeInTheDocument();
+  });
+
+  it('"Know more" uses a better search where the title alone is vague', async () => {
+    const user = userEvent.setup();
+    renderDen();
+
+    await user.click(prop('swordInStone'));
+    await user.click(screen.getByRole('link', { name: 'Know more' }));
+
+    expect(screen.getByText('Searching Excalibur')).toBeInTheDocument();
   });
 
   it('closes with "Got it" or Escape and puts focus back on the prop', async () => {

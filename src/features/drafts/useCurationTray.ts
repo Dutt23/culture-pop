@@ -75,17 +75,10 @@ export function useCurationTray(search: string) {
   };
 
   /**
-   * Start over from one card (owner, 2026-11-22): its frames become the picks, up to the limits,
-   * and it is the only tone card. Returns how many frames made it in.
+   * "Match a card's style" (owner, 2026-11-22): one card, or none. Only its tone, length and
+   * layout go to the AI as a tone card, never as a source of facts.
    */
-  const startFrom = (frames: readonly Frame[], tone: ToneCard): number => {
-    const web = frames.filter((f) => f.kind === 'web').slice(0, LIMITS.webSources);
-    const next = [...web, ...frames.filter((f) => f.kind !== 'web')].slice(0, LIMITS.sources);
-    setPicked(next);
-    setKept(new Set());
-    setTones([cutTone(tone)]);
-    return next.length;
-  };
+  const setStyleCard = (card: ToneCard | null) => setTones(card ? [cutTone(card)] : []);
 
   const keepFlagged = (key: string) => setKept((k) => new Set(k).add(key));
 
@@ -108,7 +101,7 @@ export function useCurationTray(search: string) {
     kept,
     toggleFrame,
     toggleTone,
-    startFrom,
+    setStyleCard,
     keepFlagged,
     body,
     canMake,

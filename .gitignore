@@ -52,3 +52,5 @@ scripts/perf/out/
 scripts/card-drafts/out/
 # Project docs (kept on disk and in the vault, not in the public repo)
 docs/
+# Agent scratch (plan ledgers, throwaway demos)
+.superpowers/

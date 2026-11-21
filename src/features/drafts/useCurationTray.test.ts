@@ -213,45 +213,27 @@ describe('requests the server accepts', () => {
   });
 });
 
-describe('useCurationTray startFrom (start from one of my cards)', () => {
+describe('useCurationTray setStyleCard (match a card\'s style)', () => {
   const tone = (label: string) => ({ label, gist: 'g', means: 'm', reply: 'r', summary: 's' });
-  const webFrame = (n: number): Frame => ({
-    key: `https://www.site${n}.com/doom`,
-    kind: 'web',
-    from: `site${n}.com`,
-    title: `Doctor Doom ${n}`,
-    line: 'From your card',
-    url: `https://www.site${n}.com/doom`,
-  });
 
-  it('replaces the picks and tone cards with the card and its pages, within the limits', () => {
+  it('keeps one style card at most, and leaves the picks alone', () => {
     const { result } = renderHook(() => useCurationTray('doctor doom'));
+    const frame = frames({ webResults: [web(1)] })[0] as Frame;
     act(() => {
-      result.current.toggleFrame(webFrame(99));
-      result.current.toggleTone(tone('Old style'));
+      result.current.toggleFrame(frame);
     });
+    act(() => {
+      result.current.setStyleCard(tone('First'));
+    });
+    act(() => {
+      result.current.setStyleCard(tone('Second'));
+    });
+    expect(result.current.tones.map((t) => t.label)).toEqual(['Second']);
+    expect(result.current.picked).toEqual([frame]);
 
-    const many = Array.from({ length: LIMITS.webSources + 3 }, (_, i) => webFrame(i));
-    let added = 0;
     act(() => {
-      added = result.current.startFrom(many, tone('My card'));
+      result.current.setStyleCard(null);
     });
-
-    expect(added).toBe(LIMITS.webSources);
-    expect(result.current.picked).toHaveLength(LIMITS.webSources);
-    expect(result.current.picked.some((f) => f.key === webFrame(99).key)).toBe(false);
-    expect(result.current.tones.map((t) => t.label)).toEqual(['My card']);
-  });
-
-  it('with no pages, keeps only the style', () => {
-    const { result } = renderHook(() => useCurationTray('doctor doom'));
-    act(() => {
-      result.current.toggleFrame(webFrame(1));
-    });
-    act(() => {
-      result.current.startFrom([], tone('A favourite'));
-    });
-    expect(result.current.picked).toEqual([]);
-    expect(result.current.tones).toHaveLength(1);
+    expect(result.current.tones).toEqual([]);
   });
 });

@@ -80,7 +80,10 @@ test('search, pick two frames and a filter, make a card, keep it, find it in You
   await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
   await flow.getByRole('button', { name: WEB_RESULTS[1].snippet }).click();
   await flow.getByRole('button', { name: 'Review 2 frames' }).click();
+  // Step 2: match the favourite's style, picked on the paper page.
+  await flow.getByRole('button', { name: '+ Pick a card' }).click();
   await flow.getByRole('button', { name: 'Hakuna matata (Swahili phrase)', exact: true }).click();
+  await expect(flow.getByRole('button', { name: /^Remove Styled like Hakuna/ })).toBeVisible();
   await flow.getByRole('button', { name: 'Review sources and style' }).click();
 
   const check = flow.getByRole('region', { name: 'Splice check' });
@@ -137,6 +140,7 @@ test('partial list can be revised with omitted sources and clearly labelled user
   ).toBeVisible();
   await flow.getByRole('checkbox', { name: 'Reconsider this source' }).check();
   await flow.getByRole('button', { name: 'Revise sources and curate again' }).click();
+  await flow.getByRole('button', { name: '+ Your text or link' }).click();
   await flow
     .getByRole('textbox', { name: 'Your context or text' })
     .fill('My personal reading of this joke.');
@@ -244,13 +248,105 @@ test('reload marks an unfinished browser-owned job interrupted without resubmitt
   }
 });
 
+test('your cards and your own text are on one paper page that turns over; Escape folds it first', async ({
+  page,
+}) => {
+  await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
+  await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
+  await page.getByRole('button', { name: 'Make a card from these' }).click();
+  const flow = page.getByRole('dialog', { name: `Make a card from “${SEARCH}”` });
+  await expect(flow.getByText('Step 1 of 2 · Sources')).toBeVisible();
+  await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
+  // No long list of the library on the pass.
+  await expect(flow.getByRole('searchbox', { name: 'Search your library' })).toHaveCount(0);
+
+  const add = flow.getByRole('button', { name: '+ Your cards' });
+  await add.click();
+  const cards = flow.getByRole('region', { name: 'Your cards' });
+  await cards.getByRole('searchbox', { name: 'Search your library' }).fill('hakuna');
+  await cards.getByRole('button', { name: 'Hakuna matata (Swahili phrase)', exact: true }).click();
+
+  // The page turns over to the other section: still one page, no second dialog.
+  await cards.getByRole('button', { name: 'Your text or link' }).click();
+  const text = flow.getByRole('region', { name: 'Your text or link' });
+  await text.getByRole('textbox', { name: 'Your context or text' }).fill('Said by my aunt');
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+
+  await page.keyboard.press('Escape');
+  await expect(text).toBeHidden();
+  await expect(flow).toBeVisible();
+  await expect(add).toBeFocused();
+  const added = flow.getByRole('region', { name: 'Added by you' });
+  await expect(
+    added.getByRole('button', { name: 'Remove Hakuna matata (Swahili phrase)' }),
+  ).toBeVisible();
+  await expect(added.getByRole('button', { name: 'Remove Your note' })).toBeVisible();
+
+  // Forward to the style step and back again keeps everything.
+  await flow.getByRole('button', { name: 'Review 2 frames' }).click();
+  await expect(flow.getByText('Step 2 of 2 · Style (optional)')).toBeVisible();
+  await flow.getByRole('button', { name: 'Back to sources' }).click();
+  await expect(added.getByRole('button', { name: 'Remove Your note' })).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(flow).toBeHidden();
+});
+
+test('on a phone the paper page flips down over the pass, and the last button clears the screen edge', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
+  await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
+  await page.getByRole('button', { name: 'Make a card from these' }).click();
+  const flow = page.getByRole('dialog', { name: `Make a card from “${SEARCH}”` });
+  await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
+
+  // The main button sits fully on screen, above the bottom edge.
+  const review = flow.getByRole('button', { name: 'Review 1 frame' });
+  await expect(review).toBeInViewport({ ratio: 1 });
+
+  await flow.getByRole('button', { name: '+ Your cards' }).click();
+  const cards = flow.getByRole('region', { name: 'Your cards' });
+  await expect(cards).toBeInViewport();
+  // A flap under the pass's title, not beside it. Measured once it has unfolded: while it is still
+  // folded up, part of it sits above its hinge.
+  const title = await flow.getByRole('heading', { level: 2 }).boundingBox();
+  const titleBottom = (title?.y ?? 0) + (title?.height ?? 0);
+  await expect
+    .poll(async () => {
+      const box = await cards.boundingBox();
+      return Boolean(box && box.y >= titleBottom && box.x >= 0 && box.x + box.width <= 375);
+    })
+    .toBe(true);
+  const search = cards.getByRole('searchbox', { name: 'Search your library' });
+  await expect(search).toBeInViewport();
+  await search.click();
+  await expect(search).toBeFocused();
+  // The flap stops above the reel: Review is still fully on screen and tappable, nothing covers it.
+  const pageBox = await cards.boundingBox();
+  const reviewBox = await review.boundingBox();
+  expect(pageBox && reviewBox && pageBox.y + pageBox.height <= reviewBox.y).toBe(true);
+  await expect(review).toBeInViewport({ ratio: 1 });
+  await review.click({ trial: true });
+  // On the text side too (its form is the tallest).
+  await cards.getByRole('button', { name: 'Your text or link' }).click();
+  const text = flow.getByRole('region', { name: 'Your text or link' });
+  await expect(text).toBeVisible();
+  await review.click({ trial: true });
+  // Tapping Review with the page open goes on to the style step and puts the page away.
+  await review.click();
+  await expect(flow.getByText('Step 2 of 2 · Style (optional)')).toBeVisible();
+  await expect(text).toBeHidden();
+});
+
 test.describe('the card maker hangs on a lanyard pass (owner, 2026-11-22)', () => {
   const PASS = `Make a card from “${SEARCH}”`;
 
   test('on a short phone the pass scrolls inside while its title, Close and the reel stay put', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 360, height: 560 });
+    await page.setViewportSize({ width: 360, height: 480 });
     await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
     await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
     const entry = page.getByRole('button', { name: 'Make a card from these' });
