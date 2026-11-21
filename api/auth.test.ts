@@ -655,7 +655,7 @@ describe('shared sign-in limits (security review, 2026-11-21)', () => {
 
 describe('answer timing (security review, 2026-11-21)', () => {
   it('holds code requests and password sign-ins to the same minimum time, whatever happened', async () => {
-    const wait = vi.fn(async (_ms: number) => {});
+    const wait = vi.fn<(ms: number) => Promise<void>>(async () => {});
     const fake = fakeSupabase();
     const h = createAuthHandlers({ config: CONFIG, supabase: fake.supabase, now: () => NOW, wait });
     await h.otp(post('otp', { email: 'a@b.test' }));
