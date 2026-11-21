@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { AnimatePresence } from 'motion/react';
 import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { browserLikeBack, settle } from '../../test/browserBack';
 import { SideTray, type SideTrayLook } from './SideTray';
 
 const ITEMS = Array.from({ length: 60 }, (_, i) => `Item ${i + 1}`);
@@ -50,6 +51,18 @@ afterEach(() => {
 });
 
 describe('SideTray', () => {
+  it.each(['tv', 'carried'] as const)(
+    'opens and stays open under StrictMode, as in development (%s look)',
+    async (look) => {
+      browserLikeBack();
+      render(<Host look={look} />, { reactStrictMode: true });
+      fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+      await screen.findByRole('dialog', { name: 'Long list' });
+      await settle();
+      expect(screen.getByRole('dialog', { name: 'Long list' })).toBeInTheDocument();
+    },
+  );
+
   it('scrolls a long list on its own while the title and the footer stay outside it', async () => {
     render(<Host />);
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));

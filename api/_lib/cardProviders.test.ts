@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { CONFIG } from './config.js';
 import {
-  FALLBACK_AFTER_MS,
   ProviderError,
   cloudflareProvider,
   draftWithFallback,
@@ -204,7 +204,7 @@ describe('draftWithFallback', () => {
         input,
         signal,
       );
-      await vi.advanceTimersByTimeAsync(FALLBACK_AFTER_MS - 1);
+      await vi.advanceTimersByTimeAsync(CONFIG.providers.fallbackAfterMs - 1);
       expect(second).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(1);
       await expect(result).resolves.toEqual({ answer, provider: 'cloudflare' });

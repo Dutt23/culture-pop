@@ -14,6 +14,7 @@ import {
   type AuthClient,
 } from '../services/auth/authClient';
 import styles from './AccountMenu.module.css';
+import { useCurationJobs } from './useCurationJobs';
 
 /**
  * The account button in the top bar, on every page but sign-in (D67): the signed-in person's
@@ -24,12 +25,21 @@ import styles from './AccountMenu.module.css';
 
 const defaultClient = createAuthClient();
 
+function cardsBeingMade(count: number) {
+  return count === 1 ? '1 card being made' : `${count} cards being made`;
+}
+
 export function AccountMenu({ client = defaultClient }: { client?: AuthClient }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { pathname } = useLocation();
   // The email this device signed in with (D64); the sign-in guard has already checked the session.
   const email = readAccountHint();
+  const { activeCount } = useCurationJobs();
+  const making = activeCount > 0 ? cardsBeingMade(activeCount) : '';
+  const label = [email ? `Your account, ${email}` : 'Your account', making]
+    .filter(Boolean)
+    .join(', ');
 
   // Following Settings or Activity from the tray lands on that page with the tray closed.
   useEffect(() => setOpen(false), [pathname]);
@@ -40,12 +50,13 @@ export function AccountMenu({ client = defaultClient }: { client?: AuthClient })
         ref={buttonRef}
         type="button"
         className={styles.avatar}
-        aria-label={email ? `Your account, ${email}` : 'Your account'}
+        aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
         <span aria-hidden="true">{email ? email[0]?.toUpperCase() : 'Me'}</span>
+        {activeCount > 0 && <span className={styles.dot} aria-hidden="true" />}
       </button>
       <AnimatePresence>
         {open && (
@@ -77,6 +88,8 @@ function AccountTray({ client, email, opener, onClose }: AccountTrayProps) {
   const [session, setSession] = useState<AccountSession | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [busy, run] = useBusy();
+  const { jobs, activeCount } = useCurationJobs();
+  const running = jobs.filter((job) => job.status === 'running');
 
   useEffect(() => {
     let live = true;
@@ -147,6 +160,25 @@ function AccountTray({ client, email, opener, onClose }: AccountTrayProps) {
       <p className={styles.email}>{who ? <>Signed in as {who}</> : 'Signed in'}</p>
 
       <dl className={styles.facts}>
+        {activeCount > 0 && (
+          <div className={styles.fact}>
+            <dt>Cards in progress</dt>
+            <dd>
+              <span className={styles.pill} data-tone="on">
+                {activeCount}
+              </span>
+              <ul className={styles.running}>
+                {running.map((job) => (
+                  <li key={job.id}>
+                    <Link to="/activity" replace className={styles.runningLink}>
+                      “{job.request.search}” · being made…
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        )}
         <div className={styles.fact}>
           <dt>Wider web search</dt>
           <dd>

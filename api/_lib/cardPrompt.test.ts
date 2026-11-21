@@ -170,3 +170,31 @@ describe('ANSWER_SCHEMA', () => {
     expect(ANSWER_SCHEMA.required).toContain('ignored');
   });
 });
+
+describe('TOPIC_PREFIX explains the subject, not the evidence', () => {
+  it('forbids meta lines and asks for a shorter card when evidence is thin', () => {
+    expect(TOPIC_PROMPT_VERSION).toBe('topic-card-v2');
+    expect(TOPIC_PREFIX).toContain('# Explain the subject, never the evidence');
+    expect(TOPIC_PREFIX).toContain('"The evidence identifies three series"');
+    expect(TOPIC_PREFIX).toContain('When evidence is thin, write fewer and shorter lines instead.');
+    expect(TOPIC_PREFIX).not.toContain('State missing comparison or coverage briefly.');
+  });
+
+  it('treats the opening premise as no spoiler and asks for dates exactly as written', () => {
+    expect(TOPIC_PREFIX).toContain('The opening premise');
+    expect(TOPIC_PREFIX).toContain('is not a spoiler');
+    expect(TOPIC_PREFIX).toContain(
+      'Copy dates, numbers and names exactly as the passage writes them',
+    );
+  });
+
+  it('never shows the model a worked answer whose gist or takeaway talks about the evidence', () => {
+    const answers = [...TOPIC_PREFIX.matchAll(/^Example \d+ answer:\n(.+)$/gm)].map(
+      (m) => JSON.parse(m[1] ?? '{}') as { gist: string; means: string },
+    );
+    expect(answers).toHaveLength(4);
+    for (const { gist, means } of answers) {
+      expect(`${gist} ${means}`).not.toMatch(/\b(?:the|these) (?:evidence|sources?|passages?)\b/i);
+    }
+  });
+});

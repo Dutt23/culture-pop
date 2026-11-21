@@ -1,3 +1,4 @@
+import { CONFIG } from './config.js';
 import { devFlag } from './devFlags.js';
 import { readCapped } from './http.js';
 import { animationScope, objective, plainText } from '../../shared/text.js';
@@ -9,10 +10,12 @@ import type { CardKind } from '../../shared/cardTypes.js';
  * to the reader's snippet.
  */
 
-const EXTRACT_URL = 'https://api.parallel.ai/v1/extract';
-/** Parallel's answers are small; anything bigger is refused unread. */
-const MAX_UPSTREAM_BYTES = 256 * 1024;
-const TIMEOUT_MS = 10_000;
+const {
+  url: EXTRACT_URL,
+  maxBytes: MAX_UPSTREAM_BYTES,
+  timeoutMs: TIMEOUT_MS,
+  maxSentenceChars: MAX_SENTENCE_CHARS,
+} = CONFIG.extract;
 
 export interface ExtractDeps {
   fetch: typeof fetch;
@@ -38,8 +41,6 @@ export function extractionObjective(search: string, context: ExtractContext = {}
 const allNull = (urls: readonly string[]) =>
   new Map<string, string | null>(urls.map((url) => [url, null]));
 
-/** Longer "sentences" are page menus run together, not prose. */
-const MAX_SENTENCE_CHARS = 400;
 
 /** Sentence ends, including the Devanagari danda and double danda. */
 const SENTENCE_END = /(?<=[.!?।॥])\s+/u;

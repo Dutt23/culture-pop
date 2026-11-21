@@ -71,6 +71,12 @@ export default tseslint.config(
     rules: { 'no-restricted-globals': 'off' },
   },
   {
+    // Local paid before/after card comparison: calls Wikipedia and OpenAI directly, never shipped.
+    files: ['scripts/card-drafts/**/*.ts'],
+    languageOptions: { globals: globals.node },
+    rules: { 'no-restricted-globals': 'off' },
+  },
+  {
     files: ['scripts/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: { ecmaVersion: 2022, globals: globals.node },

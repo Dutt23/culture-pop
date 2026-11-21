@@ -24,11 +24,13 @@ import {
   type NotUsed,
   type ToneCard,
 } from '../shared/cardTypes.js';
+import { CONFIG } from './_lib/config.js';
 import { devFlag } from './_lib/devFlags.js';
 import { withDraftStream } from './_lib/draftStream.js';
 import { isCrossSite, json, readCapped } from './_lib/http.js';
 import { extractPages } from './_lib/parallelExtract.js';
 import { bestSnippet, dropFanWorks, isFanSite } from './_lib/snippet.js';
+import { readWikiIntros } from './_lib/wikiIntro.js';
 import { cut, validAbout, validQuery } from '../shared/text.js';
 
 /**
@@ -36,15 +38,18 @@ import { cut, validAbout, validQuery } from '../shared/text.js';
  * Provider keys stay on the server. Never logs or stores bodies, answers or keys.
  */
 
-// 80 KB accommodates ten bounded sources, titles, URLs and tones, including 4-byte text.
-const MAX_REQUEST_BYTES = 80 * 1024;
-const MAX_TITLE = 200;
-const MIN_SNIPPET = 40;
-/** From the request's start: under the app's 25 s wait, so the reader always gets our answer. */
-const DEADLINE_MS = 23_000;
+// Limits and their reasons: config.ts.
+const {
+  maxRequestBytes: MAX_REQUEST_BYTES,
+  maxTitle: MAX_TITLE,
+  minSnippet: MIN_SNIPPET,
+  deadlineMs: DEADLINE_MS,
+} = CONFIG.draft;
 const KINDS = new Set(['wiki', 'web', 'app']);
 const WIKI_FROM = new Set(['wikipedia', 'wiktionary', 'wikiquote', 'wikidata']);
 const APP_FROM = new Set(['app card', 'your card']);
+/** "Found online" sources that name an encyclopedia subject, read in full from Wikipedia. */
+const ENCYCLOPEDIA_FROM = new Set(['wikipedia', 'wikidata']);
 const TONE_FIELDS = ['label', 'gist', 'means', 'reply', 'summary'] as const;
 
 export interface DraftHandlerOptions {
@@ -185,6 +190,7 @@ type Candidate = Omit<EvidenceItem, 'id' | 'role'>;
 function toCandidates(
   sources: readonly DraftSourceInput[],
   pages: ReadonlyMap<string, string | null>,
+  intros: ReadonlyMap<string, string | null>,
   search: string,
   kind: DraftRequestBody['kind'],
 ): { candidates: Candidate[]; unread: NotUsed[] } {
@@ -193,6 +199,8 @@ function toCandidates(
   sources.forEach((s, source) => {
     let text = s.text ?? '';
     let from = s.from;
+    const intro = s.kind === 'wiki' ? dropFanWorks(intros.get(s.title) ?? '') : '';
+    if (intro.length > text.length) text = intro;
     if (s.kind === 'web') {
       from = hostOf(s.url ?? '');
       if (isFanSite(from)) {
@@ -246,19 +254,30 @@ export function createDraftHandler(
     if (providers.length === 0) return json(503, { error: 'not_configured' });
 
     const { search, sources, tones = [] } = body;
+    const isTopic = body.kind !== undefined && body.kind !== 'reference';
+    const evidenceBudget = isTopic ? LIMITS.sources * LIMITS.itemChars : LIMITS.totalChars;
     const urls = sources.flatMap((s) => (s.kind === 'web' && s.url ? [s.url] : []));
     const apiKey = process.env.PARALLEL_API_KEY;
     const canExtract = urls.length > 0 && (apiKey || devFlag('WEB_SEARCH_FAKE'));
-    const pages = canExtract
-      ? await extractPages(
-          urls,
-          search,
-          { fetch: doFetch, apiKey: apiKey ?? 'local-fake' },
-          { kind: body.kind, about: body.about },
-        )
-      : new Map<string, string | null>();
+    const encyclopedia = sources.flatMap((s) =>
+      s.kind === 'wiki' && ENCYCLOPEDIA_FROM.has(s.from)
+        ? [{ title: s.title, description: s.from === 'wikidata' ? s.text : undefined }]
+        : [],
+    );
+    // Both reads run together; each never throws and falls back to the reader's own text.
+    const [pages, intros] = await Promise.all([
+      canExtract
+        ? extractPages(
+            urls,
+            search,
+            { fetch: doFetch, apiKey: apiKey ?? 'local-fake' },
+            { kind: body.kind, about: body.about },
+          )
+        : new Map<string, string | null>(),
+      readWikiIntros(encyclopedia, LIMITS.itemChars, { fetch: doFetch }),
+    ]);
 
-    const { candidates, unread } = toCandidates(sources, pages, search, body.kind);
+    const { candidates, unread } = toCandidates(sources, pages, intros, search, body.kind);
     const { items: curated, dropped } = curateEvidence(
       candidates,
       search,
@@ -270,12 +289,7 @@ export function createDraftHandler(
     // Whole items are dropped, never cut, so no sentence loses its end.
     let total = 0;
     const items = curated.filter((item) => {
-      if (
-        total + item.text.length >
-        (body.kind && body.kind !== 'reference'
-          ? LIMITS.sources * LIMITS.itemChars
-          : LIMITS.totalChars)
-      ) {
+      if (total + item.text.length > evidenceBudget) {
         early.push({ source: item.source, why: 'over the length limit' });
         return false;
       }
@@ -292,7 +306,6 @@ export function createDraftHandler(
     request.signal.addEventListener('abort', cancel, { once: true });
     if (request.signal.aborted) cancel();
     const timer = setTimeout(() => controller.abort(), started + DEADLINE_MS - Date.now());
-    const isTopic = body.kind !== undefined && body.kind !== 'reference';
     const promptVersion = isTopic ? TOPIC_PROMPT_VERSION : PROMPT_VERSION;
     let drafted;
     try {

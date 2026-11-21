@@ -1,4 +1,5 @@
 import { checkWebAccess, WEB_ACCESS_REFUSALS, type WebAccess } from './_lib/webAccess.js';
+import { CONFIG } from './_lib/config.js';
 import { devFlag } from './_lib/devFlags.js';
 import { fakeParallelFetch } from './_lib/fakeParallel.js';
 import { isCrossSite, json, readCapped } from './_lib/http.js';
@@ -20,23 +21,19 @@ import { bestSnippet, pageKey } from './_lib/snippet.js';
  * so it is never part of a URL that the host's request logs could record.
  */
 
-const PARALLEL_URL = 'https://api.parallel.ai/v1/search';
-const MAX_RESULTS = 10;
-const MAX_TITLE = 120;
-const MAX_SNIPPET = 300;
-/** Each excerpt is cut before cleaning, so a hostile page can't make the regex work slow. */
-const MAX_EXCERPT = 4000;
-const MAX_URL = 2048;
-/** Parallel's answers are a few KB; anything bigger is refused unread. */
-const MAX_UPSTREAM_BYTES = 256 * 1024;
-/**
- * `{ "q": "…", "question": true, "videos": true, "about": […] }` with a 200-character query and
- * five 30-character tags fits, even in four-byte characters; anything bigger is refused.
- */
-const MAX_REQUEST_BYTES = 2048;
-/** What we send the phone stays small; results are dropped from the end until it fits. */
-const MAX_RESPONSE_BYTES = 16 * 1024;
-const TIMEOUT_MS = 8000;
+// Limits and their reasons: config.ts.
+const {
+  url: PARALLEL_URL,
+  maxResults: MAX_RESULTS,
+  maxTitle: MAX_TITLE,
+  maxSnippet: MAX_SNIPPET,
+  maxExcerpt: MAX_EXCERPT,
+  maxUrl: MAX_URL,
+  maxUpstreamBytes: MAX_UPSTREAM_BYTES,
+  maxRequestBytes: MAX_REQUEST_BYTES,
+  maxResponseBytes: MAX_RESPONSE_BYTES,
+  timeoutMs: TIMEOUT_MS,
+} = CONFIG.search;
 
 /** How far a provider's terms let results be kept: `none`, this `device` only, or `shared`. */
 export type StorageLevel = 'none' | 'device' | 'shared';

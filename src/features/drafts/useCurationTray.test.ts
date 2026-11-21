@@ -212,3 +212,46 @@ describe('requests the server accepts', () => {
     expect(tray.canMake).toBe(false);
   });
 });
+
+describe('useCurationTray startFrom (start from one of my cards)', () => {
+  const tone = (label: string) => ({ label, gist: 'g', means: 'm', reply: 'r', summary: 's' });
+  const webFrame = (n: number): Frame => ({
+    key: `https://www.site${n}.com/doom`,
+    kind: 'web',
+    from: `site${n}.com`,
+    title: `Doctor Doom ${n}`,
+    line: 'From your card',
+    url: `https://www.site${n}.com/doom`,
+  });
+
+  it('replaces the picks and tone cards with the card and its pages, within the limits', () => {
+    const { result } = renderHook(() => useCurationTray('doctor doom'));
+    act(() => {
+      result.current.toggleFrame(webFrame(99));
+      result.current.toggleTone(tone('Old style'));
+    });
+
+    const many = Array.from({ length: LIMITS.webSources + 3 }, (_, i) => webFrame(i));
+    let added = 0;
+    act(() => {
+      added = result.current.startFrom(many, tone('My card'));
+    });
+
+    expect(added).toBe(LIMITS.webSources);
+    expect(result.current.picked).toHaveLength(LIMITS.webSources);
+    expect(result.current.picked.some((f) => f.key === webFrame(99).key)).toBe(false);
+    expect(result.current.tones.map((t) => t.label)).toEqual(['My card']);
+  });
+
+  it('with no pages, keeps only the style', () => {
+    const { result } = renderHook(() => useCurationTray('doctor doom'));
+    act(() => {
+      result.current.toggleFrame(webFrame(1));
+    });
+    act(() => {
+      result.current.startFrom([], tone('A favourite'));
+    });
+    expect(result.current.picked).toEqual([]);
+    expect(result.current.tones).toHaveLength(1);
+  });
+});

@@ -40,6 +40,29 @@ describe('Lanyard', () => {
     expect(screen.getByRole('article')).toHaveAttribute('data-complete');
   });
 
+  it('holds a panel: the head and its corner stay out of the scrolling body', () => {
+    render(
+      <Lanyard title="Make a card" corner={<button type="button">Close</button>}>
+        <p>Panel content</p>
+      </Lanyard>,
+    );
+    const pass = screen.getByRole('article', { name: 'Make a card' });
+    const heading = within(pass).getByRole('heading', { name: 'Make a card' });
+    const close = within(pass).getByRole('button', { name: 'Close' });
+    const body = within(pass).getByText('Panel content').parentElement as HTMLElement;
+
+    expect(pass).toHaveAttribute('data-panel');
+    expect(body).not.toContainElement(heading);
+    expect(body).not.toContainElement(close);
+    // Close sits in the head, beside the title.
+    expect(heading.closest('div')?.parentElement).toContainElement(close);
+  });
+
+  it('is a plain pass without children', () => {
+    render(<Lanyard title="Pack" />);
+    expect(screen.getByRole('article')).not.toHaveAttribute('data-panel');
+  });
+
   it('stamps it when asked', () => {
     render(<Lanyard title="Pack" stamp="All access" />);
     expect(screen.getByText('All access')).toBeInTheDocument();

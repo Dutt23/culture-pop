@@ -14,6 +14,7 @@ import { Antennae } from '../mascot/Mascot';
 import { useMotionPresets } from '../../motion/useMotionPresets';
 import type { SheetMotion } from '../../motion/presets';
 import { TrayHeader } from './TrayHeader';
+import { useBackCloses } from './useBackCloses';
 import styles from './SideTray.module.css';
 
 /**
@@ -63,8 +64,6 @@ export interface SideTrayProps {
 /** How long the closing move takes before the tray slides away. */
 export const SIDE_TRAY_LEAVE_MS = 360;
 
-/** Marks the history entry the open tray adds, so Back closes the tray instead of the page. */
-const HISTORY_MARK = 'pcdSideTray';
 /** On <html> while a tray is open: the page under it doesn't scroll. */
 const OPEN_ATTRIBUTE = 'data-tray-open';
 const LEAVE_S = SIDE_TRAY_LEAVE_MS / 1000;
@@ -154,10 +153,8 @@ export function SideTray({
     if (!stayOpen) onClose();
   };
   const closeRef = useRef(close);
-  const stayOpenRef = useRef(stayOpen);
   useLayoutEffect(() => {
     closeRef.current = close;
-    stayOpenRef.current = stayOpen;
   });
 
   useEffect(() => {
@@ -176,28 +173,7 @@ export function SideTray({
   }, [opener]);
 
   // Back (a phone's back gesture or the browser's button) closes the tray, not the page.
-  useEffect(() => {
-    window.history.pushState({ ...(window.history.state ?? {}), [HISTORY_MARK]: true }, '');
-    let poppedByBack = false;
-    const onPop = () => {
-      // A pop that lands on another of our entries (StrictMode's second mount) is not a close.
-      if ((window.history.state as Record<string, unknown> | null)?.[HISTORY_MARK]) return;
-      // Work still running: stay, and put our entry back so the next Back still closes.
-      if (stayOpenRef.current) {
-        window.history.pushState({ ...(window.history.state ?? {}), [HISTORY_MARK]: true }, '');
-        return;
-      }
-      poppedByBack = true;
-      closeRef.current();
-    };
-    window.addEventListener('popstate', onPop);
-    return () => {
-      window.removeEventListener('popstate', onPop);
-      // Closed some other way: take our entry back off the history.
-      const state = window.history.state as Record<string, unknown> | null;
-      if (!poppedByBack && state?.[HISTORY_MARK]) window.history.back();
-    };
-  }, []);
+  useBackCloses(onClose, { stayOpen });
 
   const content = (
     <>

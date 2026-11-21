@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProviderError, type DraftProvider } from './_lib/cardProviders.js';
+import { CONFIG } from './_lib/config.js';
 import {
   PROMPT_VERSION,
   TOPIC_PREFIX,
@@ -278,19 +279,82 @@ describe('draft-card', () => {
     expect(inputs).toHaveLength(0);
   });
 
-  it('extracts only web sources and sends no URL to the model', async () => {
+  it('extracts only web sources with Parallel and sends no URL to the model', async () => {
     const fetchMock = extractFetch(PAGE_TEXT);
+    const parallelCalls = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).startsWith('https://api.parallel.ai/'));
     const { handle, inputs } = setup({ fetch: fetchMock });
     const r = await read(await handle(post({ search: SEARCH, sources: [wiki, web] })));
     expect(r.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).urls).toEqual([PAGE_URL]);
+    expect(parallelCalls()).toHaveLength(1);
+    expect(JSON.parse(String(parallelCalls()[0]?.[1]?.body)).urls).toEqual([PAGE_URL]);
     expect(inputs[0]?.user).toContain('Kitne aadmi the');
     expect(inputs[0]?.user).not.toContain('http');
 
     fetchMock.mockClear();
     await handle(post({ search: SEARCH, sources: [wiki] }));
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(parallelCalls()).toHaveLength(0);
+  });
+
+  describe('"Found online" sources', () => {
+    const INTRO =
+      'Mobile Suit Gundam is a Japanese anime television series created by Yoshiyuki Tomino for Sunrise. It premiered in 1979 and follows Amuro Ray, who pilots the Gundam in a war between Earth and its space colonies.';
+    const wikidata = {
+      kind: 'wiki',
+      from: 'wikidata',
+      title: 'Mobile Suit Gundam',
+      text: 'Japanese anime television series that premiered in 1979',
+    };
+    const wiktionary = {
+      kind: 'wiki',
+      from: 'wiktionary',
+      title: 'gundam',
+      text: 'gundam: a giant humanoid robot from Japanese anime.',
+    };
+    const wikipediaFetch = (body: unknown) =>
+      vi.fn<typeof fetch>(async (url) =>
+        String(url).startsWith('https://en.wikipedia.org/')
+          ? new Response(JSON.stringify(body))
+          : new Response(JSON.stringify({ results: [] })),
+      );
+    const answer = {
+      ...ANSWER,
+      summary: [{ t: 'Mobile Suit Gundam is a Japanese anime television series.', ids: ['E1'] }],
+    };
+
+    it('sends the Wikipedia intro, not just the one-line description, to the model', async () => {
+      const fetchMock = wikipediaFetch({
+        query: { pages: [{ title: wikidata.title, extract: INTRO }] },
+      });
+      // Dictionary entries sort first, so the line cites both items whatever their order.
+      const both = { ...answer, summary: [{ ...answer.summary[0], ids: ['E1', 'E2'] }] };
+      const { handle, inputs } = setup({ fetch: fetchMock }, both);
+      const r = await read(
+        await handle(post({ search: 'gundam', kind: 'topic', sources: [wikidata, wiktionary] })),
+      );
+      expect(r.status).toBe(200);
+      expect(inputs[0]?.user).toContain('Yoshiyuki Tomino');
+      expect(inputs[0]?.user).toContain('Amuro Ray');
+      // Only the encyclopedia source is looked up; the dictionary entry keeps its own text.
+      const asked = fetchMock.mock.calls.map(([url]) => String(url));
+      expect(asked).toHaveLength(1);
+      expect(new URL(asked[0] ?? '').searchParams.get('titles')).toBe('Mobile Suit Gundam');
+      expect(inputs[0]?.user).toContain('a giant humanoid robot');
+    });
+
+    it('keeps the one-line description when Wikipedia has no matching article', async () => {
+      const fetchMock = wikipediaFetch({
+        query: { pages: [{ title: wikidata.title, missing: true }] },
+      });
+      const { handle, inputs } = setup({ fetch: fetchMock }, answer);
+      const r = await read(
+        await handle(post({ search: 'gundam', kind: 'topic', sources: [wikidata] })),
+      );
+      expect(r.status).toBe(200);
+      expect(r.body.notUsed).toEqual([]);
+      expect(inputs[0]?.user).toContain('Japanese anime television series');
+      expect(inputs[0]?.user).not.toContain('Tomino');
+    });
   });
 
   it("lists a link Parallel couldn't read as not used and drafts from the rest", async () => {
@@ -460,9 +524,10 @@ describe('draft-card', () => {
         return r;
       });
 
-      await vi.advanceTimersByTimeAsync(11_000);
+      const { fallbackAfterMs } = CONFIG.providers;
+      await vi.advanceTimersByTimeAsync(fallbackAfterMs);
       expect(second.draft).toHaveBeenCalledTimes(1);
-      await vi.advanceTimersByTimeAsync(23_000 - 11_000 - 1);
+      await vi.advanceTimersByTimeAsync(CONFIG.draft.deadlineMs - fallbackAfterMs - 1);
       expect(settled).toBe(false);
       await vi.advanceTimersByTimeAsync(1);
       expect(await read(await answer)).toEqual({ status: 502, body: { error: 'provider_failed' } });

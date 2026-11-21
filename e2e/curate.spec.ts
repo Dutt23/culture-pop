@@ -126,8 +126,10 @@ test('partial list can be revised with omitted sources and clearly labelled user
   for (const result of WEB_RESULTS)
     await flow.getByRole('button', { name: result.snippet }).click();
   await flow.getByRole('button', { name: 'Review 2 frames' }).click();
-  await flow.getByRole('combobox', { name: 'Card format' }).selectOption('list');
-  await flow.getByRole('combobox', { name: 'Card colour' }).selectOption('sage');
+  const format = flow.getByRole('group', { name: 'Card format' });
+  await format.getByRole('button', { name: 'List' }).click();
+  const colour = flow.getByRole('group', { name: 'Card colour' });
+  await colour.getByRole('button', { name: 'Sage' }).click();
   await flow.getByRole('button', { name: 'Review sources and style' }).click();
   await flow.getByRole('button', { name: 'Make a card', exact: true }).click();
   await expect(
@@ -240,6 +242,67 @@ test('reload marks an unfinished browser-owned job interrupted without resubmitt
   } finally {
     release();
   }
+});
+
+test.describe('the card maker hangs on a lanyard pass (owner, 2026-11-22)', () => {
+  const PASS = `Make a card from “${SEARCH}”`;
+
+  test('on a short phone the pass scrolls inside while its title, Close and the reel stay put', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 560 });
+    await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
+    await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
+    const entry = page.getByRole('button', { name: 'Make a card from these' });
+    await entry.click();
+    const flow = page.getByRole('dialog', { name: PASS });
+    const pass = flow.getByRole('article', { name: PASS });
+    await expect(pass).toBeVisible();
+    await flow.getByRole('button', { name: WEB_RESULTS[0].snippet }).click();
+
+    // The pass's own scroller: the child of the pass that scrolls (Lanyard's body).
+    const scrolled = await pass.evaluate((article) => {
+      const body = [...article.querySelectorAll<HTMLElement>(':scope > * > *')].find(
+        (el) => getComputedStyle(el).overflowY === 'auto',
+      );
+      if (!body) return null;
+      const before = body.scrollHeight > body.clientHeight;
+      body.scrollTop = body.scrollHeight;
+      return { before, moved: body.scrollTop > 0 };
+    });
+    expect(scrolled).toEqual({ before: true, moved: true });
+
+    await expect(flow.getByRole('heading', { level: 2, name: PASS })).toBeInViewport();
+    // Exact: the library list also has "Closer (The Chainsmokers)".
+    const close = flow.getByRole('button', { name: 'Close', exact: true });
+    await expect(close).toBeInViewport();
+    await expect(flow.getByRole('button', { name: 'Review 1 frame' })).toBeInViewport();
+
+    await close.click();
+    await expect(flow).toBeHidden();
+    await expect(entry).toBeFocused();
+  });
+
+  test.describe('reduced motion', () => {
+    test.use({ reducedMotion: 'reduce' });
+
+    test('the pass just appears, with no swing', async ({ page }) => {
+      await page.route('**/api/web-search', (route) => json(route, { results: WEB_RESULTS }));
+      await page.goto(`/search?q=${encodeURIComponent(SEARCH)}`);
+      await page.getByRole('button', { name: 'Make a card from these' }).click();
+      const pass = page.getByRole('dialog', { name: PASS }).getByRole('article', { name: PASS });
+      await expect(pass).toBeVisible();
+      // Read at once: a swinging pass would still be turned or see-through here.
+      const style = await pass.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { transform: s.transform, opacity: s.opacity };
+      });
+      expect(style).toEqual({ transform: 'none', opacity: '1' });
+
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog', { name: PASS })).toBeHidden();
+    });
+  });
 });
 
 test('Back closes the card dialog and keeps the search page; Back again leaves it', async ({

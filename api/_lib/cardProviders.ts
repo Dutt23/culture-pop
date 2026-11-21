@@ -1,4 +1,5 @@
 import { PROMPT_VERSION, TOPIC_PROMPT_VERSION, type ModelAnswer } from './cardPrompt.js';
+import { CONFIG, readModel } from './config.js';
 import { devFlag } from './devFlags.js';
 import { readCapped } from './http.js';
 
@@ -33,13 +34,14 @@ export interface DraftProvider {
   draft(input: DraftInput, signal: AbortSignal): Promise<unknown>;
 }
 
-const OPENAI_URL = 'https://api.openai.com/v1/responses';
-const DEFAULT_OPENAI_MODEL = 'gpt-6-luna';
-const DEFAULT_CLOUDFLARE_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const MAX_OUTPUT_TOKENS = 800;
-/** Topic cards write longer answers; both providers get the same cap. */
-const MAX_TOPIC_OUTPUT_TOKENS = 1600;
-const MAX_UPSTREAM_BYTES = 256 * 1024;
+const {
+  openAiUrl: OPENAI_URL,
+  openAiModel: DEFAULT_OPENAI_MODEL,
+  cloudflareModel: DEFAULT_CLOUDFLARE_MODEL,
+  maxOutputTokens: MAX_OUTPUT_TOKENS,
+  maxTopicOutputTokens: MAX_TOPIC_OUTPUT_TOKENS,
+  maxBytes: MAX_UPSTREAM_BYTES,
+} = CONFIG.providers;
 const OUT_OF_CREDIT = /neurons|allocation|daily/i;
 const JSON_MODE = /json/i;
 
@@ -239,7 +241,7 @@ export function providersFromEnv(env: NodeJS.ProcessEnv, doFetch: typeof fetch):
       openAiProvider({
         fetch: doFetch,
         apiKey: env.OPENAI_API_KEY,
-        model: env.OPENAI_MODEL || undefined,
+        model: readModel(env, 'OPENAI_MODEL'),
       }),
     );
   }
@@ -249,15 +251,14 @@ export function providersFromEnv(env: NodeJS.ProcessEnv, doFetch: typeof fetch):
         fetch: doFetch,
         accountId: env.CLOUDFLARE_ACCOUNT_ID,
         token: env.CLOUDFLARE_API_TOKEN,
-        model: env.CLOUDFLARE_MODEL || undefined,
+        model: readModel(env, 'CLOUDFLARE_MODEL'),
       }),
     );
   }
   return providers;
 }
 
-/** Each provider but the last gets at most this long, so a hanging one leaves time for the next. */
-export const FALLBACK_AFTER_MS = 11_000;
+const FALLBACK_AFTER_MS = CONFIG.providers.fallbackAfterMs;
 
 /**
  * Tries each provider in turn; any `ProviderError` moves on, and the last one is thrown if all

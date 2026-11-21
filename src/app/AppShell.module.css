@@ -163,19 +163,37 @@
   color: var(--color-accent);
 }
 
-.activityNotice {
+/* Cards being made: a count on the Activity icon, pulsing gently. */
+.navIcon {
   position: relative;
-  z-index: 1;
-  max-width: var(--layout-wide);
-  margin: var(--space-2) auto 0;
-  padding-inline: var(--space-gutter);
-  font-size: var(--text-sm);
+  display: inline-flex;
 }
 
-.activityNotice:empty {
-  display: none;
+@keyframes badge-pulse {
+  from {
+    transform: scale(0.9);
+  }
+  to {
+    transform: scale(1.1);
+  }
 }
 
-.activityNotice a {
-  overflow-wrap: anywhere;
+.badge {
+  position: absolute;
+  inset-block-start: -0.4rem;
+  inset-inline-end: -0.6rem;
+  min-inline-size: 1.1rem;
+  block-size: 1.1rem;
+  padding-inline: 0.25rem;
+  border: 2px solid var(--color-nav);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-size: 0.65rem;
+  font-weight: var(--weight-bold);
+  line-height: 0.8rem;
+  text-align: center;
+  animation: badge-pulse 1s ease-in-out infinite alternate;
+  /* Holds still under reduced motion, like the account button's dot. */
+  animation-play-state: var(--motion-ambient-state);
 }

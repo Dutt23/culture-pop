@@ -15,6 +15,8 @@ import type { AccountSession, AuthClient } from '../../services/auth/authClient'
 import { MemoryRouter } from 'react-router';
 import { unusedRetrievalService } from '../../test/fakeRetrieval';
 import { createTestDatabase } from '../../test/renderApp';
+import { browserLikeBack, settle } from '../../test/browserBack';
+import { OVERLAY_MARK } from '../../components/ui/useBackCloses';
 import { CurateFlow } from './CurateFlow';
 import { DraftReveal } from './DraftReveal';
 import type { Frame } from './frames';
@@ -59,11 +61,14 @@ const RESPONSE: DraftResponse = {
 };
 
 const TONE = 'Polite brush-off';
+/** The flow's title, on its dialog and on the lanyard pass it hangs on. */
+const PASS = `Make a card from “${SEARCH}”`;
 
 async function renderFlow(
   settings: Partial<Settings> = { webSearch: 'on' },
   draftCard?: WebSearchClient['draftCard'],
   authClient?: AuthClient,
+  { strict = false } = {},
 ) {
   const db = createTestDatabase();
   await db.open();
@@ -88,7 +93,11 @@ async function renderFlow(
       />
     </AppProviders>,
     // The "Sign in" link needs a router; the flow itself doesn't.
-    { wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter> },
+    {
+      wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter>,
+      // StrictMode as in development (src/main.tsx): mount, unmount, mount again.
+      reactStrictMode: strict,
+    },
   );
   return { db, repos, retrieval, user, onClose, ...view };
 }
@@ -165,7 +174,11 @@ describe('curate a card', () => {
       'My interpretation',
     );
     await user.click(screen.getByRole('button', { name: 'Review 2 frames' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Card format' }), 'list');
+    await user.click(
+      within(screen.getByRole('group', { name: 'Card format' })).getByRole('button', {
+        name: 'List',
+      }),
+    );
     await user.click(screen.getByRole('button', { name: 'Review sources and style' }));
     await user.click(makeButton());
     await waitFor(() => expect(draftCard).toHaveBeenCalledTimes(2));
@@ -388,7 +401,8 @@ describe('curate a card', () => {
     await pickAndCheck(first.user, 'What does OK boomer mean');
     await first.user.click(makeButton());
     await first.user.click(await screen.findByRole('button', { name: 'Edit' }));
-    const gist = screen.getByRole('textbox', { name: 'Gist' });
+    // The editor opens once the Edit moment ends (at once here: animations are skipped).
+    const gist = await screen.findByRole('textbox', { name: 'Gist' });
     await first.user.clear(gist);
     await first.user.type(gist, 'Typed by me.');
     await first.user.click(screen.getByRole('button', { name: 'Keep' }));
@@ -433,7 +447,9 @@ describe('curate a card', () => {
       const flow = await renderFlow(settings, async () => SPOILER);
       await pickAndCheck(flow.user, 'What does OK boomer mean');
       await flow.user.click(makeButton());
-      return { ...flow, card: await screen.findByRole('article', { name: /./ }) };
+      // Any named article but the lanyard pass the flow hangs on.
+      const card = await screen.findByRole('article', { name: (name) => name !== PASS });
+      return { ...flow, card };
     }
 
     it('shows only the search until Reveal, then focuses the real name', async () => {
@@ -460,7 +476,7 @@ describe('curate a card', () => {
 
       const second = await veiledCard();
       await second.user.click(screen.getByRole('button', { name: 'Edit' }));
-      expect(screen.getByRole('textbox', { name: 'Label' })).toHaveValue(label);
+      expect(await screen.findByRole('textbox', { name: 'Label' })).toHaveValue(label);
       expect(screen.getByRole('textbox', { name: 'Gist' })).toHaveValue(gist);
       expect(screen.queryByRole('button', { name: 'Reveal spoiler' })).toBeNull();
     });
@@ -479,7 +495,7 @@ describe('curate a card', () => {
     await user.click(makeButton());
     await user.click(await screen.findByRole('button', { name: 'Edit' }));
 
-    const label = screen.getByRole('textbox', { name: 'Label' });
+    const label = await screen.findByRole('textbox', { name: 'Label' });
     await user.clear(label);
     expect(screen.getByRole('button', { name: 'Keep' })).toBeDisabled();
     await user.type(label, 'My own name');
@@ -760,6 +776,133 @@ describe('who may make a card (D65)', () => {
   });
 });
 
+describe('the lanyard pass (owner, 2026-11-22)', () => {
+  it('hangs the whole flow on the pass: its title and Close on top, the picking under them', async () => {
+    await renderFlow();
+    const dialog = await screen.findByRole('dialog', { name: PASS });
+    const pass = within(dialog).getByRole('article', { name: PASS });
+
+    expect(within(pass).getByRole('heading', { level: 2, name: PASS })).toBeInTheDocument();
+    expect(within(pass).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(within(pass).getByRole('region', { name: 'Film results' })).toBeInTheDocument();
+    // The pass drops in from see-through: the film shows once it has landed.
+    const film = await within(pass).findByRole('button', { name: /What does OK boomer mean/ });
+    await waitFor(() => expect(film).toBeVisible());
+  });
+
+  it.each(['full', 'reduce'] as const)(
+    'Close closes and focus goes back to the button that opened it (motion: %s)',
+    async (motion) => {
+      const opener = document.createElement('button');
+      opener.textContent = 'Make a card from these';
+      document.body.append(opener);
+      opener.focus();
+      const { user, onClose, unmount } = await renderFlow({ webSearch: 'on', motion });
+      await frame('What does OK boomer mean');
+
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+      unmount();
+      expect(opener).toHaveFocus();
+      opener.remove();
+    },
+  );
+
+  it('picks format and colour with the app\'s chips, one of each, and shows which is on', async () => {
+    const { user } = await renderFlow();
+    await user.click(await frame('What does OK boomer mean'));
+    await user.click(screen.getByRole('button', { name: /^Review \d frames?$/ }));
+    expect(screen.queryByRole('combobox')).toBeNull();
+    const format = screen.getByRole('group', { name: 'Card format' });
+    const colour = screen.getByRole('group', { name: 'Card colour' });
+    expect(within(format).getByRole('button', { name: 'Reference and reply' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(colour).getByRole('button', { name: 'Lavender' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(within(colour).getByRole('button', { name: 'Peach' }));
+    expect(within(colour).getByRole('button', { name: 'Peach' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(colour).getByRole('button', { name: 'Lavender' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('starts from one of my cards: it sets format, colour, style and its sources, and says so', async () => {
+    const { user, repos } = await renderFlow();
+    await repos.drafts.save({
+      id: 'reference-card',
+      search: 'old search',
+      card: { ...RESPONSE.card, kind: 'list', label: 'My boomer list' },
+      color: 'sage',
+      sources: [
+        { from: 'bbc.co.uk', title: 'BBC on ok boomer', url: BBC.url },
+        { from: 'dictionary.com', title: 'Dictionary on ok boomer', url: DICT.url },
+        // No link: nothing to send, so it isn't brought in.
+        { from: 'your card', title: 'An app card' },
+      ],
+      promptVersion: 'v2',
+      savedAt: '2026-11-01T00:00:00.000Z',
+    });
+    const start = await screen.findByRole('group', { name: 'How do you want to start?' });
+    expect(within(start).getByRole('radio', { name: 'Pick one by one' })).toBeChecked();
+
+    await user.click(within(start).getByRole('radio', { name: 'Start from one of my cards' }));
+    await user.click(await screen.findByRole('button', { name: /My boomer list/ }));
+
+    expect(within(start).getByRole('radio', { name: 'Pick one by one' })).toBeChecked();
+    expect(
+      screen.getByText(/These 2 sources come from your card\. The new card will use what they say/),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Review 2 frames' }));
+
+    const format = screen.getByRole('group', { name: 'Card format' });
+    const colour = screen.getByRole('group', { name: 'Card colour' });
+    expect(within(format).getByRole('button', { name: 'List' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(colour).getByRole('button', { name: 'Sage' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /My boomer list/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('a card with no pages of its own sets only the style, and says to pick sources', async () => {
+    const { user, repos } = await renderFlow();
+    await repos.drafts.save({
+      id: 'style-only',
+      search: 'old search',
+      card: { ...RESPONSE.card, label: 'Just a style' },
+      sources: [],
+      promptVersion: 'v2',
+      savedAt: '2026-11-01T00:00:00.000Z',
+    });
+    await user.click(await screen.findByRole('radio', { name: 'Start from one of my cards' }));
+    await user.click(await screen.findByRole('button', { name: /Just a style/ }));
+    expect(screen.getByText(/Pick the sources from the film\./)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review 0 frames' })).toBeInTheDocument();
+  });
+
+  it('Escape closes it under reduced motion too', async () => {
+    const { user, onClose } = await renderFlow({ webSearch: 'on', motion: 'reduce' });
+    await frame('What does OK boomer mean');
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('Back closes the card dialog (user testing, 2026-11-21)', () => {
   // Start from a clean entry (earlier tests' marks stay behind, history.back being stubbed), and
   // wait for the flow itself: it mounts only once the saved settings have loaded.
@@ -768,7 +911,7 @@ describe('Back closes the card dialog (user testing, 2026-11-21)', () => {
   it('adds a history entry, and leaving it closes the dialog instead of the page', async () => {
     const { onClose } = await renderFlow();
     await frame('What does OK boomer mean');
-    expect((window.history.state as Record<string, unknown>)?.pcdCardDialog).toBe(true);
+    expect((window.history.state as Record<string, unknown>)?.[OVERLAY_MARK]).toBeTruthy();
     act(() => {
       window.history.replaceState(null, '');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -781,6 +924,18 @@ describe('Back closes the card dialog (user testing, 2026-11-21)', () => {
     const { unmount } = await renderFlow();
     await frame('What does OK boomer mean');
     unmount();
-    expect(back).toHaveBeenCalledTimes(1);
+    // A task later, so StrictMode's remount in development isn't taken for a close.
+    await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
+  });
+
+  it('opens and stays open under StrictMode, as in development (owner bug, 2026-11-22)', async () => {
+    browserLikeBack();
+    const { onClose } = await renderFlow({ webSearch: 'on' }, undefined, undefined, {
+      strict: true,
+    });
+    await frame('What does OK boomer mean');
+    await settle();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: PASS })).toBeInTheDocument();
   });
 });

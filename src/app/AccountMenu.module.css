@@ -29,6 +29,36 @@
   outline-offset: var(--focus-ring-offset);
 }
 
+/* Cards are being made: a small dot on the button's corner. */
+.avatar {
+  position: relative;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.dot {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  background: var(--color-warm);
+  animation: pulse 1s ease-in-out infinite alternate;
+  /* Holds still under reduced motion, like the ambient drift. */
+  animation-play-state: var(--motion-ambient-state);
+}
+
 /* The mascot under a moon, on a strip of floor, like its sign-in room. */
 .hero {
   position: relative;
@@ -147,6 +177,25 @@
 .pill[data-tone='quiet'] {
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
+}
+
+.running {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.runningLink {
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.runningLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .slot {

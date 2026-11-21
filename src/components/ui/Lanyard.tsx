@@ -8,8 +8,12 @@ import styles from './Lanyard.module.css';
  * A backstage pass on a lanyard (owner, 2026-11-21: "modernise the app ... reusable component").
  * Everything comes in through props: a title, optional eyebrow, subtitle, avatar, tags, progress
  * (one punched hole per step), a stamp and actions. With `swing` it drops in on its strap the
- * first time it shows; reduced motion: it simply appears. Use it alone, or as an item in
- * `Collection` with `variant="lanyards"`.
+ * first time it shows, and lifts away when it leaves inside <AnimatePresence>; reduced motion: it
+ * simply appears. Use it alone, or as an item in `Collection` with `variant="lanyards"`.
+ *
+ * With `children` the pass holds a whole panel (the card maker, owner 2026-11-22): the head stays
+ * put and the children scroll inside the pass. Cap the pass's height with `className`; set
+ * `--lanyard-body-inset` to keep focused fields clear of anything pinned at the body's bottom.
  */
 
 export type LanyardTone = 'accent' | 'success' | 'warm' | 'quiet';
@@ -39,6 +43,10 @@ export interface LanyardProps {
   stamp?: string;
   /** Buttons or links along the bottom. */
   actions?: ReactNode;
+  /** Top right of the head, e.g. a Close button. */
+  corner?: ReactNode;
+  /** A panel inside the pass, under the head; it scrolls on its own. */
+  children?: ReactNode;
   /** Drops in on its strap when it first shows. */
   swing?: boolean;
   /**
@@ -56,6 +64,7 @@ const SWING = {
   initial: { y: '-60%', rotate: 0, opacity: 0 },
   animate: { y: '0%', rotate: [7, -4, 2, 0], opacity: 1 },
   transition: { type: 'tween' as const, duration: 0.9, ease: 'easeOut' as const },
+  exit: { y: '-60%', opacity: 0, transition: { duration: 0.3, ease: 'easeIn' as const } },
 };
 
 export function Lanyard({
@@ -67,6 +76,8 @@ export function Lanyard({
   progress,
   stamp,
   actions,
+  corner,
+  children,
   swing = false,
   headingLevel = 3,
   className,
@@ -86,6 +97,7 @@ export function Lanyard({
       className={classNames(styles.lanyard, className)}
       aria-labelledby={titleId}
       data-complete={progress && total > 0 && done === total ? '' : undefined}
+      data-panel={children ? '' : undefined}
       {...motion}
     >
       <span className={styles.strap} aria-hidden="true" />
@@ -100,6 +112,7 @@ export function Lanyard({
             </Heading>
             {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
           </div>
+          {corner && <div className={styles.corner}>{corner}</div>}
         </div>
         {tags && tags.length > 0 && (
           <ul className={styles.tags}>
@@ -120,6 +133,7 @@ export function Lanyard({
             <span className={styles.count}>{progress.label ?? `${done} of ${total} done`}</span>
           </div>
         )}
+        {children && <div className={styles.body}>{children}</div>}
         {stamp && <p className={styles.stamp}>{stamp}</p>}
         {actions && <div className={styles.actions}>{actions}</div>}
       </div>

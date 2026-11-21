@@ -3,7 +3,6 @@ import { m, type HTMLMotionProps } from 'motion/react';
 import {
   useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -23,7 +22,12 @@ import {
 import { useRepositories } from '../../app/useRepositories';
 import { CurationCapacityError } from '../../data/repositories/curationJobRepository';
 import { useOnlineStatus } from '../../app/useOnlineStatus';
+import { Chip } from '../../components/ui/Chip';
+import { Lanyard } from '../../components/ui/Lanyard';
+import { useBackCloses } from '../../components/ui/useBackCloses';
+import { SegmentedControl, type SegmentedOption } from '../../components/ui/SegmentedControl';
 import { useCurationJobs } from '../../app/useCurationJobs';
+import { watchJob } from '../../app/watchedJobs';
 import type { DraftCardRecord } from '../../data/repositories/draftRepository';
 import type { Interpretation, Reference } from '../../domain/types';
 import { useMotionPresets } from '../../motion/useMotionPresets';
@@ -51,9 +55,6 @@ import { useCurationTray } from './useCurationTray';
 import styles from './drafts.module.css';
 import { DRAFT_FAILURE_TEXT } from './failureText';
 
-/** Where the sheet goes full screen (drafts.module.css): under the 40rem breakpoint, or short. */
-const PHONE = '(max-width: 39.99rem), (max-height: 30rem)';
-
 const KIND_LABELS: Record<CardKind, string> = {
   reference: 'Reference and reply',
   topic: 'Topic explanation',
@@ -67,17 +68,16 @@ const SEARCH_BOX = 'input[type="search"]';
 const OPEN_ATTRIBUTE = 'data-sheet-open';
 
 /**
- * The sheet slides up on phones and scales in on wider screens; reduced motion: a short fade.
- * `--backdrop` dims the ::backdrop in and out (it inherits from the dialog).
+ * The card maker hangs on a lanyard that drops from the top of the screen (owner, 2026-11-22): the
+ * pass swings in and lifts away itself (Lanyard's `swing`); the dialog only dims the ::backdrop in
+ * and out with `--backdrop` (it inherits from the dialog). Reduced motion: the pass just appears.
  */
-function sheetMotion(sheet: MotionPresets['sheet']): HTMLMotionProps<'dialog'> {
-  const phone = typeof window.matchMedia === 'function' && window.matchMedia(PHONE).matches;
-  const { hidden, visible, transition } = sheet(phone);
+function backdropMotion(sheet: MotionPresets['sheet']): HTMLMotionProps<'dialog'> {
   return {
-    initial: { ...hidden, '--backdrop': 0 },
-    animate: { ...visible, '--backdrop': 1 },
-    exit: { ...hidden, '--backdrop': 0 },
-    transition,
+    initial: { '--backdrop': 0 },
+    animate: { '--backdrop': 1 },
+    exit: { '--backdrop': 0 },
+    transition: sheet(false).transition,
   };
 }
 
@@ -141,15 +141,60 @@ function useLibraryCards(revealSpoilers: boolean) {
     const realLabels = new Map(
       kept.map((k): [string, string] => [keptName(k.card, k.search, revealSpoilers), k.card.label]),
     );
+    // A kept card by the name its tone card shows, for starting from it.
+    const keptByName = new Map(
+      kept.map((k): [string, DraftCardRecord] => [keptName(k.card, k.search, revealSpoilers), k]),
+    );
     const tones = [
       ...appCards.filter((card) => favouriteIds.has(card.reference.id)).map(fromFavourite),
       ...kept.map((k) => fromKept(k, revealSpoilers)),
     ];
     // A filter is keyed by its label: the first card with a label wins.
     const toneCards = tones.filter((t, i) => tones.findIndex((u) => u.label === t.label) === i);
-    return { appCards, toneCards, realLabels, kept };
+    return { appCards, toneCards, realLabels, keptByName, kept };
   }, [favourites, references, drafts, revealSpoilers]);
 }
+
+type Start = 'pick' | 'card';
+
+const START_OPTIONS: readonly SegmentedOption<Start>[] = [
+  { value: 'pick', label: 'Pick one by one' },
+  { value: 'card', label: 'Start from one of my cards' },
+];
+
+/** What starting from a card filled in, said on the tray until the reader starts over. */
+interface StartedFrom {
+  name: string;
+  sources: number;
+}
+
+/** Says plainly what starting from a card filled in, and that its sources' facts will be used. */
+function startedText({ name, sources }: StartedFrom): string {
+  const set = `Started from “${name}”: format, colour and style are set.`;
+  if (sources === 0) return `${set} Pick the sources from the film.`;
+  const these = sources === 1 ? 'This source comes' : `These ${sources} sources come`;
+  const say = sources === 1 ? 'it says' : 'they say';
+  const use = `The new card will use what ${say}. Cut any you don't want in Review.`;
+  return `${set} ${these} from your card. ${use}`;
+}
+
+/** A kept card's own web pages, as frames to start from (pages without a link can't be sent). */
+const framesOfKept = (record: DraftCardRecord): Frame[] =>
+  record.sources.flatMap((source) =>
+    source.url
+      ? [
+          {
+            key: source.url,
+            kind: 'web' as const,
+            from: source.from,
+            title: source.title,
+            line: 'From your card',
+            url: source.url,
+            ...(source.provenance ? { provenance: source.provenance } : {}),
+          },
+        ]
+      : [],
+  );
 
 type Phase =
   | { kind: 'tray' }
@@ -170,9 +215,6 @@ interface CurateFlowProps {
   authClient?: AuthClient;
 }
 
-/** Marks the browser-history entry the open card dialog adds, so Back closes it. */
-const HISTORY_MARK = 'pcdCardDialog';
-
 /**
  * Pick frames and filters, check them, then have the server curate one card from them. Opens as a
  * modal dialog; Escape and a tap on the backdrop close it like Close does.
@@ -188,13 +230,11 @@ export function CurateFlow({
   // Signed out or not turned on: say so now, before any picking or the consent text (D65).
   const access = useWiderWebAccess(authClient);
   const blocked = access === 'signed_out' || access === 'not_allowed';
-  const closeRef = useRef(onClose);
-  useLayoutEffect(() => {
-    closeRef.current = onClose;
-  });
   const activity = useCurationJobs();
   const cancelActivity = activity.cancel;
   const activeJob = useRef<string | null>(null);
+  // The job this flow is showing: no "card is ready" pop-up for it while the flow is open.
+  const unwatchJob = useRef<(() => void) | null>(null);
   const cancelRequested = useRef(false);
   const { drafts } = useRepositories();
   const { settings, setSetting } = useSettings();
@@ -205,7 +245,8 @@ export function CurateFlow({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const filmScrollRef = useRef<HTMLDivElement>(null);
   const pressedBackdrop = useRef(false);
-  const headingId = useId();
+  const title = `Make a card from “${search.trim()}”`;
+  const formId = useId();
   const { sheet } = useMotionPresets();
   // Read once: focus goes back to whatever opened the flow.
   const [opener] = useState(() =>
@@ -223,6 +264,9 @@ export function CurateFlow({
   const [color, setColor] = useState<CardColor>('lavender');
   const [tone, setTone] = useState('');
   const [structure, setStructure] = useState('');
+  // Two ways in (owner, 2026-11-22): pick frames one by one, or start from one of your cards.
+  const [start, setStart] = useState<Start>('pick');
+  const [startedFrom, setStartedFrom] = useState<StartedFrom | null>(null);
   // After Keep or Drop the card is gone: focus goes back to the tray, not to the page.
   const [focusTray, setFocusTray] = useState(false);
   // Hint and shake change together: the tray shows a hint only when the key moves with it.
@@ -250,8 +294,14 @@ export function CurateFlow({
     [candidates, webResults, library, settings.spoilers],
   );
 
-  // Leaving stops local updates; the root runner keeps the job in Activity.
-  useEffect(() => () => controller.current?.abort(), []);
+  // Leaving stops local updates; the root runner keeps the job in Activity (and its pop-up).
+  useEffect(
+    () => () => {
+      controller.current?.abort();
+      unwatchJob.current?.();
+    },
+    [],
+  );
 
   // Unmounting removes the dialog from the top layer, so the page is live again for the focus.
   useEffect(() => {
@@ -268,24 +318,8 @@ export function CurateFlow({
   }, [opener]);
 
   // Back (a phone's back gesture or the browser's button) closes the dialog instead of leaving the
-  // page and its picks: opening adds a history entry for this page; leaving that entry closes.
-  useEffect(() => {
-    window.history.pushState({ ...(window.history.state ?? {}), [HISTORY_MARK]: true }, '');
-    let poppedByBack = false;
-    const onPop = () => {
-      // A pop that lands on another of our entries (StrictMode's second mount) is not a close.
-      if ((window.history.state as Record<string, unknown> | null)?.[HISTORY_MARK]) return;
-      poppedByBack = true;
-      closeRef.current();
-    };
-    window.addEventListener('popstate', onPop);
-    return () => {
-      window.removeEventListener('popstate', onPop);
-      // Closed some other way (Close, Escape, backdrop): take our entry back off the history.
-      const state = window.history.state as Record<string, unknown> | null;
-      if (!poppedByBack && state?.[HISTORY_MARK]) window.history.back();
-    };
-  }, []);
+  // page and its picks.
+  useBackCloses(onClose);
 
   // When the notice replaces the stage, focus stays in the dialog instead of falling to the page.
   useEffect(() => {
@@ -349,6 +383,8 @@ export function CurateFlow({
         color,
       });
       activeJob.current = started.job.id;
+      unwatchJob.current?.();
+      unwatchJob.current = watchJob(started.job.id);
       if (cancelRequested.current) {
         await activity.cancel(started.job.id);
         return;
@@ -384,6 +420,19 @@ export function CurateFlow({
     if (access === 'checking') return;
     if (settings.webSearch === 'ask') setPhase({ kind: 'consent' });
     else void draft();
+  };
+
+  /**
+   * One card sets the format, colour and writing style; a card you kept also brings its web pages
+   * as the picks. The tone card's facts still stay out of the new card; the picks' facts don't.
+   */
+  const startFromCard = (tone: ToneCard) => {
+    const record = library?.keptByName.get(tone.label);
+    setKind(record?.card.kind ?? 'reference');
+    setColor(record?.color ?? 'lavender');
+    const sources = tray.startFrom(record ? framesOfKept(record) : [], tone);
+    setStartedFrom({ name: tone.label, sources });
+    setStart('pick');
   };
 
   const keep = (card: DraftCard, sent: readonly Frame[], promptVersion: string) =>
@@ -494,34 +543,28 @@ export function CurateFlow({
                 if (card.tone) limit(tray.toggleTone(card.tone));
               }}
             />
-            <label>
-              Card format
-              <select
-                className={styles.styleInput}
-                value={kind}
-                onChange={(event) => setKind(event.target.value as CardKind)}
-              >
-                {CARD_KINDS.map((value) => (
-                  <option key={value} value={value}>
-                    {KIND_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Card colour
-              <select
-                className={styles.styleInput}
-                value={color}
-                onChange={(event) => setColor(event.target.value as CardColor)}
-              >
-                {CARD_COLORS.map((value) => (
-                  <option key={value} value={value}>
-                    {value.charAt(0).toUpperCase() + value.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {/* The app's own chips, like Search's filters, not the device's dropdowns (owner). */}
+            <div className={styles.choice} role="group" aria-labelledby={`${formId}-format`}>
+              <p id={`${formId}-format`} className={styles.choiceLabel}>
+                Card format
+              </p>
+              {CARD_KINDS.map((value) => (
+                <Chip key={value} selected={kind === value} onClick={() => setKind(value)}>
+                  {KIND_LABELS[value]}
+                </Chip>
+              ))}
+            </div>
+            <div className={styles.choice} role="group" aria-labelledby={`${formId}-colour`}>
+              <p id={`${formId}-colour`} className={styles.choiceLabel}>
+                Card colour
+              </p>
+              {CARD_COLORS.map((value) => (
+                <Chip key={value} selected={color === value} onClick={() => setColor(value)}>
+                  <span className={styles.swatch} data-card-color={value} aria-hidden="true" />
+                  {value.charAt(0).toUpperCase() + value.slice(1)}
+                </Chip>
+              ))}
+            </div>
             {library && library.toneCards.length === 0 && (
               <p className={styles.note}>
                 No example cards yet. Favourite a reference card or keep a draft to use it as a
@@ -572,115 +615,155 @@ export function CurateFlow({
       case 'tray':
         return (
           <>
-            <h3 className={styles.sec}>
-              The film: tap frames to cut, up to {LIMITS.sources} (including web)
-            </h3>
-            <div
-              ref={filmScrollRef}
-              className={styles.filmScroll}
-              role="region"
-              aria-label="Film results"
-              tabIndex={0}
-            >
-              <FilmStrip
-                issues={sourceIssues}
-                frames={frames.filter((frame) => frame.kind !== 'app')}
-                pickedKeys={new Set(tray.picked.map((f) => f.key))}
-                onToggle={(frame) => limit(tray.toggleFrame(frame))}
-                reelRef={reelRef}
-                scrollRoot={filmScrollRef}
-              />
-            </div>
-            <CardLibraryPicker
-              mode="source"
-              cards={frames
-                .filter((frame) => frame.kind === 'app')
-                .map((frame) => ({
-                  id: frame.key,
-                  title: frame.title,
-                  description: frame.line,
-                  frame,
-                }))}
-              selected={tray.picked.map((frame) => frame.key)}
-              onSelect={(card) => {
-                if (card.frame) limit(tray.toggleFrame(card.frame));
-              }}
+            <SegmentedControl
+              legend="How do you want to start?"
+              name={`${formId}-start`}
+              options={START_OPTIONS}
+              value={start}
+              onChange={setStart}
             />
-            {Object.keys(sourceIssues).length > 0 && (
-              <fieldset className={styles.sheet}>
-                <legend>Reconsider omitted sources</legend>
-                {tray.picked
-                  .filter((frame) => sourceIssues[frame.key])
-                  .map((frame) => (
-                    <label key={frame.key}>
-                      <input
-                        type="checkbox"
-                        checked={preserveKeys.includes(frame.key)}
-                        onChange={(event) =>
-                          setPreserveKeys((keys) =>
-                            event.target.checked
-                              ? [...keys, frame.key]
-                              : keys.filter((key) => key !== frame.key),
-                          )
-                        }
-                      />
-                      {frame.title} · {sourceIssues[frame.key]}
-                    </label>
-                  ))}
-                <p className={styles.note}>
-                  Retry considers checked sources again. Unsupported claims remain excluded and
-                  explained.
-                </p>
-              </fieldset>
-            )}
-            <UserAdditions
-              context={userContext}
-              onContextChange={setUserContext}
-              links={userLinks}
-              onAddLink={(link) => {
-                const frame: Frame = {
-                  key: link.url,
-                  kind: 'web',
-                  from: new URL(link.url).hostname,
-                  title: link.title,
-                  line: 'Added by you',
-                  url: link.url,
-                  provenance: 'user',
-                };
-                if (tray.picked.some((picked) => picked.key === frame.key)) return;
-                if (limit(tray.toggleFrame(frame)) === 'added')
-                  setUserLinks((links) => [...links, link]);
-              }}
-              onRemoveLink={(url) => {
-                const frame = tray.picked.find((picked) => picked.key === url);
-                if (frame) tray.toggleFrame(frame);
-                setUserLinks((links) => links.filter((link) => link.url !== url));
-              }}
-            />
-            <CurationTray
-              count={tray.picked.length}
-              tones={tray.tones}
-              onOpen={() =>
-                tray.picked.length ? setPhase({ kind: 'style' }) : hint('Cut a frame first.')
-              }
-              shakeKey={shake.key}
-              hint={shake.hint}
-              reelRef={reelRef}
-              autoFocus={focusTray}
-            />
+            {start === 'card' ? startPicker() : pickOneByOne()}
           </>
         );
     }
   };
+
+  const startPicker = () => (
+    <section className={styles.sheet} aria-label="Start from one of my cards">
+      <p className={styles.note}>
+        Pick one card. It sets the format, colour and writing style; its facts stay out of your new
+        card. A card you made also brings the web pages it used, as your picks.
+      </p>
+      <CardLibraryPicker
+        mode="style"
+        cards={(library?.toneCards ?? []).map((card) => ({
+          id: card.label,
+          title: card.label,
+          description: library?.keptByName.has(card.label) ? 'A card you made' : 'A favourite',
+          tone: card,
+        }))}
+        selected={startedFrom ? [startedFrom.name] : []}
+        onSelect={(card) => {
+          if (card.tone) startFromCard(card.tone);
+        }}
+      />
+    </section>
+  );
+
+  const pickOneByOne = () => (
+    <>
+      {startedFrom && (
+        <p className={styles.note} role="status">
+          {startedText(startedFrom)}
+        </p>
+      )}
+      <h3 className={styles.sec}>
+        The film: tap frames to cut, up to {LIMITS.sources} (including web)
+      </h3>
+      <div
+        ref={filmScrollRef}
+        className={styles.filmScroll}
+        role="region"
+        aria-label="Film results"
+        tabIndex={0}
+      >
+        <FilmStrip
+          issues={sourceIssues}
+          frames={frames.filter((frame) => frame.kind !== 'app')}
+          pickedKeys={new Set(tray.picked.map((f) => f.key))}
+          onToggle={(frame) => limit(tray.toggleFrame(frame))}
+          reelRef={reelRef}
+          scrollRoot={filmScrollRef}
+        />
+      </div>
+      <CardLibraryPicker
+        mode="source"
+        cards={frames
+          .filter((frame) => frame.kind === 'app')
+          .map((frame) => ({
+            id: frame.key,
+            title: frame.title,
+            description: frame.line,
+            frame,
+          }))}
+        selected={tray.picked.map((frame) => frame.key)}
+        onSelect={(card) => {
+          if (card.frame) limit(tray.toggleFrame(card.frame));
+        }}
+      />
+      {Object.keys(sourceIssues).length > 0 && (
+        <fieldset className={styles.sheet}>
+          <legend>Reconsider omitted sources</legend>
+          {tray.picked
+            .filter((frame) => sourceIssues[frame.key])
+            .map((frame) => (
+              <label key={frame.key}>
+                <input
+                  type="checkbox"
+                  checked={preserveKeys.includes(frame.key)}
+                  onChange={(event) =>
+                    setPreserveKeys((keys) =>
+                      event.target.checked
+                        ? [...keys, frame.key]
+                        : keys.filter((key) => key !== frame.key),
+                    )
+                  }
+                />
+                {frame.title} · {sourceIssues[frame.key]}
+              </label>
+            ))}
+          <p className={styles.note}>
+            Retry considers checked sources again. Unsupported claims remain excluded and
+            explained.
+          </p>
+        </fieldset>
+      )}
+      <UserAdditions
+        context={userContext}
+        onContextChange={setUserContext}
+        links={userLinks}
+        onAddLink={(link) => {
+          const frame: Frame = {
+            key: link.url,
+            kind: 'web',
+            from: new URL(link.url).hostname,
+            title: link.title,
+            line: 'Added by you',
+            url: link.url,
+            provenance: 'user',
+          };
+          if (tray.picked.some((picked) => picked.key === frame.key)) return;
+          if (limit(tray.toggleFrame(frame)) === 'added')
+            setUserLinks((links) => [...links, link]);
+        }}
+        onRemoveLink={(url) => {
+          const frame = tray.picked.find((picked) => picked.key === url);
+          if (frame) tray.toggleFrame(frame);
+          setUserLinks((links) => links.filter((link) => link.url !== url));
+        }}
+      />
+      <CurationTray
+        count={tray.picked.length}
+        tones={tray.tones}
+        onOpen={() =>
+          tray.picked.length ? setPhase({ kind: 'style' }) : hint('Cut a frame first.')
+        }
+        shakeKey={shake.key}
+        hint={shake.hint}
+        reelRef={reelRef}
+        autoFocus={focusTray}
+      />
+    </>
+  );
 
   return (
     <m.dialog
       ref={dialogRef}
       className={styles.dialog}
       data-scene="night"
-      aria-labelledby={headingId}
+      aria-label={title}
       tabIndex={-1}
-      {...sheetMotion(sheet)}
+      {...backdropMotion(sheet)}
       onKeyDown={(event) => {
         if (event.key !== 'Escape' || event.defaultPrevented) return;
         event.preventDefault();
@@ -702,35 +785,39 @@ export function CurateFlow({
         pressedBackdrop.current = false;
       }}
     >
-      <div className={styles.flow} data-scene="night" style={gradeOf(tray.tones)}>
-        <div className={styles.head}>
-          <h2 id={headingId} className={styles.title}>
-            Make a card from “{search.trim()}”
-          </h2>
+      <Lanyard
+        className={styles.pass}
+        title={title}
+        headingLevel={2}
+        swing
+        corner={
           <button type="button" className={styles.small} onClick={onClose}>
             Close
           </button>
-        </div>
-        <p className={styles.note} role="status">
-          {status}
-        </p>
-        {failure && (
-          <p className={styles.error} role="alert">
-            <AccessNotice failure={failure} text={DRAFT_FAILURE_TEXT} />
-          </p>
-        )}
-        {access === 'checking' ? (
+        }
+      >
+        <div className={styles.flow} data-scene="night" style={gradeOf(tray.tones)}>
           <p className={styles.note} role="status">
-            Checking your account…
+            {status}
           </p>
-        ) : blocked ? (
-          <p className={styles.error} role="alert">
-            <AccessNotice failure={access} text={DRAFT_FAILURE_TEXT} />
-          </p>
-        ) : (
-          stage()
-        )}
-      </div>
+          {failure && (
+            <p className={styles.error} role="alert">
+              <AccessNotice failure={failure} text={DRAFT_FAILURE_TEXT} />
+            </p>
+          )}
+          {access === 'checking' ? (
+            <p className={styles.note} role="status">
+              Checking your account…
+            </p>
+          ) : blocked ? (
+            <p className={styles.error} role="alert">
+              <AccessNotice failure={access} text={DRAFT_FAILURE_TEXT} />
+            </p>
+          ) : (
+            stage()
+          )}
+        </div>
+      </Lanyard>
     </m.dialog>
   );
 }

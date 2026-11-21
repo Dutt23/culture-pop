@@ -36,6 +36,9 @@ const POSSESSIVE = /['’]s$/;
 const REPORTING_WORDS =
   /\b(?:described|cited|identified|named|listed|called|calls|says|said|source|sources|example|examples|among|appears|mentioned|regarded)\b/g;
 const STRICT_SHARED_WORDS = 0.7;
+/** A topic gist or takeaway that talks about the evidence instead of the subject. */
+const ABOUT_THE_EVIDENCE =
+  /\b(?:the|these|this|those) (?:evidence|sources?|passages?|results|entries|items)\b|\b(?:too )?little (?:detail|context|information)\b|\blimited (?:\w+ )?(?:detail|context|information|overview)\b|\bnot enough (?:detail|context|information)\b/i;
 
 type Line = { t: string; ids: string[] };
 type ByIdMap = ReadonlyMap<string, EvidenceItem>;
@@ -223,8 +226,12 @@ export function checkAnswer(
     return !t || t.length > max || bad ? fallback : text;
   };
   const label = free(a.label, LABEL_CHARS, searchLabel(search), true);
-  const gist = free(a.gist, GIST_CHARS, summary[0]?.text ?? '');
-  const means = free(a.means, MEANS_CHARS, FALLBACK_MEANS);
+  const meta = (text: string) => kind !== 'reference' && ABOUT_THE_EVIDENCE.test(text);
+  const firstLine = summary[0]?.text ?? '';
+  const gist = meta(a.gist) ? firstLine : free(a.gist, GIST_CHARS, firstLine);
+  const means = meta(a.means)
+    ? (context[0]?.text ?? summary[1]?.text ?? summary[0]?.text ?? FALLBACK_MEANS)
+    : free(a.means, MEANS_CHARS, FALLBACK_MEANS);
   const reply = GENERIC_REPLY.test(a.reply.trim())
     ? FALLBACK_REPLY
     : free(a.reply, REPLY_CHARS, FALLBACK_REPLY);

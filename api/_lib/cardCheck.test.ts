@@ -424,3 +424,26 @@ describe('checkAnswer fixes', () => {
     expect(invented).toMatchObject({ card: null, reason: 'nothing_left' });
   });
 });
+
+describe('checkAnswer on a topic gist or takeaway about the evidence', () => {
+  const meta = {
+    ...base,
+    gist: 'The evidence identifies three Gundam television anime.',
+    means: 'These entries provide too little detail for a broader franchise overview.',
+    context: [{ t: 'It is a famous scene.', ids: ['E1'] }],
+  };
+
+  it('replaces them with the first summary and context lines', () => {
+    const c = checkAnswer(meta, items, 'kitne aadmi the', [], 'topic').card;
+    expect(c?.gist).toBe('Gabbar asks how many men there were.');
+    expect(c?.means).toBe('It is a famous scene.');
+  });
+
+  it('keeps a gist about the subject and leaves reference cards alone', () => {
+    expect(
+      checkAnswer({ ...meta, gist: 'A famous Sholay scene.' }, items, 'x', [], 'topic').card?.gist,
+    ).toBe('A famous Sholay scene.');
+    const plain = { ...meta, gist: 'The evidence identifies a famous scene.' };
+    expect(checkAnswer(plain, items, 'kitne aadmi the', []).card?.gist).toBe(plain.gist);
+  });
+});

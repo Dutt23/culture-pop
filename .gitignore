@@ -48,5 +48,7 @@ docs/reviews/*security*
 
 # Scale benchmark results (scripts/perf/scale-bench.mjs)
 scripts/perf/out/
+# Paid card-draft comparison results (scripts/card-drafts/compare.eval.ts)
+scripts/card-drafts/out/
 # Project docs (kept on disk and in the vault, not in the public repo)
 docs/

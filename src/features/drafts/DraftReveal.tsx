@@ -13,6 +13,7 @@ import { useMotionPresets } from '../../motion/useMotionPresets';
 import { UNGRADED } from './curationLook';
 import { flyToLibrary } from './flyToReel';
 import type { Frame } from './frames';
+import { CapsuleFx, DarkBookFx, PlankFx, QuillIcon, SkullIcon, StarIcon } from './revealFx';
 import styles from './drafts.module.css';
 
 const FADE_IN: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
@@ -22,10 +23,16 @@ const FLIP_IN: Keyframe[] = [
   { transform: 'perspective(700px) rotateY(-8deg) scale(1.02)', opacity: 1 },
   { transform: 'perspective(700px) rotateY(0) scale(1)', opacity: 1 },
 ];
-const FOLD: Keyframe[] = [
-  { transform: 'scaleY(1)', opacity: 1 },
-  { transform: 'scaleY(.05) translateY(400px)', opacity: 0 },
+/** Drop: the card tilts and steps out along the plank, then falls off its end. */
+const PLANK: Keyframe[] = [
+  { transform: 'translate(0,0) rotate(0)', opacity: 1, offset: 0 },
+  { transform: 'translate(6%,-6px) rotate(-4deg)', offset: 0.15 },
+  { transform: 'translate(13%,0) rotate(3deg)', offset: 0.3 },
+  { transform: 'translate(20%,-6px) rotate(-4deg)', offset: 0.45 },
+  { transform: 'translate(28%,0) rotate(7deg)', opacity: 1, offset: 0.62 },
+  { transform: 'translate(34%,420px) rotate(32deg) scale(.6)', opacity: 0, offset: 1 },
 ];
+const PLANK_MS = 1100;
 const UNVEIL: Keyframe[] = [
   { opacity: 0, transform: 'translateY(6px)' },
   { opacity: 1, transform: 'translateY(0)' },
@@ -93,6 +100,8 @@ export function DraftReveal(props: DraftRevealProps) {
   const [saveFailed, setSaveFailed] = useState(false);
 
   const [cheering, setCheering] = useState(false);
+  // The one moment playing for the last tap; a new tap replaces it, so the old one ends unheard.
+  const [fx, setFx] = useState<'drop' | 'edit' | 'keep' | null>(null);
   // Everything still running when the reveal goes: cancelled on unmount, so nothing calls back.
   const alive = useRef(true);
   const running = useRef<Animation[]>([]);
@@ -130,10 +139,10 @@ export function DraftReveal(props: DraftRevealProps) {
     });
   }, [reduced]);
 
-  const leave = (frames: Keyframe[], kept: boolean) => {
+  const leave = (frames: Keyframe[], kept: boolean, ms = 520) => {
     if (!canAnimate(ref.current)) return onDone?.(kept);
     const exit = ref.current.animate(reduced ? FADE_OUT : frames, {
-      duration: reduced ? REDUCED_MS : 520,
+      duration: reduced ? REDUCED_MS : ms,
       easing: 'cubic-bezier(.4,0,.2,1)',
       fill: 'forwards',
     });
@@ -153,14 +162,22 @@ export function DraftReveal(props: DraftRevealProps) {
     cheerTimer.current = window.setTimeout(() => onDone?.(true), CHEER_MS);
   };
 
+  const openEditor = () => {
+    setFx(null);
+    setEditing(true);
+  };
+
   const keep = async () => {
     setBusy(true);
     setKeeping(true);
     setSaveFailed(false);
+    // The capsule plays alongside the save, which starts now; it never holds it up.
+    if (!reduced) setFx('keep');
     try {
       await onKeep?.(card);
     } catch {
       if (!alive.current) return;
+      setFx(null);
       setSaveFailed(true);
       setBusy(false);
       setKeeping(false);
@@ -247,103 +264,109 @@ export function DraftReveal(props: DraftRevealProps) {
           <rect x="119" y="34" width="6" height="14" rx="3" fill="#b29bff" />
         </svg>
       )}
-      <article
-        ref={ref}
-        className={cheering ? `${styles.card} ${styles.gone}` : styles.card}
-        aria-labelledby={titleId}
-      >
-        <span className={styles.stamp}>AI draft · check the sources</span>
-        <h2 ref={titleRef} id={titleId} className={styles.label} tabIndex={-1}>
-          {veiled ? search.trim() || 'Spoiler' : card.label}
-        </h2>
-        {isSpoiler && <span className={styles.spoilerTag}>Spoiler</span>}
-        {veiled ? (
-          <div className={styles.veil}>
-            <p>This card gives away the ending of a story.</p>
-            <button type="button" className={styles.small} onClick={() => setRevealedHere(true)}>
-              Reveal spoiler
-            </button>
-          </div>
-        ) : (
-          <div ref={bodyRef}>
-            <p className={styles.note}>
-              {citedCount} of {sent.length} selected sources cited
-            </p>
-            {(card.partial || response.notUsed.length > 0) && (
+      <div className={styles.stage}>
+        <article
+          ref={ref}
+          className={cheering ? `${styles.card} ${styles.gone}` : styles.card}
+          aria-labelledby={titleId}
+        >
+          <span className={styles.stamp}>AI draft · check the sources</span>
+          <h2 ref={titleRef} id={titleId} className={styles.label} tabIndex={-1}>
+            {veiled ? search.trim() || 'Spoiler' : card.label}
+          </h2>
+          {isSpoiler && <span className={styles.spoilerTag}>Spoiler</span>}
+          {veiled ? (
+            <div className={styles.veil}>
+              <p>This card gives away the ending of a story.</p>
+              <button type="button" className={styles.small} onClick={() => setRevealedHere(true)}>
+                Reveal spoiler
+              </button>
+            </div>
+          ) : (
+            <div ref={bodyRef}>
               <p className={styles.note}>
-                Partial draft · some selected material could not be included.
+                {citedCount} of {sent.length} selected sources cited
               </p>
-            )}
-            {editing && text('Label', card.label, (label) => setCard((c) => ({ ...c, label })))}
-            {text('Gist', card.gist, (gist) => setCard((c) => ({ ...c, gist })))}
-            {(card.means || editing) &&
-              text(isStructured(card.kind) ? 'Takeaway' : 'What they mean', card.means, (means) =>
-                setCard((c) => ({ ...c, means })),
+              {(card.partial || response.notUsed.length > 0) && (
+                <p className={styles.note}>
+                  Partial draft · some selected material could not be included.
+                </p>
               )}
-            {(card.reply || editing) &&
-              text(
-                isStructured(card.kind) ? 'Next question' : 'You could say',
-                card.reply,
-                (reply) => setCard((c) => ({ ...c, reply })),
+              {editing && text('Label', card.label, (label) => setCard((c) => ({ ...c, label })))}
+              {text('Gist', card.gist, (gist) => setCard((c) => ({ ...c, gist })))}
+              {(card.means || editing) &&
+                text(isStructured(card.kind) ? 'Takeaway' : 'What they mean', card.means, (means) =>
+                  setCard((c) => ({ ...c, means })),
+                )}
+              {(card.reply || editing) &&
+                text(
+                  isStructured(card.kind) ? 'Next question' : 'You could say',
+                  card.reply,
+                  (reply) => setCard((c) => ({ ...c, reply })),
+                )}
+              {card.kind === 'list' || card.kind === 'ranking' ? (
+                <ul className={styles.cardList}>
+                  {card.summary.map((line, index) => (
+                    <li key={index}>
+                      {text(
+                        `Item ${index + 1}`,
+                        line.text,
+                        (value) => setLine('summary', index, value),
+                        chips(line.sources),
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                lines('Summary', 'summary')
               )}
-            {card.kind === 'list' || card.kind === 'ranking' ? (
-              <ul className={styles.cardList}>
-                {card.summary.map((line, index) => (
-                  <li key={index}>
-                    {text(
-                      `Item ${index + 1}`,
-                      line.text,
-                      (value) => setLine('summary', index, value),
-                      chips(line.sources),
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              lines('Summary', 'summary')
-            )}
-            {lines(isStructured(card.kind) ? 'Context' : 'How it’s used', 'context')}
-            {props.userContext && (
-              <aside className={styles.userContext}>
-                <strong>Added by you · unverified context</strong>
-                <p>{props.userContext}</p>
-              </aside>
-            )}
-            {card.example &&
-              text(
-                'Example',
-                card.example.text,
-                (v) => setCard((c) => ({ ...c, example: c.example && { ...c.example, text: v } })),
-                chips(card.example.sources),
+              {lines(isStructured(card.kind) ? 'Context' : 'How it’s used', 'context')}
+              {props.userContext && (
+                <aside className={styles.userContext}>
+                  <strong>Added by you · unverified context</strong>
+                  <p>{props.userContext}</p>
+                </aside>
               )}
-            {response.notUsed.length > 0 && (
-              <ul className={styles.unused}>
-                {response.notUsed.map((n) => (
-                  <li key={n.source}>
-                    {`Not used: ${sent[n.source]?.title ?? 'a source'} (${n.why})`}
-                    {!readOnly && props.onRetry && sent[n.source] && (
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={retryKeys.includes(sent[n.source].key)}
-                          onChange={(event) =>
-                            setRetryKeys((keys) =>
-                              event.target.checked
-                                ? [...keys, sent[n.source].key]
-                                : keys.filter((key) => key !== sent[n.source].key),
-                            )
-                          }
-                        />{' '}
-                        Reconsider this source
-                      </label>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </article>
+              {card.example &&
+                text(
+                  'Example',
+                  card.example.text,
+                  (v) =>
+                    setCard((c) => ({ ...c, example: c.example && { ...c.example, text: v } })),
+                  chips(card.example.sources),
+                )}
+              {response.notUsed.length > 0 && (
+                <ul className={styles.unused}>
+                  {response.notUsed.map((n) => (
+                    <li key={n.source}>
+                      {`Not used: ${sent[n.source]?.title ?? 'a source'} (${n.why})`}
+                      {!readOnly && props.onRetry && sent[n.source] && (
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={retryKeys.includes(sent[n.source].key)}
+                            onChange={(event) =>
+                              setRetryKeys((keys) =>
+                                event.target.checked
+                                  ? [...keys, sent[n.source].key]
+                                  : keys.filter((key) => key !== sent[n.source].key),
+                              )
+                            }
+                          />{' '}
+                          Reconsider this source
+                        </label>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </article>
+        {fx === 'drop' && <PlankFx />}
+        {fx === 'keep' && <CapsuleFx onEnd={() => setFx(null)} />}
+        {fx === 'edit' && <DarkBookFx onDone={openEditor} />}
+      </div>
       {!readOnly && saveFailed && (
         <p className={styles.error} role="alert">
           Couldn&rsquo;t keep the card. Please try again.
@@ -364,26 +387,34 @@ export function DraftReveal(props: DraftRevealProps) {
           {/* Busy from the Keep tap on: a drop or edit can't race the save or the flight. */}
           <button
             type="button"
-            className={styles.small}
+            className={`${styles.small} ${styles.drop}`}
             disabled={busy}
             onClick={() => {
               setBusy(true);
-              leave(FOLD, false);
+              // Walk the plank; onDone waits on the card's own exit, cancelled on unmount.
+              if (!reduced) setFx('drop');
+              leave(PLANK, false, PLANK_MS);
             }}
           >
+            <SkullIcon />
             Drop
           </button>
           {!editing && (
             <button
               type="button"
-              className={styles.small}
+              className={`${styles.small} ${styles.edit}`}
               disabled={busy}
               onClick={() => {
+                // Once per tap: a second tap while the book plays changes nothing.
+                if (fx === 'edit') return;
                 // A hidden card can't be edited: Edit uncovers it first.
                 if (veiled) setRevealedHere(true);
-                setEditing(true);
+                // Reduced motion: no book to wait for.
+                if (reduced) openEditor();
+                else setFx('edit');
               }}
             >
+              <QuillIcon />
               Edit
             </button>
           )}
@@ -394,6 +425,7 @@ export function DraftReveal(props: DraftRevealProps) {
             disabled={blank || (busy && !keeping)}
             onClick={() => void keep()}
           >
+            <StarIcon />
             Keep
           </BusyButton>
         </div>

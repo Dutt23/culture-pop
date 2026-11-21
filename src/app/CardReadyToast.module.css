@@ -1,0 +1,84 @@
+/* Sits above the bottom nav and the phone's safe area, centred in the page column. */
+.region {
+  position: fixed;
+  inset-inline: var(--space-gutter);
+  inset-block-end: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-3));
+  z-index: var(--z-nav);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(0.75rem);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-inline-size: 28rem;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  animation: toast-in var(--motion-duration-fast) var(--motion-ease-out) both;
+}
+
+/* Reduced motion (the setting, or the device while settings load): it simply appears. */
+:global(:root[data-motion='reduce']) .toast {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(:root[data-motion='system']) .toast,
+  :global(:root:not([data-motion])) .toast {
+    animation: none;
+  }
+}
+
+.text {
+  margin: 0;
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.open {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3);
+  color: var(--color-accent);
+  font-weight: var(--weight-bold);
+}
+
+.close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.open:focus-visible,
+.close:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}

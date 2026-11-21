@@ -1,3 +1,5 @@
+import { CONFIG } from './config.js';
+
 /**
  * Server-only calls to Supabase (D64, docs/SUPABASE_PLAN.md). Plain `fetch` against the documented
  * Auth (GoTrue) and Data API (PostgREST) endpoints, so no Supabase token logic ever ships to the
@@ -58,7 +60,7 @@ export class SupabaseError extends Error {
   }
 }
 
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = CONFIG.supabase.timeoutMs;
 /** Statuses Supabase Auth uses for "no" about the code or token itself. */
 const REFUSALS = new Set([400, 403, 422]);
 

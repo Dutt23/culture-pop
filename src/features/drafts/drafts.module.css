@@ -1,61 +1,67 @@
 /* Splice check, drafting projector and reveal, ported from the approved curation demo. The flow's
    root sets --grade-1 / --grade-2 (see curationLook.ts); the fallback is the ungraded film. */
 
-/* The flow opens as a modal sheet: full screen on phones, a centred panel on wider screens. It
-   scrolls on its own; the film strip's rails follow it (FilmStrip's scrollRoot). */
+/* The flow hangs on a lanyard pass (Lanyard) that drops from the top of the screen: the dialog is
+   only its see-through holder. The pass's body scrolls; the film strip's rails follow the film's
+   own scroller (FilmStrip's scrollRoot). */
 .dialog {
-  width: 100%;
-  max-width: 760px;
+  inline-size: min(760px, 100% - 2 * var(--space-3));
+  max-inline-size: none;
+  block-size: fit-content;
   /* vh first: older WebView Chrome has no dvh. */
-  max-height: 90vh;
-  max-height: 90dvh;
-  padding: 0;
-  overflow-y: auto;
-  /* The native bar draws outside the rounded sheet. Wheel, trackpad and keys still scroll. */
-  scrollbar-width: none;
-  overscroll-behavior: contain;
-  /* The curation tray (CurationTray) and the room it needs at the sheet's bottom: its height, its
+  max-block-size: 100vh;
+  max-block-size: 100dvh;
+  margin: 0 auto;
+  padding: 0 0 var(--space-4);
+  overflow: hidden;
+  /* The curation tray (CurationTray) and the room it needs at the body's bottom: its height, its
      gap and the phone's safe area. FilmStrip measures the tray itself for its gate. */
   --tray-height: 62px;
   --tray-inset: calc(var(--tray-height) + var(--space-5) + env(safe-area-inset-bottom, 0px));
-  /* Focus and scrollIntoView stop clear of the sticky head and the tray pinned at the bottom. */
-  scroll-padding-block: calc(var(--tap-min) + var(--space-6) + env(safe-area-inset-top, 0px))
-    var(--tray-inset);
+  /* Focus and scrollIntoView inside the pass stop clear of the tray pinned at the bottom. */
+  --lanyard-body-inset: var(--tray-inset);
   border: none;
-  border-radius: var(--radius-lg);
-  background: var(--color-bg);
+  background: transparent;
   color: var(--color-text);
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
 }
 
 .dialog:focus-visible {
   outline: none;
 }
 
-/* --backdrop runs 0 to 1 with the sheet's own motion (CurateFlow's sheetMotion), reduced or not. */
+/* --backdrop runs 0 to 1 with the dialog's own motion (CurateFlow's backdropMotion). */
 .dialog::backdrop {
   background: rgb(13 11 31 / calc(0.6 * var(--backdrop, 1)));
 }
 
-/* Set by the open flow: the page under the sheet stays put. */
+/* Set by the open flow: the page under the pass stays put. */
 :global(html[data-sheet-open]) {
   overflow: hidden;
 }
 
-/* Phones (the 40rem breakpoint, design/tokens.css) and landscape phones (short viewports): the
-   sheet takes the whole screen. */
+/* The pass: wider than Lanyard's own, as tall as the screen allows (two classes beat its one). */
+.dialog .pass {
+  flex: 0 1 auto;
+  max-inline-size: none;
+}
+
+/* Phones (the 40rem breakpoint, design/tokens.css) and landscape phones (short viewports): the pass
+   fills the screen under a short strap. */
 @media (max-width: 39.99rem), (max-height: 30rem) {
   .dialog {
-    max-width: none;
-    height: 100vh;
-    height: 100dvh;
-    max-height: none;
-    margin: 0;
-    border-radius: 0;
+    inline-size: 100%;
+    block-size: 100vh;
+    block-size: 100dvh;
+    padding: env(safe-area-inset-top, 0px) 0 0;
   }
 
-  /* Full screen reaches under the notch: the sticky head keeps clear of it. */
-  .head {
-    padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0px));
+  .dialog .pass {
+    flex: 1 1 auto;
   }
 }
 
@@ -73,25 +79,6 @@
   border-radius: var(--radius-lg);
   background: var(--color-bg);
   color: var(--color-text);
-}
-
-/* Close stays in reach while the film scrolls under it. */
-.head {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-block: var(--space-2);
-  background: var(--color-bg);
-}
-
-.title {
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: var(--weight-bold);
 }
 
 .note {
@@ -153,6 +140,52 @@
 .keep:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);
+}
+
+/* Drop, Edit, Keep: each its own colour and mark (owner's approved mock). Keep is the main one. */
+.drop,
+.edit,
+.keep {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: var(--weight-medium);
+  transition:
+    transform var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.drop {
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}
+
+.edit {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+}
+
+.keep {
+  padding-inline: 16px;
+  font-weight: var(--weight-bold);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--g1) 30%, transparent),
+    0 6px 18px color-mix(in srgb, var(--g1) 40%, transparent);
+}
+
+/* --motion-lift is 0 under reduced motion (tokens.css), so the hover simply stays put. */
+.drop:not(:disabled):hover,
+.edit:not(:disabled):hover,
+.keep:not(:disabled, [aria-disabled='true']):hover {
+  transform: translateY(var(--motion-lift));
+}
+
+.btnIcon {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
 }
 
 /* Splice check */
@@ -537,6 +570,160 @@
   }
 }
 
+/* The one-shot moments behind Drop, Edit and Keep (revealFx.tsx): drawn over the card, never in the
+   way, and never shown under reduced motion. The stage is their positioning box. */
+.stage {
+  position: relative;
+}
+
+.fxLayer {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Drop: a plank slides out from under the card, and the card's colour splashes where it falls. */
+.plank {
+  position: absolute;
+  inset-inline: 40% -6%;
+  inset-block-end: -12px;
+  block-size: 8px;
+  border-radius: 3px;
+  background: var(--color-warm);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--color-warm) 55%, black);
+  transform-origin: left center;
+  animation: plankOut 0.2s var(--motion-ease-out) both;
+}
+
+.splash {
+  position: absolute;
+  inset-inline-end: -4%;
+  inset-block-end: -64px;
+  inline-size: 64px;
+  fill: var(--g2);
+  stroke: var(--g2);
+  animation: splash 0.35s 0.8s ease-out both;
+}
+
+@keyframes plankOut {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes splash {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.2);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(1.2);
+  }
+}
+
+/* Keep: the capsule pops, the card jumps out, spins once and leaps up toward the library. */
+.capsuleFx {
+  display: grid;
+  place-items: center;
+  animation: fxOut 1.1s linear both;
+}
+
+.capsule {
+  inline-size: 96px;
+  overflow: visible;
+}
+
+.capsuleBase {
+  fill: var(--g1);
+}
+
+.capsuleLid {
+  fill: var(--color-accent);
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: lidPop 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+.capsuleBand {
+  fill: var(--color-surface);
+  stroke: var(--ink);
+  stroke-width: 3;
+}
+
+.capsuleCard {
+  fill: var(--card);
+  stroke: var(--g1);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cardLeap 1.1s cubic-bezier(0.3, 0.7, 0.3, 1) both;
+}
+
+@keyframes lidPop {
+  to {
+    transform: rotate(-115deg);
+  }
+}
+
+@keyframes cardLeap {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateY(0) scale(0.3);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-34px) scale(1) rotate(0);
+  }
+  70% {
+    transform: translateY(-34px) scale(1) rotate(360deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(70px, -150px) scale(0.3) rotate(380deg);
+  }
+}
+
+@keyframes fxOut {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Edit: the dark book sits near the top of the card, over the title and the fields below it. */
+.bookFx {
+  display: grid;
+  place-items: start center;
+  padding-block-start: 24px;
+}
+
+.book {
+  inline-size: min(180px, 60%);
+  overflow: visible;
+  filter: drop-shadow(0 8px 16px rgb(0 0 0 / 0.45));
+}
+
+/* Reduced motion (the setting, or the device while settings load): no moments at all. */
+:global(:root[data-motion='reduce']) .fxLayer {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(:root[data-motion='system']) .fxLayer,
+  :global(:root:not([data-motion])) .fxLayer {
+    display: none;
+  }
+}
+
 .dialog::-webkit-scrollbar,
 .filmScroll::-webkit-scrollbar {
   display: none;
@@ -592,4 +779,39 @@
 .reveal[data-card-color='peach'] {
   --g1: #e2b49a;
   --g2: #e2b49a;
+}
+
+/* Card format and colour: the app's chips in a row, named by the line above them. */
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.choiceLabel {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* A dot of the card's own colour (the reveal's grade, below). */
+.swatch {
+  display: inline-block;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  margin-inline-end: var(--space-2);
+  vertical-align: -0.125rem;
+  border: 2px solid currentcolor;
+  border-radius: 50%;
+  background: #b6aed6;
+}
+
+.swatch[data-card-color='sage'] {
+  background: #8ac9af;
+}
+
+.swatch[data-card-color='peach'] {
+  background: #e2b49a;
 }

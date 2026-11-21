@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { classNames } from '../components/ui/classNames';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../components/ui/icons';
 import type { AuthClient } from '../services/auth/authClient';
 import { AccountMenu } from './AccountMenu';
+import { CardReadyToast } from './CardReadyToast';
 import styles from './AppShell.module.css';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useCurationJobs } from './useCurationJobs';
@@ -30,17 +31,14 @@ interface AppShellProps {
   authClient?: AuthClient;
 }
 
+const inProgress = (count: number) =>
+  count === 1 ? '1 card in progress' : `${count} cards in progress`;
+
 export function AppShell({ children, authClient }: AppShellProps) {
   const isOnline = useOnlineStatus();
   // Signing in is the only thing a signed-out visitor can do (D66), so that page has no tabs.
   const onSignIn = useLocation().pathname === '/sign-in';
-  const { activeCount, jobs } = useCurationJobs();
-  const [openedAt] = useState(() => Date.now());
-  const finished = jobs.find(
-    (job) =>
-      (job.status === 'completed' || job.status === 'failed') &&
-      Date.parse(job.updatedAt) >= openedAt,
-  );
+  const { activeCount } = useCurationJobs();
   return (
     <div className={styles.shell}>
       <a href="#main" className={styles.skipLink}>
@@ -61,16 +59,8 @@ export function AppShell({ children, authClient }: AppShellProps) {
           <AccountMenu client={authClient} />
         </div>
       )}
-      {finished && (
-        <p className={styles.activityNotice} role="status">
-          <Link to="/activity">
-            {finished.status === 'completed'
-              ? 'Card ready in Activity'
-              : 'Card needs attention in Activity'}{' '}
-            · {finished.request.search}
-          </Link>
-        </p>
-      )}
+      {/* A finished card is announced by the pop-up; the Activity tab shows what's still going. */}
+      <CardReadyToast hidden={onSignIn} />
       {!isOnline && (
         <p className={styles.offline} role="status">
           {onSignIn
@@ -84,22 +74,30 @@ export function AppShell({ children, authClient }: AppShellProps) {
       {!onSignIn && (
         <nav aria-label="Primary" className={styles.nav}>
           <ul className={styles.navList}>
-            {NAV_ITEMS.map(({ to, label, Icon }) => (
-              <li key={to}>
-                <NavLink
-                  to={to}
-                  className={({ isActive }) =>
-                    classNames(styles.navLink, isActive && styles.active)
-                  }
-                >
-                  <Icon />
-                  <span>
-                    {label}
-                    {to === '/activity' && activeCount > 0 ? ` (${activeCount})` : ''}
-                  </span>
-                </NavLink>
-              </li>
-            ))}
+            {NAV_ITEMS.map(({ to, label, Icon }) => {
+              const pending = to === '/activity' ? activeCount : 0;
+              return (
+                <li key={to}>
+                  <NavLink
+                    to={to}
+                    className={({ isActive }) =>
+                      classNames(styles.navLink, isActive && styles.active)
+                    }
+                    aria-label={pending > 0 ? `${label}, ${inProgress(pending)}` : undefined}
+                  >
+                    <span className={styles.navIcon}>
+                      <Icon />
+                      {pending > 0 && (
+                        <span className={styles.badge} aria-hidden="true">
+                          {pending}
+                        </span>
+                      )}
+                    </span>
+                    <span>{label}</span>
+                  </NavLink>
+                </li>
+              );
+            })}
           </ul>
         </nav>
       )}

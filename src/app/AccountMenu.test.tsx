@@ -1,27 +1,57 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountSession, AuthClient, AuthResult } from '../services/auth/authClient';
+import { browserLikeBack, settle } from '../test/browserBack';
 import { fakeAuthClient } from '../test/fakeAuth';
+import { OVERLAY_MARK } from '../components/ui/useBackCloses';
 import { AccountMenu } from './AccountMenu';
+import type { CurationJob } from '../data/repositories/curationJobRepository';
+import { CurationJobsContext, type CurationJobsContextValue } from './useCurationJobs';
 
 const EMAIL = 'reader@example.test';
 
-function show(client: AuthClient) {
+function runningJob(search: string, id = 'job-1'): CurationJob {
+  return {
+    id,
+    status: 'running',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    request: { search },
+    sent: [],
+  } as unknown as CurationJob;
+}
+
+function jobsValue(jobs: CurationJob[]): CurationJobsContextValue {
+  return {
+    jobs,
+    activeCount: jobs.length,
+    start: vi.fn(),
+    cancel: vi.fn(),
+    retry: vi.fn(),
+  };
+}
+
+function show(client: AuthClient, jobs: CurationJob[] = [], { strict = false } = {}) {
   render(
     <MemoryRouter initialEntries={['/discover']}>
-      <Routes>
-        <Route path="/discover" element={<AccountMenu client={client} />} />
-        <Route path="/settings" element={<p>Settings page</p>} />
-        <Route path="/sign-in" element={<p>Sign-in page</p>} />
-      </Routes>
+      <CurationJobsContext.Provider value={jobsValue(jobs)}>
+        <Routes>
+          <Route path="/discover" element={<AccountMenu client={client} />} />
+          <Route path="/settings" element={<p>Settings page</p>} />
+          <Route path="/activity" element={<p>Activity page</p>} />
+          <Route path="/sign-in" element={<p>Sign-in page</p>} />
+        </Routes>
+      </CurationJobsContext.Provider>
     </MemoryRouter>,
+    // StrictMode as in development (src/main.tsx): mount, unmount, mount again.
+    { reactStrictMode: strict },
   );
   return screen.getByRole('button', { name: /^Your account/ });
 }
 
-async function openTray(client: AuthClient) {
-  const button = show(client);
+async function openTray(client: AuthClient, jobs: CurationJob[] = [], strict = false) {
+  const button = show(client, jobs, { strict });
   fireEvent.click(button);
   const tray = await screen.findByRole('dialog', { name: 'Your account' });
   return { button, tray };
@@ -93,9 +123,18 @@ describe('AccountMenu', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('opens and stays open under StrictMode, as in development (owner bug, 2026-11-22)', async () => {
+    browserLikeBack();
+    const { button, tray } = await openTray(fakeAuthClient(), [], true);
+    await settle();
+    expect(tray).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Your account' })).toBeInTheDocument();
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('Back closes it instead of leaving the page', async () => {
     await openTray(fakeAuthClient());
-    expect((window.history.state as Record<string, unknown>)?.pcdSideTray).toBe(true);
+    expect((window.history.state as Record<string, unknown>)?.[OVERLAY_MARK]).toBeTruthy();
     act(() => {
       window.history.replaceState(null, '');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -134,5 +173,32 @@ describe('AccountMenu', () => {
     expect(again).not.toHaveAttribute('aria-disabled');
     fireEvent.click(again);
     expect(signOut).toHaveBeenCalledTimes(2);
+  });
+
+  it('says nothing about cards in progress when none are being made', async () => {
+    const { button, tray } = await openTray(fakeAuthClient());
+    expect(button).toHaveAccessibleName(`Your account, ${EMAIL}`);
+    expect(within(tray).queryByText('Cards in progress')).not.toBeInTheDocument();
+  });
+
+  it('marks the button and names the count while cards are being made', () => {
+    const button = show(fakeAuthClient(), [runningJob('Gundam')]);
+    expect(button).toHaveAccessibleName(`Your account, ${EMAIL}, 1 card being made`);
+    const two = [runningJob('Gundam'), runningJob('Akira', 'job-2')];
+    cleanup();
+    expect(show(fakeAuthClient(), two)).toHaveAccessibleName(
+      `Your account, ${EMAIL}, 2 cards being made`,
+    );
+  });
+
+  it('lists each running search in the tray, linking to Activity', async () => {
+    const jobs = [runningJob('Gundam'), runningJob('Akira', 'job-2')];
+    const { tray } = await openTray(fakeAuthClient(), jobs);
+    expect(within(tray).getByText('Cards in progress')).toBeInTheDocument();
+    const link = within(tray).getByRole('link', { name: /Gundam.*being made/ });
+    expect(link).toHaveAttribute('href', '/activity');
+    expect(within(tray).getByRole('link', { name: /Akira.*being made/ })).toBeInTheDocument();
+    fireEvent.click(link);
+    expect(screen.getByText('Activity page')).toBeInTheDocument();
   });
 });

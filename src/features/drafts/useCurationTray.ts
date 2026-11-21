@@ -74,6 +74,19 @@ export function useCurationTray(search: string) {
     return 'added';
   };
 
+  /**
+   * Start over from one card (owner, 2026-11-22): its frames become the picks, up to the limits,
+   * and it is the only tone card. Returns how many frames made it in.
+   */
+  const startFrom = (frames: readonly Frame[], tone: ToneCard): number => {
+    const web = frames.filter((f) => f.kind === 'web').slice(0, LIMITS.webSources);
+    const next = [...web, ...frames.filter((f) => f.kind !== 'web')].slice(0, LIMITS.sources);
+    setPicked(next);
+    setKept(new Set());
+    setTones([cutTone(tone)]);
+    return next.length;
+  };
+
   const keepFlagged = (key: string) => setKept((k) => new Set(k).add(key));
 
   const body = (about?: string[]): DraftRequestBody => ({
@@ -88,5 +101,16 @@ export function useCurationTray(search: string) {
     picked.length > 0 &&
     picked.every((f) => !flags[f.key] || kept.has(f.key));
 
-  return { picked, tones, flags, kept, toggleFrame, toggleTone, keepFlagged, body, canMake };
+  return {
+    picked,
+    tones,
+    flags,
+    kept,
+    toggleFrame,
+    toggleTone,
+    startFrom,
+    keepFlagged,
+    body,
+    canMake,
+  };
 }
